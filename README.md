@@ -125,6 +125,15 @@ We welcome contributions! This project is open-source under the MIT license.
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
+## 📚 Documentation
+
+Comprehensive project documentation is available in the [`docs/`](docs/) directory:
+
+- **[Documentation Index](docs/README.md)** - Complete documentation overview
+- **[Project Architecture](docs/project/ARCHITECTURE.md)** - System design and components
+- **[Progress Tracking](docs/progress/)** - Prompt-by-prompt implementation progress
+- **[Tech Stack Details](docs/project/TECH_STACK.md)** - Technology choices and configurations
+
 ## 🙏 Acknowledgments
 
 - Built for the [T3 Chat Cloneathon](https://example.com) competition
