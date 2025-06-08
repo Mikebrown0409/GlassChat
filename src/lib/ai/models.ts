@@ -23,6 +23,7 @@ import {
   AI_MODEL_INFO,
 } from "./types";
 import { rateLimiter, waitWithBackoff } from "./rate-limiter";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Mock responses for testing when API keys are not available
 const MOCK_RESPONSES: Record<AIModel, string> = {
@@ -38,6 +39,12 @@ const MOCK_RESPONSES: Record<AIModel, string> = {
     "I'm a mock Claude 3 Sonnet response. This would normally connect to Anthropic's API.",
   [AIModel.CLAUDE_3_HAIKU]:
     "I'm a mock Claude 3 Haiku response. This would normally connect to Anthropic's API.",
+  [AIModel.GEMINI_2_0_FLASH]:
+    "I'm a mock Gemini 2.0 Flash response. This would normally connect to Google's API.",
+  [AIModel.GEMINI_1_5_FLASH]:
+    "I'm a mock Gemini 1.5 Flash response. This would normally connect to Google's API.",
+  [AIModel.GEMINI_1_5_PRO]:
+    "I'm a mock Gemini 1.5 Pro response. This would normally connect to Google's API.",
 };
 
 class AIModelManager {
@@ -46,7 +53,10 @@ class AIModelManager {
 
   constructor() {
     // Enable mock mode if no API keys are available
-    this.mockMode = !env.OPENAI_API_KEY && !env.ANTHROPIC_API_KEY;
+    this.mockMode =
+      !env.OPENAI_API_KEY &&
+      !env.ANTHROPIC_API_KEY &&
+      !env.GOOGLE_GENERATIVE_AI_API_KEY;
 
     if (this.mockMode) {
       console.warn("🤖 AI Mock Mode: No API keys found, using mock responses");
@@ -151,6 +161,8 @@ class AIModelManager {
       return await this.callOpenAI(model, messages, config, startTime);
     } else if (provider === AIProvider.ANTHROPIC) {
       return await this.callAnthropic(model, messages, config, startTime);
+    } else if (provider === AIProvider.GOOGLE) {
+      return await this.callGoogle(model, messages, config, startTime);
     }
 
     throw this.createError(
@@ -171,6 +183,8 @@ class AIModelManager {
       yield* this.streamOpenAI(model, messages, config);
     } else if (provider === AIProvider.ANTHROPIC) {
       yield* this.streamAnthropic(model, messages, config);
+    } else if (provider === AIProvider.GOOGLE) {
+      yield* this.streamGoogle(model, messages, config);
     } else {
       throw this.createError(
         "model_unavailable",
@@ -403,6 +417,75 @@ class AIModelManager {
     };
   }
 
+  private async callGoogle(
+    model: AIModel,
+    messages: AIMessage[],
+    config: AIModelConfig,
+    startTime: number,
+  ): Promise<AIResponse> {
+    if (!env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      throw this.createError(
+        "api_key",
+        "Google Generative AI API key not configured",
+        AIProvider.GOOGLE,
+      );
+    }
+
+    const genAI = new GoogleGenerativeAI(env.GOOGLE_GENERATIVE_AI_API_KEY);
+    const geminiModel = genAI.getGenerativeModel({ model: model });
+
+    // Convert messages to Gemini format
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage || lastMessage.role !== "user") {
+      throw this.createError(
+        "unknown",
+        "Last message must be from user",
+        AIProvider.GOOGLE,
+      );
+    }
+
+    try {
+      const result = await geminiModel.generateContent(lastMessage.content);
+      const response = result.response;
+      const text = response.text();
+      const responseTime = Date.now() - startTime;
+
+      // Record usage for rate limiting
+      rateLimiter.recordRequest(AIProvider.GOOGLE, text.length / 4);
+
+      return {
+        content: text,
+        model,
+        provider: AIProvider.GOOGLE,
+        usage: {
+          promptTokens: this.estimateTokens(messages),
+          completionTokens: Math.ceil(text.length / 4),
+          totalTokens:
+            this.estimateTokens(messages) + Math.ceil(text.length / 4),
+        },
+        finishReason: "stop",
+        responseTime,
+      };
+    } catch (error) {
+      throw this.handleError(error, AIProvider.GOOGLE);
+    }
+  }
+
+  private async *streamGoogle(
+    model: AIModel,
+    messages: AIMessage[],
+    config: AIModelConfig,
+  ): AsyncGenerator<AIStreamChunk> {
+    // Google streaming implementation would go here
+    // For now, fall back to single response
+    const response = await this.callGoogle(model, messages, config, Date.now());
+    yield {
+      content: response.content,
+      isComplete: true,
+      usage: response.usage,
+    };
+  }
+
   private async generateMockResponse(
     model: AIModel,
     messages: AIMessage[],
@@ -525,7 +608,8 @@ class AIModelManager {
 
     return (
       (provider === AIProvider.OPENAI && !!env.OPENAI_API_KEY) ||
-      (provider === AIProvider.ANTHROPIC && !!env.ANTHROPIC_API_KEY)
+      (provider === AIProvider.ANTHROPIC && !!env.ANTHROPIC_API_KEY) ||
+      (provider === AIProvider.GOOGLE && !!env.GOOGLE_GENERATIVE_AI_API_KEY)
     );
   }
 

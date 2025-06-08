@@ -56,7 +56,7 @@ export function ChatInput({
 
       // Generate AI response
       const response = await generateResponse.mutateAsync({
-        model: AIModel.GPT_4, // TODO: Make this configurable
+        model: AIModel.GEMINI_2_0_FLASH, // Using Gemini 2.0 Flash as default
         messages: [
           {
             role: "user",

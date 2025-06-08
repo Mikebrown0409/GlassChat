@@ -8,11 +8,15 @@ export enum AIModel {
   CLAUDE_3_OPUS = "claude-3-opus-20240229",
   CLAUDE_3_SONNET = "claude-3-sonnet-20240229",
   CLAUDE_3_HAIKU = "claude-3-haiku-20240307",
+  GEMINI_2_0_FLASH = "gemini-2.0-flash-exp",
+  GEMINI_1_5_FLASH = "gemini-1.5-flash",
+  GEMINI_1_5_PRO = "gemini-1.5-pro",
 }
 
 export enum AIProvider {
   OPENAI = "openai",
   ANTHROPIC = "anthropic",
+  GOOGLE = "google",
 }
 
 export interface AIMessage {
@@ -127,6 +131,24 @@ export const DEFAULT_MODEL_CONFIGS: Record<AIModel, AIModelConfig> = {
     maxTokens: 4096,
     temperature: 0.7,
   },
+  [AIModel.GEMINI_2_0_FLASH]: {
+    provider: AIProvider.GOOGLE,
+    model: AIModel.GEMINI_2_0_FLASH,
+    maxTokens: 8192,
+    temperature: 0.7,
+  },
+  [AIModel.GEMINI_1_5_FLASH]: {
+    provider: AIProvider.GOOGLE,
+    model: AIModel.GEMINI_1_5_FLASH,
+    maxTokens: 8192,
+    temperature: 0.7,
+  },
+  [AIModel.GEMINI_1_5_PRO]: {
+    provider: AIProvider.GOOGLE,
+    model: AIModel.GEMINI_1_5_PRO,
+    maxTokens: 8192,
+    temperature: 0.7,
+  },
 };
 
 // Model information for UI display
@@ -189,6 +211,37 @@ export const AI_MODEL_INFO: Record<AIModel, AIModelInfo> = {
     maxContextLength: 200000,
     inputPricing: 0.00025,
     outputPricing: 0.00125,
+    isAvailable: true,
+  },
+  [AIModel.GEMINI_2_0_FLASH]: {
+    model: AIModel.GEMINI_2_0_FLASH,
+    provider: AIProvider.GOOGLE,
+    displayName: "Gemini 2.0 Flash",
+    description:
+      "Google's newest and fastest model with multimodal capabilities",
+    maxContextLength: 1000000,
+    inputPricing: 0.0,
+    outputPricing: 0.0,
+    isAvailable: true,
+  },
+  [AIModel.GEMINI_1_5_FLASH]: {
+    model: AIModel.GEMINI_1_5_FLASH,
+    provider: AIProvider.GOOGLE,
+    displayName: "Gemini 1.5 Flash",
+    description: "Fast and efficient for most tasks with large context",
+    maxContextLength: 1000000,
+    inputPricing: 0.0,
+    outputPricing: 0.0,
+    isAvailable: true,
+  },
+  [AIModel.GEMINI_1_5_PRO]: {
+    model: AIModel.GEMINI_1_5_PRO,
+    provider: AIProvider.GOOGLE,
+    displayName: "Gemini 1.5 Pro",
+    description: "Google's most capable model for complex reasoning",
+    maxContextLength: 2000000,
+    inputPricing: 0.0,
+    outputPricing: 0.0,
     isAvailable: true,
   },
 };

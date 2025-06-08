@@ -31,6 +31,12 @@ const DEFAULT_RATE_LIMITS: Record<AIProvider, RateLimitConfig> = {
     requestsPerHour: 1000,
     tokensPerHour: 400000,
   },
+  [AIProvider.GOOGLE]: {
+    requestsPerMinute: 60,
+    tokensPerMinute: 32000,
+    requestsPerHour: 1500,
+    tokensPerHour: 1000000,
+  },
 };
 
 class RateLimiter {
