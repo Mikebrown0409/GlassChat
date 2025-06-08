@@ -20,27 +20,25 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
-    
     "redis:start": "docker-compose up -d redis",
     "redis:stop": "docker-compose stop redis",
     "redis:logs": "docker-compose logs -f redis",
     "redis:cli": "docker-compose exec redis redis-cli",
     "redis:ui": "docker-compose --profile tools up -d redis-commander",
-    
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "docker:clean": "docker-compose down -v --remove-orphans",
-    
     "dev:setup": "npm run redis:start && npm run db:push && npm run dev",
     "dev:clean": "npm run docker:clean && rm -rf .next dist",
     "dev:reset": "npm run dev:clean && npm install && npm run dev:setup",
-    
     "wasm:check": "node -e \"console.log('WebAssembly supported:', typeof WebAssembly !== 'undefined')\"",
     "test:env": "node -e \"console.log('Environment check passed')\" && npm run wasm:check",
-    
     "test:ai": "tsx scripts/test-ai-integration.ts",
     "test:ai:verbose": "tsx scripts/test-ai-integration.ts --verbose",
+    "test:sync": "tsx scripts/test-sync-simple.ts",
+    "test:sync:verbose": "tsx scripts/test-sync-simple.ts --verbose",
+    "test:sync:full": "tsx scripts/test-sync-two-device.ts",
     "ai:models": "node -e \"import('./src/lib/ai/models.js').then(m => console.log('Available models:', m.aiModels.getAvailableModels().map(({model, info}) => info.displayName)))\""
   },
   "dependencies": {
@@ -54,6 +52,7 @@
     "@trpc/server": "^11.0.0",
     "@upstash/redis": "^1.35.0",
     "dexie": "^4.0.11",
+    "dexie-react-hooks": "^1.1.7",
     "framer-motion": "^12.16.0",
     "geist": "^1.4.2",
     "husky": "^9.1.7",

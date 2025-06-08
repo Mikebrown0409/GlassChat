@@ -64,7 +64,8 @@
     "node_modules",
     ".next",
     "dist",
-    "build"
+    "build",
+    "scripts/**/*"
   ],
   "ts-node": {
     "esm": true
