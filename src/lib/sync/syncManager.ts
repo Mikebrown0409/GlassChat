@@ -17,6 +17,8 @@ class SyncManager {
   private redis: Redis | null = null;
   private isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
   private syncInterval: NodeJS.Timeout | null = null;
+  private pollInterval: NodeJS.Timeout | null = null;
+  private pendingSyncTimeout: NodeJS.Timeout | null = null;
   private config: SyncManagerConfig;
   private deviceId: string;
 
@@ -122,6 +124,11 @@ class SyncManager {
   private async subscribeToRealTimeUpdates() {
     if (!this.redis) return;
 
+    // Clear existing poll interval
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+    }
+
     try {
       // In a real implementation, this would use Redis pubsub
       // For now, we'll implement polling for demo purposes
@@ -147,8 +154,8 @@ class SyncManager {
         }
       };
 
-      // Poll every 2 seconds for real-time updates
-      setInterval(() => void pollForUpdates(), 2000);
+      // Poll every 10 seconds for real-time updates (reduced frequency)
+      this.pollInterval = setInterval(() => void pollForUpdates(), 10000);
     } catch (error) {
       console.warn("Failed to set up real-time sync:", error);
     }
@@ -168,6 +175,18 @@ class SyncManager {
         await this.applyConflictResolution(message.data);
         break;
     }
+  }
+
+  private debouncedSync() {
+    // Clear existing pending sync
+    if (this.pendingSyncTimeout) {
+      clearTimeout(this.pendingSyncTimeout);
+    }
+
+    // Schedule new sync
+    this.pendingSyncTimeout = setTimeout(() => {
+      void this.performSync();
+    }, 1000);
   }
 
   async performSync(): Promise<SyncStats> {
@@ -531,9 +550,9 @@ class SyncManager {
       updatedAt: Date.now(),
     } as Omit<Chat, keyof SyncableEntity>);
 
-    // Trigger immediate sync if online
+    // Debounced sync
     if (this.isOnline) {
-      setTimeout(() => void this.performSync(), 100);
+      this.debouncedSync();
     }
 
     return chat;
@@ -552,19 +571,31 @@ class SyncManager {
       createdAt: Date.now(),
     } as Omit<Message, keyof SyncableEntity>);
 
-    // Trigger immediate sync if online
+    // Update the chat's updatedAt timestamp (without triggering another sync)
+    const chat = await db.chats.get(chatId);
+    if (chat) {
+      await db.updateSyncableEntity(db.chats, chatId, {
+        updatedAt: Date.now(),
+      });
+    }
+
+    // Debounced sync
     if (this.isOnline) {
-      setTimeout(() => void this.performSync(), 100);
+      this.debouncedSync();
     }
 
     return message;
   }
 
   async updateChat(id: string, updates: Partial<Chat>): Promise<void> {
-    await db.updateSyncableEntity(db.chats, id, updates);
+    await db.updateSyncableEntity(db.chats, id, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
 
+    // Debounced sync
     if (this.isOnline) {
-      setTimeout(() => void this.performSync(), 100);
+      this.debouncedSync();
     }
   }
 
@@ -602,6 +633,12 @@ class SyncManager {
   destroy() {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
+    }
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+    }
+    if (this.pendingSyncTimeout) {
+      clearTimeout(this.pendingSyncTimeout);
     }
   }
 }

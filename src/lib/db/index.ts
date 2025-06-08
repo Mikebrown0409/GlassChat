@@ -39,7 +39,7 @@ export class GlassChatDatabase extends Dexie {
   constructor() {
     super("glasschat-db");
     this.version(1).stores({
-      chats: "id, createdAt, lastModified, syncStatus",
+      chats: "id, createdAt, updatedAt, lastModified, syncStatus",
       messages: "id, chatId, createdAt, lastModified, syncStatus",
       users: "id, lastModified, syncStatus",
       syncOperations: "id, entityType, entityId, timestamp, applied",
