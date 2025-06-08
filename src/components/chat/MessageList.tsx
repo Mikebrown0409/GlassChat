@@ -39,26 +39,19 @@ function MessageBubble({ message, isLast }: MessageBubbleProps) {
       >
         <GlassContainer
           className={clsx(
-            "p-4",
-            isUser && [
-              "bg-blue-500/80 dark:bg-blue-600/80",
-              "text-white",
-              "border-blue-400/30 dark:border-blue-500/30",
-            ],
-            !isUser &&
-              !isSystem && [
-                "bg-white/80 dark:bg-gray-800/80",
-                "text-gray-900 dark:text-gray-100",
-              ],
-            isSystem && [
-              "bg-yellow-500/80 dark:bg-yellow-600/80",
-              "text-yellow-900 dark:text-yellow-100",
-              "border-yellow-400/30 dark:border-yellow-500/30",
-            ],
+            "glass-optimized p-4",
+            isUser && "text-white",
+            !isUser && !isSystem && "text-gray-900 dark:text-gray-100",
+            isSystem && "text-yellow-900 dark:text-yellow-100",
           )}
-          blur="md"
+          blur="lg"
           rounded="lg"
           hover={true}
+          gradient={isUser || isSystem}
+          animated
+          scale
+          shadow="lg"
+          opacity={isUser ? "high" : "medium"}
         >
           {/* Message metadata */}
           <div className="mb-2 flex items-center justify-between">
@@ -189,7 +182,14 @@ export function MessageList({ chatId, className }: MessageListProps) {
       <div
         className={clsx("flex flex-1 items-center justify-center", className)}
       >
-        <GlassContainer className="p-8">
+        <GlassContainer
+          className="p-8"
+          gradient
+          animated
+          blur="xl"
+          shadow="xl"
+          pulse
+        >
           <div className="flex animate-pulse space-x-4">
             <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-700"></div>
             <div className="flex-1 space-y-2 py-1">
@@ -207,9 +207,17 @@ export function MessageList({ chatId, className }: MessageListProps) {
       <div
         className={clsx("flex flex-1 items-center justify-center", className)}
       >
-        <GlassContainer className="p-8 text-center">
+        <GlassContainer
+          className="p-8 text-center"
+          gradient
+          animated
+          blur="xl"
+          shadow="xl"
+          hover
+          scale
+        >
           <div className="text-gray-500 dark:text-gray-400">
-            <div className="mb-2 text-2xl">💬</div>
+            <div className="animate-glass-float mb-2 text-2xl">💬</div>
             <p className="font-medium">Start a conversation</p>
             <p className="mt-1 text-sm">
               Send a message to begin chatting with AI
@@ -221,7 +229,7 @@ export function MessageList({ chatId, className }: MessageListProps) {
   }
 
   return (
-    <div className={clsx("flex-1 overflow-y-auto", className)}>
+    <div className={clsx("glass-scrollbar flex-1 overflow-y-auto", className)}>
       <div className="space-y-0 p-4">
         {messages.map((message, index) => (
           <MessageBubble

@@ -60,9 +60,13 @@ export function ChatInterface({ className }: ChatInterfaceProps) {
       {/* Sidebar */}
       <div className="flex-shrink-0">
         <GlassContainer
-          className="h-full rounded-none border-r border-white/20 dark:border-white/10"
-          blur="lg"
+          className="h-full rounded-none"
+          blur="xl"
           opacity="medium"
+          gradient
+          animated
+          shadow="xl"
+          bordered={false}
         >
           <ChatSidebar
             currentChatId={currentChatId}
@@ -78,9 +82,13 @@ export function ChatInterface({ className }: ChatInterfaceProps) {
             {/* Chat header */}
             <div className="flex-shrink-0">
               <GlassContainer
-                className="rounded-none border-b border-white/20 p-4 dark:border-white/10"
+                className="rounded-none p-4"
                 blur="lg"
                 opacity="high"
+                gradient
+                animated
+                shadow="lg"
+                bordered={false}
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -98,11 +106,15 @@ export function ChatInterface({ className }: ChatInterfaceProps) {
                     {/* AI Model indicator */}
                     <GlassContainer
                       className="px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-300"
-                      blur="sm"
-                      opacity="low"
+                      blur="md"
+                      opacity="medium"
                       rounded="full"
+                      gradient
+                      animated
+                      scale
+                      pulse
                     >
-                      GPT-4
+                      Gemini 2.0 Flash
                     </GlassContainer>
 
                     {/* Online status */}
@@ -122,18 +134,33 @@ export function ChatInterface({ className }: ChatInterfaceProps) {
 
             {/* Input */}
             <div className="flex-shrink-0">
-              <ChatInput
-                chatId={currentChatId}
-                onSend={handleSendMessage}
-                className="border-t border-white/20 dark:border-white/10"
-              />
+              <GlassContainer
+                gradient
+                animated
+                blur="lg"
+                opacity="medium"
+                shadow="lg"
+                className="rounded-none"
+                bordered={false}
+              >
+                <ChatInput chatId={currentChatId} onSend={handleSendMessage} />
+              </GlassContainer>
             </div>
           </>
         ) : (
           // Welcome screen when no chat is selected
           <div className="flex flex-1 items-center justify-center">
-            <GlassContainer className="max-w-md p-12 text-center">
-              <div className="mb-6 text-6xl">💬</div>
+            <GlassContainer
+              className="max-w-md p-12 text-center"
+              gradient
+              animated
+              blur="xl"
+              opacity="high"
+              shadow="2xl"
+              scale
+              hover
+            >
+              <div className="animate-glass-float mb-6 text-6xl">💬</div>
               <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Welcome to GlassChat
               </h2>

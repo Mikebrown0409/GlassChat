@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 
 import { TRPCReactProvider } from "~/trpc/react";
+import { ThemeProvider } from "~/components/ui/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "GlassChat - AI Chat with Glassmorphism",
@@ -16,11 +17,15 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable}`}>
-      <body className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 font-sans antialiased">
-        <div className="relative min-h-screen backdrop-blur-sm">
+    <html
+      lang="en"
+      className={`${GeistSans.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="font-sans antialiased" suppressHydrationWarning>
+        <ThemeProvider>
           <TRPCReactProvider>{children}</TRPCReactProvider>
-        </div>
+        </ThemeProvider>
       </body>
     </html>
   );
