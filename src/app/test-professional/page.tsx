@@ -11,4 +11,4 @@ export default function TestProfessionalPage() {
       </div>
     </ThemeProvider>
   );
-} 
+}

@@ -12,13 +12,15 @@ export default function TestModernPage() {
       isUser: false,
     },
     {
-      id: "2", 
-      content: "I'd like to discuss our product roadmap and get some strategic insights.",
+      id: "2",
+      content:
+        "I'd like to discuss our product roadmap and get some strategic insights.",
       isUser: true,
     },
     {
       id: "3",
-      content: "I'd be happy to help with product strategy! Let's start by understanding your current goals and challenges. What's your primary focus for the next quarter?",
+      content:
+        "I'd be happy to help with product strategy! Let's start by understanding your current goals and challenges. What's your primary focus for the next quarter?",
       isUser: false,
     },
   ]);
@@ -58,4 +60,4 @@ export default function TestModernPage() {
       </div>
     </ThemeProvider>
   );
-} 
+}

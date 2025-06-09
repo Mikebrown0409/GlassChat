@@ -63,6 +63,7 @@
     "geist": "^1.4.2",
     "husky": "^9.1.7",
     "intro.js": "^7.2.0",
+    "lucide-react": "^0.513.0",
     "nanoid": "^5.1.5",
     "next": "^15.2.3",
     "next-auth": "5.0.0-beta.25",
