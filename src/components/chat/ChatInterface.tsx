@@ -99,7 +99,7 @@ const TextSelectionMenu = ({
 };
 // -----------------------------------------
 
-export function ChatInterface({ className }: ChatInterfaceProps) {
+export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -200,389 +200,321 @@ export function ChatInterface({ className }: ChatInterfaceProps) {
     setInputValue("");
     setIsTyping(true);
 
-    // Update status to sent
+    // Simulate network delay and update message status
     setTimeout(() => {
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === userMessage.id ? { ...msg, status: "sent" } : msg,
         ),
       );
-    }, 800);
+    }, 500);
 
-    // Simulate AI response with typing animation
-    setTimeout(() => {
-      const responses = [
-        "I understand you're asking about that. Let me break this down for you.",
-        "That's a great question! Here's what I think about it...",
-        "Based on my understanding, here are the key points to consider:",
-        "Let me help you with that. From my perspective...",
-        "Interesting question! I'd be happy to explain this concept.",
-      ];
+    const aiResponse: Message = {
+      id: (Date.now() + 1).toString(),
+      content: "", // Start with empty content
+      isUser: false,
+      timestamp: new Date(),
+    };
 
-      const generateResponse = () => {
-        // Use default responses for now
-        return (
-          responses[Math.floor(Math.random() * responses.length)] ??
-          "Thanks for your message!"
-        );
-      };
+    // Add the empty AI message to start
+    setMessages((prev) => [...prev, aiResponse]);
 
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "",
-        isUser: false,
-        timestamp: new Date(),
-      };
+    // The streaming effect will be handled by a useEffect
+  };
 
-      setMessages((prev) => [...prev, aiMessage]);
-
-      const fullResponse = generateResponse();
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && !lastMessage.isUser && lastMessage.content === "") {
+      const fullResponse = `I understand you're asking about that. Here is a detailed explanation of how our APIs provide unmatched accuracy and speed for enterprise use cases. Let's break it down further.`;
       const words = fullResponse.split(" ");
+      let currentContent = "";
 
       const streamWords = (index: number) => {
         if (index < words.length) {
-          const partialContent = words.slice(0, index + 1).join(" ");
+          currentContent += (index > 0 ? " " : "") + words[index];
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === aiMessage.id
-                ? { ...msg, content: partialContent }
+              msg.id === lastMessage.id
+                ? { ...msg, content: currentContent }
                 : msg,
             ),
           );
-          setTimeout(() => streamWords(index + 1), 35);
+          setTimeout(() => streamWords(index + 1), 35); // Faster typing
         } else {
-          setIsTyping(false);
+          setIsTyping(false); // Stop typing indicator when streaming is complete
         }
       };
 
-      streamWords(0);
-    }, 1200);
-  };
+      setTimeout(() => streamWords(0), 400); // Shorter delay before streaming
+    }
+  }, [messages]);
 
   const handleSuggestionClick = (suggestion: string) => {
     setInputValue(suggestion);
     textareaRef.current?.focus();
   };
 
-  const handleCopy = () => {
-    if (selectionMenu?.text) {
-      void navigator.clipboard.writeText(selectionMenu.text);
-    }
-  };
-
-  const handleExplain = () => {
-    if (selectionMenu?.text) {
-      setInputValue(`Can you explain: "${selectionMenu.text}"`);
-      setSelectionMenu(null);
-      textareaRef.current?.focus();
-    }
-  };
-
-  const handleTranslate = () => {
-    if (selectionMenu?.text) {
-      setInputValue(`Please translate: "${selectionMenu.text}"`);
-      setSelectionMenu(null);
-      textareaRef.current?.focus();
-    }
-  };
-
-  const filteredHistory = CONVERSATION_HISTORY.filter((chat) =>
-    chat.title.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredHistory = CONVERSATION_HISTORY.filter((conv) =>
+    conv.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const suggestions = [
-    "How does real-time voice AI work?",
-    "Compare different speech models",
-    "Optimize API call costs",
-    "Best practices for audio quality",
+  const models = [
+    { id: "gpt-4", name: "GPT-4 Turbo", description: "Most capable model" },
+    { id: "gpt-3.5", name: "GPT-3.5 Turbo", description: "Fast and efficient" },
+    { id: "claude-3", name: "Claude 3", description: "Great for analysis" },
   ];
 
   return (
-    <div
-      className={clsx(
-        "flex h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900",
-        className,
-      )}
-    >
-      {/* Text Selection Menu */}
-      <AnimatePresence>
-        {selectionMenu && (
-          <TextSelectionMenu
-            position={selectionMenu.position}
-            onCopy={handleCopy}
-            onExplain={handleExplain}
-            onTranslate={handleTranslate}
-          />
-        )}
-      </AnimatePresence>
-
+    <div className="fixed inset-0 flex h-screen w-screen overflow-hidden bg-black font-sans text-slate-200">
       {/* Sidebar */}
       <AnimatePresence>
         {sidebarOpen && (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 280, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
+          <motion.aside
+            key="sidebar"
+            initial={{ width: 0, x: -300 }}
+            animate={{ width: 300, x: 0 }}
+            exit={{ width: 0, x: -300 }}
             transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
-            className="flex-shrink-0 border-r border-slate-700/50"
+            className="flex flex-col border-r border-slate-900 bg-[#080808]"
           >
-            <div className="flex h-full flex-col bg-slate-900/50 backdrop-blur-xl">
-              {/* Sidebar Header */}
-              <div className="border-b border-slate-700/50 p-4">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 p-1.5">
-                      <div className="h-full w-full rounded-md bg-white/20"></div>
-                    </div>
-                    <span className="font-semibold text-white">GlassChat</span>
-                  </div>
-                  <button className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
-                    <Plus size={18} />
-                  </button>
+            {/* Header */}
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-900 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-slate-400"
+                  >
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
                 </div>
-
-                {/* Search */}
-                <div className="relative">
-                  <Search
-                    size={16}
-                    className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search conversations..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 py-2 pr-4 pl-10 text-sm text-white placeholder-slate-400 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/30 focus:outline-none"
-                  />
+                <div>
+                  <h1 className="text-base font-semibold text-white">
+                    GlassChat
+                  </h1>
+                  <p className="text-sm text-slate-500">AI Platform</p>
                 </div>
               </div>
-
-              {/* Conversation History */}
-              <div className="flex-1 overflow-y-auto p-2">
-                <div className="space-y-1">
-                  {filteredHistory.map((chat, index) => (
-                    <motion.div
-                      key={chat.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{
-                        delay: index * 0.05,
-                        duration: 0.2,
-                        ease: DYNAMIC_EASE,
-                      }}
-                      className="group cursor-pointer rounded-lg p-3 transition-colors hover:bg-slate-800/50"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="min-w-0 flex-1">
-                          <h4 className="truncate text-sm font-medium text-white">
-                            {chat.title}
-                          </h4>
-                          <p className="text-xs text-slate-400">{chat.time}</p>
-                        </div>
-                        <button className="ml-2 opacity-0 transition-opacity group-hover:opacity-100">
-                          <MoreHorizontal
-                            size={14}
-                            className="text-slate-400"
-                          />
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-
-              {/* User Profile */}
-              <div className="border-t border-slate-700/50 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500"></div>
-                    <div className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-slate-900 bg-green-400"></div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">
-                      Chat User
-                    </p>
-                    <p className="text-xs text-slate-400">Online</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Main Chat Area */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Header */}
-        <div className="border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-xl">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
               <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+                onClick={() => setSidebarOpen(false)}
+                className="rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-white"
+                title="Collapse Sidebar"
               >
                 <Sidebar size={18} />
               </button>
-              <div>
-                <h1 className="font-semibold text-white">Voice AI Assistant</h1>
-                <p className="text-sm text-slate-400">
-                  Powered by advanced language models
-                </p>
+            </div>
+
+            {/* New Chat Button */}
+            <div className="p-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800 p-2.5 text-sm font-medium text-slate-200 transition-colors duration-200 hover:border-slate-600 hover:bg-slate-700/80 hover:text-white"
+              >
+                <Plus size={16} />
+                New Conversation
+              </motion.button>
+            </div>
+
+            {/* Search Input */}
+            <div className="px-3 pb-2">
+              <div className="relative">
+                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 py-2 pr-3 pl-9 text-sm text-slate-300 placeholder-slate-500 transition-colors focus:border-slate-600 focus:bg-slate-800/60 focus:outline-none"
+                />
               </div>
             </div>
 
-            {/* Model Selector */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-white transition-colors hover:bg-slate-700/50"
-              >
-                <div className="h-2 w-2 rounded-full bg-green-400"></div>
-                {selectedModel}
-              </button>
-
+            {/* Conversation History */}
+            <div className="flex-1 overflow-y-auto px-3 pb-4">
               <AnimatePresence>
-                {modelDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    transition={{ duration: 0.15, ease: DYNAMIC_EASE }}
-                    className="absolute top-full right-0 z-10 mt-2 w-48 rounded-lg border border-slate-700/50 bg-slate-800/90 backdrop-blur-xl"
+                {filteredHistory.map((conv) => (
+                  <motion.button
+                    key={conv.id}
+                    layout
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2, ease: DYNAMIC_EASE }}
+                    className="group w-full rounded-md p-2 text-left transition-colors duration-200 hover:bg-slate-800/60"
                   >
-                    {["GPT-4 Turbo", "Claude 3", "Gemini Pro"].map((model) => (
-                      <button
-                        key={model}
-                        onClick={() => {
-                          setSelectedModel(model);
-                          setModelDropdownOpen(false);
-                        }}
-                        className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-white transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-slate-700/50"
-                      >
-                        <div className="h-2 w-2 rounded-full bg-green-400"></div>
-                        {model}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
+                    <div className="flex items-center justify-between">
+                      <span className="truncate text-sm font-normal text-slate-400 group-hover:text-slate-100">
+                        {conv.title}
+                      </span>
+                      <AnimatePresence>
+                        {searchQuery === "" && (
+                          <motion.span
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="text-xs text-slate-600"
+                          >
+                            {conv.time}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.button>
+                ))}
               </AnimatePresence>
             </div>
+
+            {/* Footer */}
+            <div className="border-t border-slate-900 p-4">
+              <button className="flex w-full items-center gap-3 rounded-md p-2 text-left text-sm text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-slate-200">
+                <div className="h-8 w-8 rounded-full bg-slate-700"></div>
+                <div className="flex-1 truncate">Chat User</div>
+                <MoreHorizontal size={16} />
+              </button>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <main className="relative flex h-full min-w-0 flex-1 flex-col">
+        <AnimatePresence>
+          {selectionMenu && (
+            <TextSelectionMenu
+              position={selectionMenu.position}
+              onCopy={() => {
+                void navigator.clipboard.writeText(selectionMenu.text);
+                setSelectionMenu(null);
+              }}
+              onExplain={() => {
+                setInputValue(`Explain: "${selectionMenu.text}"`);
+                setSelectionMenu(null);
+              }}
+              onTranslate={() => {
+                setInputValue(`Translate: "${selectionMenu.text}"`);
+                setSelectionMenu(null);
+              }}
+            />
+          )}
+        </AnimatePresence>
+        {/* Top Bar */}
+        <header className="flex h-16 shrink-0 items-center border-b border-slate-900 bg-black/80 px-6 backdrop-blur-sm">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="mr-4 -ml-2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-white"
+          >
+            <Sidebar size={20} />
+          </button>
+
+          <div className="flex items-center gap-3">
+            <div className="h-2 w-2 animate-pulse rounded-full bg-green-400"></div>
+            <span className="text-sm text-slate-300">Voice AI Assistant</span>
           </div>
-        </div>
+        </header>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-3xl space-y-6">
-            {messages.length === 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: DYNAMIC_EASE }}
-                className="text-center"
-              >
-                <div className="mx-auto mb-6 h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-4">
-                  <Sparkles className="h-full w-full text-white" />
-                </div>
-                <h2 className="mb-2 text-xl font-semibold text-white">
-                  Welcome to Voice AI Chat
-                </h2>
-                <p className="mb-8 text-slate-400">
-                  Start a conversation or choose from these suggestions
-                </p>
-
-                {/* Suggestion Chips */}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {suggestions.map((suggestion, index) => (
-                    <motion.button
-                      key={suggestion}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{
-                        delay: index * 0.1,
-                        duration: 0.3,
-                        ease: DYNAMIC_EASE,
-                      }}
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      className="rounded-lg border border-slate-700/50 bg-slate-800/30 p-4 text-left text-sm text-slate-300 transition-all hover:border-blue-500/50 hover:bg-slate-800/50 hover:text-white"
-                    >
-                      {suggestion}
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {messages.map((message, index) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: index * 0.1,
-                  duration: 0.3,
-                  ease: DYNAMIC_EASE,
-                }}
-                className={clsx(
-                  "flex gap-4",
-                  message.isUser ? "justify-end" : "justify-start",
-                )}
-              >
-                {!message.isUser && (
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-2 text-white">
-                    <Sparkles className="h-full w-full" />
-                  </div>
-                )}
-
-                <div
-                  className={clsx(
-                    "max-w-[70%] rounded-2xl px-4 py-3",
-                    message.isUser
-                      ? "bg-blue-600 text-white"
-                      : "border border-slate-700/50 bg-slate-800/30 text-slate-100",
-                  )}
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto">
+          {messages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-slate-700 bg-slate-800">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="text-slate-500"
                 >
-                  <div
-                    data-message-content
-                    className="prose prose-invert prose-p:my-1 prose-code:rounded prose-code:bg-slate-700/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-slate-200 max-w-none"
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                </svg>
+              </div>
+              <h2 className="mb-1 text-xl font-semibold text-white">
+                How can I help you today?
+              </h2>
+              <p className="mx-auto mb-8 max-w-sm text-slate-500">
+                Ask me anything about voice AI, speech-to-text, or audio
+                intelligence implementation.
+              </p>
+
+              {/* Suggestion Chips */}
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {[
+                  "How to get started with real-time transcription?",
+                  "Explain your different voice AI models.",
+                  "How to reduce audio processing costs?",
+                ].map((suggestion, i) => (
+                  <motion.button
+                    key={suggestion}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      transition: { delay: 0.2 + i * 0.1, ease: DYNAMIC_EASE },
+                    }}
+                    whileHover={{ y: -2, transition: { ease: DYNAMIC_EASE } }}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="rounded-full border border-slate-700/80 bg-slate-800/60 px-4 py-2 text-sm text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800"
                   >
-                    {message.content}
-                  </div>
-
-                  {message.isUser && (
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        {message.status === "sending" && (
-                          <div className="flex items-center gap-1">
-                            <div className="h-1 w-1 animate-pulse rounded-full bg-blue-200"></div>
-                            <div
-                              className="h-1 w-1 animate-pulse rounded-full bg-blue-200"
-                              style={{ animationDelay: "0.1s" }}
-                            ></div>
-                            <div
-                              className="h-1 w-1 animate-pulse rounded-full bg-blue-200"
-                              style={{ animationDelay: "0.2s" }}
-                            ></div>
-                          </div>
-                        )}
-                        {message.status === "sent" && (
-                          <Check size={12} className="text-blue-200" />
-                        )}
-                      </div>
-                      <div className="ml-auto">
-                        <div className="flex items-center justify-end gap-2 pt-1 pl-1 text-xs text-slate-600">
-                          <span>
-                            {message.timestamp.toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                      </div>
+                    {suggestion}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="mx-auto max-w-4xl space-y-8 p-6">
+              <AnimatePresence mode="popLayout">
+                {messages.map((message) => (
+                  <motion.div
+                    key={message.id}
+                    layout
+                    initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -15, scale: 0.98 }}
+                    transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
+                    className={clsx(
+                      "group flex gap-4",
+                      message.isUser ? "flex-row-reverse" : "",
+                    )}
+                  >
+                    <div
+                      className={clsx(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                        message.isUser
+                          ? "bg-slate-700 text-slate-300"
+                          : "bg-slate-800 text-slate-400",
+                      )}
+                    >
+                      {message.isUser ? "You" : "AI"}
                     </div>
-                  )}
-
-                  {!message.isUser && (
-                    <div className="mt-2 flex items-center justify-between">
+                    <div className="space-y-2">
+                      <div
+                        className={clsx(
+                          "max-w-prose rounded-lg border p-4 transition-colors group-hover:border-slate-700/80",
+                          message.isUser
+                            ? "border-slate-700/50 bg-slate-800/50 text-slate-200"
+                            : "border-slate-900 bg-black text-slate-300",
+                        )}
+                      >
+                        <p
+                          className="text-sm leading-relaxed"
+                          data-message-content="true"
+                        >
+                          {message.content}
+                        </p>
+                      </div>
                       <div className="flex items-center justify-end gap-2 pt-1 pl-1 text-xs text-slate-600">
                         <span>
                           {message.timestamp.toLocaleTimeString([], {
@@ -590,103 +522,170 @@ export function ChatInterface({ className }: ChatInterfaceProps) {
                             minute: "2-digit",
                           })}
                         </span>
+                        {message.isUser && message.status === "sending" && (
+                          <span className="italic">Sending...</span>
+                        )}
+                        {message.isUser && message.status === "sent" && (
+                          <Check size={14} className="text-slate-500" />
+                        )}
                       </div>
                     </div>
-                  )}
-                </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
 
-                {message.isUser && (
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500"></div>
-                )}
-              </motion.div>
-            ))}
-
-            {isTyping && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex gap-4"
-              >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-2 text-white">
-                  <Sparkles className="h-full w-full" />
-                </div>
-                <div className="rounded-2xl border border-slate-700/50 bg-slate-800/30 px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <div className="h-2 w-2 animate-bounce rounded-full bg-slate-400"></div>
-                    <div
-                      className="h-2 w-2 animate-bounce rounded-full bg-slate-400"
-                      style={{ animationDelay: "0.1s" }}
-                    ></div>
-                    <div
-                      className="h-2 w-2 animate-bounce rounded-full bg-slate-400"
-                      style={{ animationDelay: "0.2s" }}
-                    ></div>
+              {/* Typing Indicator */}
+              {isTyping && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ ease: DYNAMIC_EASE }}
+                  className="flex items-center gap-4"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800">
+                    <motion.div
+                      className="h-1.5 w-1.5 rounded-full bg-slate-400"
+                      animate={{ scale: [1, 1.25, 1], opacity: [0.7, 1, 0.7] }}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    />
                   </div>
-                </div>
-              </motion.div>
-            )}
+                  <div className="rounded-lg border border-slate-900 bg-black p-4">
+                    <div className="flex items-center gap-1.5">
+                      {[0, 1, 2].map((i) => (
+                        <motion.div
+                          key={i}
+                          className="h-1.5 w-1.5 rounded-full bg-slate-500"
+                          animate={{ y: [0, -2, 0] }}
+                          transition={{
+                            duration: 0.8,
+                            repeat: Infinity,
+                            delay: i * 0.15,
+                            ease: "easeInOut",
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
 
-            <div ref={messagesEndRef} />
-          </div>
+              <div ref={messagesEndRef} />
+            </div>
+          )}
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-slate-700/50 bg-slate-900/50 p-4 backdrop-blur-xl">
-          <div className="mx-auto max-w-3xl">
+        <div className="border-t border-slate-900 bg-black/80 p-4 backdrop-blur-sm">
+          <div className="mx-auto max-w-4xl">
             <form onSubmit={handleSubmit} className="relative">
-              <div className="relative overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-800/30 focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/30">
+              <div className="relative flex items-center">
                 <textarea
                   ref={textareaRef}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Type your message..."
-                  className="w-full resize-none border-0 bg-transparent px-4 py-3 pr-12 text-white placeholder-slate-400 focus:outline-none"
-                  rows={1}
-                  style={{ minHeight: "48px", maxHeight: "200px" }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       handleSubmit(e);
                     }
                   }}
+                  placeholder={
+                    isTyping ? "AI is responding..." : "Ask anything..."
+                  }
+                  className="max-h-48 min-h-[50px] w-full resize-none rounded-lg border border-slate-700 bg-slate-900/50 p-3 pr-28 text-sm text-slate-200 placeholder-slate-500 transition-colors duration-200 outline-none focus:border-slate-600 focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60"
+                  rows={1}
+                  disabled={isTyping}
                 />
-
-                <button
-                  type="submit"
-                  disabled={!inputValue.trim() || isTyping}
-                  className={clsx(
-                    "absolute right-2 bottom-2 rounded-xl p-2 transition-all",
-                    inputValue.trim() && !isTyping
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                      : "bg-slate-700/50 text-slate-400",
-                  )}
-                >
-                  {isTyping ? (
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent"></div>
-                  ) : (
-                    <ArrowUp size={20} />
-                  )}
-                </button>
+                <div className="absolute right-3 flex items-center gap-2">
+                  <div ref={dropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                      className="flex items-center gap-1.5 rounded-md bg-slate-800/50 px-2 py-1 text-xs text-slate-400 transition-colors hover:text-slate-200"
+                    >
+                      <span>{selectedModel}</span>
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        className={`transition-transform duration-200 ${modelDropdownOpen ? "rotate-180" : ""}`}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </button>
+                    {modelDropdownOpen && (
+                      <div className="absolute right-0 bottom-full z-50 mb-2 w-48 rounded-lg border border-slate-700 bg-slate-800 shadow-2xl">
+                        {models.map((model) => (
+                          <button
+                            key={model.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedModel(model.name);
+                              setModelDropdownOpen(false);
+                            }}
+                            className={`w-full px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-slate-700/80 ${
+                              selectedModel === model.name
+                                ? "text-blue-400"
+                                : "text-slate-200"
+                            }`}
+                          >
+                            {model.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <motion.button
+                    type="submit"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    disabled={!inputValue.trim() || isTyping}
+                    className={clsx(
+                      "flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200",
+                      inputValue.trim() && !isTyping
+                        ? "bg-white text-black"
+                        : "cursor-not-allowed bg-slate-800 text-slate-500",
+                    )}
+                  >
+                    {isTyping ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
+                    ) : (
+                      <ArrowUp size={18} strokeWidth={2.5} />
+                    )}
+                  </motion.button>
+                </div>
               </div>
-
-              {/* Character counter and hints */}
-              <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-                <span className="opacity-75">
-                  Press Shift+Enter for new line
+              <div className="mt-2 flex items-center justify-between text-xs">
+                <span className="text-slate-500">
+                  Press <strong>Shift+Enter</strong> for a new line
                 </span>
                 <span
                   className={clsx(
-                    inputValue.length > 1800 && "text-yellow-400",
-                    inputValue.length > 1950 && "text-red-400",
+                    "font-medium",
+                    inputValue.length > 2000
+                      ? "text-orange-400"
+                      : "text-slate-600",
                   )}
                 >
-                  {inputValue.length}/2000
+                  {inputValue.length} / 2000
                 </span>
               </div>
             </form>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
