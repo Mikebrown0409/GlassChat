@@ -1,8 +1,11 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { clsx } from "clsx";
+import { useLiveChats, useLiveMessages, syncManager } from "~/lib/sync";
+import { api } from "~/trpc/react";
+import { AIModel } from "~/lib/ai/types";
 import {
   Copy,
   Sparkles,
@@ -13,27 +16,13 @@ import {
   Sidebar,
   MoreHorizontal,
   Check,
+  Edit3,
+  Trash2,
 } from "lucide-react";
-
-interface Message {
-  id: string;
-  content: string;
-  isUser: boolean;
-  timestamp: Date;
-  status?: "sending" | "sent";
-}
 
 interface ChatInterfaceProps {
   className?: string;
 }
-
-const CONVERSATION_HISTORY = [
-  { id: "1", title: "Real-time transcription setup", time: "5m ago" },
-  { id: "2", title: "Voice AI model comparison", time: "2h ago" },
-  { id: "3", title: "Audio processing cost optimization", time: "1d ago" },
-  { id: "4", title: "API integration for Node.js", time: "3d ago" },
-  { id: "5", title: "Speech-to-Text Performance", time: "1 week ago" },
-];
 
 // Professional easing curve for all animations
 const DYNAMIC_EASE = [0.22, 1, 0.36, 1];
@@ -100,21 +89,58 @@ const TextSelectionMenu = ({
 // -----------------------------------------
 
 export function ChatInterface({ className: _className }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [selectedModel, setSelectedModel] = useState("GPT-4 Turbo");
+  const [selectedModel, setSelectedModel] = useState("Gemini 2.0 Flash");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectionMenu, setSelectionMenu] = useState<{
     position: { top: number; left: number };
     text: string;
   } | null>(null);
+  const [currentChatId, setCurrentChatId] = useState<string | undefined>();
+  const [conversationMenus, setConversationMenus] = useState<
+    Record<string, boolean>
+  >({});
+  const [renamingChat, setRenamingChat] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  // Get real data from hooks
+  const chats = useLiveChats();
+  const rawMessages = useLiveMessages(currentChatId ?? "");
+  const messages = useMemo(() => rawMessages ?? [], [rawMessages]);
+
+  // tRPC mutation for AI responses
+  const generateResponse = api.ai.generateResponse.useMutation();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Auto-select first chat if none selected
+  useEffect(() => {
+    if (!currentChatId && chats && chats.length > 0) {
+      setCurrentChatId(chats[0]?.id);
+    }
+  }, [chats, currentChatId]);
+
+  // Create initial chat if none exist
+  useEffect(() => {
+    const createInitialChat = async () => {
+      if (chats && chats.length === 0) {
+        try {
+          const newChat = await syncManager.createChat("New Conversation");
+          setCurrentChatId(newChat.id);
+        } catch (error) {
+          console.error("Failed to create initial chat:", error);
+        }
+      }
+    };
+    if (chats !== undefined) {
+      void createInitialChat();
+    }
+  }, [chats]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -134,6 +160,12 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setModelDropdownOpen(false);
+      }
+
+      // Close conversation menus when clicking outside
+      const target = event.target as HTMLElement;
+      if (!target.closest("[data-conversation-menu]")) {
+        setConversationMenus({});
       }
     };
 
@@ -184,83 +216,129 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     return () => document.removeEventListener("mouseup", handleMouseUp);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || !currentChatId || isTyping) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: inputValue,
-      isUser: true,
-      timestamp: new Date(),
-      status: "sending",
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    const userMessage = inputValue.trim();
     setInputValue("");
     setIsTyping(true);
 
-    // Simulate network delay and update message status
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === userMessage.id ? { ...msg, status: "sent" } : msg,
-        ),
-      );
-    }, 500);
+    try {
+      // Create user message in database
+      await syncManager.createMessage(currentChatId, "user", userMessage);
 
-    const aiResponse: Message = {
-      id: (Date.now() + 1).toString(),
-      content: "", // Start with empty content
-      isUser: false,
-      timestamp: new Date(),
-    };
-
-    // Add the empty AI message to start
-    setMessages((prev) => [...prev, aiResponse]);
-
-    // The streaming effect will be handled by a useEffect
-  };
-
-  useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage && !lastMessage.isUser && lastMessage.content === "") {
-      const fullResponse = `I understand you're asking about that. Here is a detailed explanation of how our APIs provide unmatched accuracy and speed for enterprise use cases. Let's break it down further.`;
-      const words = fullResponse.split(" ");
-      let currentContent = "";
-
-      const streamWords = (index: number) => {
-        if (index < words.length) {
-          currentContent += (index > 0 ? " " : "") + words[index];
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === lastMessage.id
-                ? { ...msg, content: currentContent }
-                : msg,
-            ),
-          );
-          setTimeout(() => streamWords(index + 1), 35); // Faster typing
-        } else {
-          setIsTyping(false); // Stop typing indicator when streaming is complete
-        }
+      // Convert model name to AI model enum
+      const modelMap: Record<string, AIModel> = {
+        "Gemini 2.0 Flash": AIModel.GEMINI_2_0_FLASH,
+        "GPT-4 Turbo": AIModel.GPT_4_TURBO,
+        "Claude 3": AIModel.CLAUDE_3_SONNET,
       };
 
-      setTimeout(() => streamWords(0), 400); // Shorter delay before streaming
+      const aiModel = modelMap[selectedModel] ?? AIModel.GEMINI_2_0_FLASH;
+
+      // Generate AI response
+      const response = await generateResponse.mutateAsync({
+        model: aiModel,
+        messages: [
+          ...messages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          {
+            role: "user" as const,
+            content: userMessage,
+          },
+        ],
+      });
+
+      // Create AI response message
+      if (response.success && response.response?.content) {
+        await syncManager.createMessage(
+          currentChatId,
+          "assistant",
+          response.response.content,
+        );
+      } else {
+        await syncManager.createMessage(
+          currentChatId,
+          "system",
+          "Sorry, I encountered an error while processing your message. Please try again.",
+        );
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+
+      // Create error message
+      if (currentChatId) {
+        await syncManager.createMessage(
+          currentChatId,
+          "system",
+          "Sorry, I encountered an error while processing your message. Please try again.",
+        );
+      }
+    } finally {
+      setIsTyping(false);
     }
-  }, [messages]);
+  };
 
   const handleSuggestionClick = (suggestion: string) => {
     setInputValue(suggestion);
     textareaRef.current?.focus();
   };
 
-  const filteredHistory = CONVERSATION_HISTORY.filter((conv) =>
-    conv.title.toLowerCase().includes(searchQuery.toLowerCase()),
+  const handleNewChat = async () => {
+    try {
+      const newChat = await syncManager.createChat("New Conversation");
+      setCurrentChatId(newChat.id);
+    } catch (error) {
+      console.error("Failed to create new chat:", error);
+    }
+  };
+
+  const handleChatSelect = (chatId: string) => {
+    setCurrentChatId(chatId);
+    setConversationMenus({}); // Close all menus
+  };
+
+  const handleRenameChat = async (chatId: string, newTitle: string) => {
+    try {
+      await syncManager.updateChat(chatId, { title: newTitle });
+      setRenamingChat(null);
+      setRenameValue("");
+    } catch (error) {
+      console.error("Failed to rename chat:", error);
+    }
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      // TODO: Implement delete in sync manager
+      console.log("Delete chat:", chatId);
+      setConversationMenus({});
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+    }
+  };
+
+  const toggleConversationMenu = (chatId: string) => {
+    setConversationMenus((prev) => ({
+      ...prev,
+      [chatId]: !prev[chatId],
+    }));
+  };
+
+  const filteredHistory = (chats ?? []).filter((chat) =>
+    chat.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const models = [
+    {
+      id: "gemini-2.0-flash",
+      name: "Gemini 2.0 Flash",
+      description: "Fastest and newest",
+    },
     { id: "gpt-4", name: "GPT-4 Turbo", description: "Most capable model" },
-    { id: "gpt-3.5", name: "GPT-3.5 Turbo", description: "Fast and efficient" },
     { id: "claude-3", name: "Claude 3", description: "Great for analysis" },
   ];
 
@@ -318,6 +396,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => void handleNewChat()}
                 className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800 p-2.5 text-sm font-medium text-slate-200 transition-colors duration-200 hover:border-slate-600 hover:bg-slate-700/80 hover:text-white"
               >
                 <Plus size={16} />
@@ -342,34 +421,125 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
             {/* Conversation History */}
             <div className="flex-1 overflow-y-auto px-3 pb-4">
               <AnimatePresence>
-                {filteredHistory.map((conv) => (
-                  <motion.button
-                    key={conv.id}
-                    layout
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.2, ease: DYNAMIC_EASE }}
-                    className="group w-full rounded-md p-2 text-left transition-colors duration-200 hover:bg-slate-800/60"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="truncate text-sm font-normal text-slate-400 group-hover:text-slate-100">
-                        {conv.title}
-                      </span>
-                      <AnimatePresence>
-                        {searchQuery === "" && (
-                          <motion.span
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="text-xs text-slate-600"
-                          >
-                            {conv.time}
-                          </motion.span>
+                {filteredHistory.map((chat) => (
+                  <div key={chat.id} className="relative">
+                    <motion.button
+                      layout
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.2, ease: DYNAMIC_EASE }}
+                      onClick={() => handleChatSelect(chat.id)}
+                      className={clsx(
+                        "group w-full rounded-md p-2 text-left transition-colors duration-200",
+                        currentChatId === chat.id
+                          ? "bg-slate-700/80 text-slate-100"
+                          : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-100",
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        {renamingChat === chat.id ? (
+                          <input
+                            type="text"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onBlur={() => {
+                              if (renameValue.trim()) {
+                                void handleRenameChat(
+                                  chat.id,
+                                  renameValue.trim(),
+                                );
+                              } else {
+                                setRenamingChat(null);
+                                setRenameValue("");
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && renameValue.trim()) {
+                                void handleRenameChat(
+                                  chat.id,
+                                  renameValue.trim(),
+                                );
+                              } else if (e.key === "Escape") {
+                                setRenamingChat(null);
+                                setRenameValue("");
+                              }
+                            }}
+                            className="flex-1 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"
+                            autoFocus
+                          />
+                        ) : (
+                          <span className="truncate text-sm font-normal">
+                            {chat.title}
+                          </span>
                         )}
-                      </AnimatePresence>
-                    </div>
-                  </motion.button>
+
+                        <div className="flex items-center gap-2">
+                          <AnimatePresence>
+                            {searchQuery === "" && renamingChat !== chat.id && (
+                              <motion.span
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="text-xs text-slate-600"
+                              >
+                                {new Date(chat.updatedAt).toLocaleDateString()}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+
+                          {renamingChat !== chat.id && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleConversationMenu(chat.id);
+                              }}
+                              className="rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-slate-700/50"
+                              data-conversation-menu
+                            >
+                              <MoreHorizontal
+                                size={14}
+                                className="text-slate-400"
+                              />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </motion.button>
+
+                    {/* Conversation Menu */}
+                    <AnimatePresence>
+                      {conversationMenus[chat.id] && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                          transition={{ duration: 0.15, ease: DYNAMIC_EASE }}
+                          className="absolute top-full right-0 z-50 mt-1 w-40 rounded-lg border border-slate-700/50 bg-slate-800/90 shadow-xl backdrop-blur-xl"
+                          data-conversation-menu
+                        >
+                          <button
+                            onClick={() => {
+                              setRenamingChat(chat.id);
+                              setRenameValue(chat.title);
+                              setConversationMenus({});
+                            }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-300 transition-colors first:rounded-t-lg hover:bg-slate-700/50"
+                          >
+                            <Edit3 size={14} />
+                            Rename
+                          </button>
+                          <button
+                            onClick={() => void handleDeleteChat(chat.id)}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors last:rounded-b-lg hover:bg-red-900/20"
+                          >
+                            <Trash2 size={14} />
+                            Delete
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 ))}
               </AnimatePresence>
             </div>
@@ -409,12 +579,14 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         </AnimatePresence>
         {/* Top Bar */}
         <header className="flex h-16 shrink-0 items-center border-b border-slate-900 bg-black/80 px-6 backdrop-blur-sm">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="mr-4 -ml-2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-white"
-          >
-            <Sidebar size={20} />
-          </button>
+          {!sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="mr-4 -ml-2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-white"
+            >
+              <Sidebar size={20} />
+            </button>
+          )}
 
           <div className="flex items-center gap-3">
             <div className="h-2 w-2 animate-pulse rounded-full bg-green-400"></div>
@@ -486,26 +658,34 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
                     transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
                     className={clsx(
                       "group flex gap-4",
-                      message.isUser ? "flex-row-reverse" : "",
+                      message.role === "user" ? "flex-row-reverse" : "",
                     )}
                   >
                     <div
                       className={clsx(
                         "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                        message.isUser
+                        message.role === "user"
                           ? "bg-slate-700 text-slate-300"
-                          : "bg-slate-800 text-slate-400",
+                          : message.role === "system"
+                            ? "bg-red-800 text-red-300"
+                            : "bg-slate-800 text-slate-400",
                       )}
                     >
-                      {message.isUser ? "You" : "AI"}
+                      {message.role === "user"
+                        ? "You"
+                        : message.role === "system"
+                          ? "!"
+                          : "AI"}
                     </div>
                     <div className="space-y-2">
                       <div
                         className={clsx(
                           "max-w-prose rounded-lg border p-4 transition-colors group-hover:border-slate-700/80",
-                          message.isUser
+                          message.role === "user"
                             ? "border-slate-700/50 bg-slate-800/50 text-slate-200"
-                            : "border-slate-900 bg-black text-slate-300",
+                            : message.role === "system"
+                              ? "border-red-900 bg-red-900/20 text-red-300"
+                              : "border-slate-900 bg-black text-slate-300",
                         )}
                       >
                         <p
@@ -517,17 +697,11 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
                       </div>
                       <div className="flex items-center justify-end gap-2 pt-1 pl-1 text-xs text-slate-600">
                         <span>
-                          {message.timestamp.toLocaleTimeString([], {
+                          {new Date(message.createdAt).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
                         </span>
-                        {message.isUser && message.status === "sending" && (
-                          <span className="italic">Sending...</span>
-                        )}
-                        {message.isUser && message.status === "sent" && (
-                          <Check size={14} className="text-slate-500" />
-                        )}
                       </div>
                     </div>
                   </motion.div>
@@ -535,7 +709,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
               </AnimatePresence>
 
               {/* Typing Indicator */}
-              {isTyping && (
+              {(isTyping || generateResponse.isPending) && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -591,7 +765,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      handleSubmit(e);
+                      void handleSubmit(e);
                     }
                   }}
                   placeholder={
