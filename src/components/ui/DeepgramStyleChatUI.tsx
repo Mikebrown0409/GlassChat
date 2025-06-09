@@ -3,7 +3,16 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { clsx } from "clsx";
-import { Copy, Sparkles, Languages } from "lucide-react";
+import {
+  Copy,
+  Sparkles,
+  Languages,
+  Search,
+  ArrowUp,
+  Plus,
+  Sidebar,
+  MoreHorizontal,
+} from "lucide-react";
 
 interface Message {
   id: string;
@@ -24,6 +33,9 @@ const CONVERSATION_HISTORY = [
   { id: "5", title: "Speech-to-Text Performance", time: "1 week ago" },
 ];
 
+// Professional easing curve for all animations
+const DYNAMIC_EASE = [0.22, 1, 0.36, 1];
+
 // --- TextSelectionMenu Component Definition ---
 interface TextSelectionMenuProps {
   position: { top: number; left: number };
@@ -40,11 +52,11 @@ const TextSelectionMenu = ({
 }: TextSelectionMenuProps) => {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.1, ease: "easeOut" }}
-      className="absolute z-50 flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 p-1 shadow-2xl"
+      initial={{ opacity: 0, scale: 0.9, y: 5 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: 5 }}
+      transition={{ duration: 0.15, ease: DYNAMIC_EASE }}
+      className="absolute z-50 flex items-center gap-1 rounded-lg border border-slate-700/60 bg-slate-800/80 p-1 shadow-2xl backdrop-blur-sm"
       style={{ top: position.top, left: position.left }}
       onMouseUp={(e) => e.stopPropagation()} // Prevents menu from disappearing when clicking it
     >
@@ -53,22 +65,22 @@ const TextSelectionMenu = ({
         className="rounded-md p-2 text-slate-300 transition-colors hover:bg-slate-700/80 hover:text-white"
         title="Copy"
       >
-        <Copy size={16} />
+        <Copy size={14} />
       </button>
-      <div className="h-4 w-[1px] bg-slate-700" />
+      <div className="h-4 w-[1px] bg-slate-700/50" />
       <button
         onClick={onExplain}
         className="rounded-md p-2 text-slate-300 transition-colors hover:bg-slate-700/80 hover:text-white"
         title="Explain"
       >
-        <Sparkles size={16} />
+        <Sparkles size={14} />
       </button>
       <button
         onClick={onTranslate}
         className="rounded-md p-2 text-slate-300 transition-colors hover:bg-slate-700/80 hover:text-white"
         title="Translate"
       >
-        <Languages size={16} />
+        <Languages size={14} />
       </button>
     </motion.div>
   );
@@ -84,6 +96,7 @@ export function DeepgramStyleChatUI({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedModel, setSelectedModel] = useState("GPT-4 Turbo");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectionMenu, setSelectionMenu] = useState<{
     position: { top: number; left: number };
     text: string;
@@ -206,15 +219,24 @@ export function DeepgramStyleChatUI({
                 : msg,
             ),
           );
-          setTimeout(() => streamWords(index + 1), 50);
+          setTimeout(() => streamWords(index + 1), 35); // Faster typing
         } else {
           setIsTyping(false); // Stop typing indicator when streaming is complete
         }
       };
 
-      setTimeout(() => streamWords(0), 500); // Initial delay before streaming starts
+      setTimeout(() => streamWords(0), 400); // Shorter delay before streaming
     }
   }, [messages]);
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setInputValue(suggestion);
+    textareaRef.current?.focus();
+  };
+
+  const filteredHistory = CONVERSATION_HISTORY.filter((conv) =>
+    conv.title.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   const models = [
     { id: "gpt-4", name: "GPT-4 Turbo", description: "Most capable model" },
@@ -228,16 +250,17 @@ export function DeepgramStyleChatUI({
       <AnimatePresence>
         {sidebarOpen && (
           <motion.aside
+            key="sidebar"
             initial={{ width: 0, x: -300 }}
             animate={{ width: 300, x: 0 }}
             exit={{ width: 0, x: -300 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
             className="flex flex-col border-r border-slate-900 bg-[#080808]"
           >
             {/* Header */}
-            <div className="border-b border-slate-900 p-5">
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-900 p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-700 bg-slate-800">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800">
                   <svg
                     width="16"
                     height="16"
@@ -261,47 +284,83 @@ export function DeepgramStyleChatUI({
                   <p className="text-sm text-slate-500">AI Platform</p>
                 </div>
               </div>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-white"
+                title="Collapse Sidebar"
+              >
+                <Sidebar size={18} />
+              </button>
             </div>
 
             {/* New Chat Button */}
             <div className="p-3">
-              <button className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-700 bg-slate-800 p-2 text-sm font-medium text-slate-300 transition-colors duration-200 hover:bg-slate-700/80 hover:text-white">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M12 5v14m-7-7h14" />
-                </svg>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800 p-2.5 text-sm font-medium text-slate-200 transition-colors duration-200 hover:border-slate-600 hover:bg-slate-700/80 hover:text-white"
+              >
+                <Plus size={16} />
                 New Conversation
-              </button>
+              </motion.button>
+            </div>
+
+            {/* Search Input */}
+            <div className="px-3 pb-2">
+              <div className="relative">
+                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 py-2 pr-3 pl-9 text-sm text-slate-300 placeholder-slate-500 transition-colors focus:border-slate-600 focus:bg-slate-800/60 focus:outline-none"
+                />
+              </div>
             </div>
 
             {/* Conversation History */}
             <div className="flex-1 overflow-y-auto px-3 pb-4">
-              <h3 className="mb-2 px-2 text-xs font-medium tracking-wider text-slate-600 uppercase">
-                History
-              </h3>
-              <div className="space-y-1">
-                {CONVERSATION_HISTORY.map((conv) => (
-                  <button
+              <AnimatePresence>
+                {filteredHistory.map((conv) => (
+                  <motion.button
                     key={conv.id}
+                    layout
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2, ease: DYNAMIC_EASE }}
                     className="group w-full rounded-md p-2 text-left transition-colors duration-200 hover:bg-slate-800/60"
                   >
-                    <div className="truncate text-sm font-normal text-slate-300 group-hover:text-white">
-                      {conv.title}
+                    <div className="flex items-center justify-between">
+                      <span className="truncate text-sm font-normal text-slate-400 group-hover:text-slate-100">
+                        {conv.title}
+                      </span>
+                      <AnimatePresence>
+                        {searchQuery === "" && (
+                          <motion.span
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="text-xs text-slate-600"
+                          >
+                            {conv.time}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
                     </div>
-                  </button>
+                  </motion.button>
                 ))}
-              </div>
+              </AnimatePresence>
             </div>
 
             {/* Footer */}
             <div className="border-t border-slate-900 p-4">
-              <div className="text-xs text-slate-600">GlassChat Enterprise</div>
+              <button className="flex w-full items-center gap-3 rounded-md p-2 text-left text-sm text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-slate-200">
+                <div className="h-8 w-8 rounded-full bg-slate-700"></div>
+                <div className="flex-1 truncate">Lydia Brown</div>
+                <MoreHorizontal size={16} />
+              </button>
             </div>
           </motion.aside>
         )}
@@ -334,20 +393,7 @@ export function DeepgramStyleChatUI({
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="mr-4 -ml-2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-white"
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4 6h16M4 12h16M4 18h7"
-              />
-            </svg>
+            <Sidebar size={20} />
           </button>
 
           <div className="flex items-center gap-3">
@@ -389,14 +435,21 @@ export function DeepgramStyleChatUI({
                   "How to get started with real-time transcription?",
                   "Explain your different voice AI models.",
                   "How to reduce audio processing costs?",
-                ].map((suggestion) => (
-                  <button
+                ].map((suggestion, i) => (
+                  <motion.button
                     key={suggestion}
-                    onClick={() => setInputValue(suggestion)}
-                    className="rounded-full border border-slate-700/80 bg-slate-800/60 px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      transition: { delay: 0.2 + i * 0.1, ease: DYNAMIC_EASE },
+                    }}
+                    whileHover={{ y: -2, transition: { ease: DYNAMIC_EASE } }}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="rounded-full border border-slate-700/80 bg-slate-800/60 px-4 py-2 text-sm text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800"
                   >
                     {suggestion}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -410,9 +463,9 @@ export function DeepgramStyleChatUI({
                     initial={{ opacity: 0, y: 15, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -15, scale: 0.98 }}
-                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
                     className={clsx(
-                      "flex gap-4",
+                      "group flex gap-4",
                       message.isUser ? "flex-row-reverse" : "",
                     )}
                   >
@@ -429,7 +482,7 @@ export function DeepgramStyleChatUI({
                     <div className="space-y-2">
                       <div
                         className={clsx(
-                          "max-w-prose rounded-lg border p-4",
+                          "max-w-prose rounded-lg border p-4 transition-colors group-hover:border-slate-700/80",
                           message.isUser
                             ? "border-slate-700/50 bg-slate-800/50 text-slate-200"
                             : "border-slate-900 bg-black text-slate-300",
@@ -458,6 +511,8 @@ export function DeepgramStyleChatUI({
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ ease: DYNAMIC_EASE }}
                   className="flex items-center gap-4"
                 >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800">
@@ -514,7 +569,7 @@ export function DeepgramStyleChatUI({
                   placeholder={
                     isTyping ? "AI is responding..." : "Ask anything..."
                   }
-                  className="max-h-48 min-h-[50px] w-full resize-none rounded-lg border border-slate-700 bg-slate-900/50 p-3 pr-28 text-sm text-slate-200 placeholder-slate-500 transition-colors duration-200 outline-none focus:border-slate-600 disabled:opacity-60"
+                  className="max-h-48 min-h-[50px] w-full resize-none rounded-lg border border-slate-700 bg-slate-900/50 p-3 pr-28 text-sm text-slate-200 placeholder-slate-500 transition-colors duration-200 outline-none focus:border-slate-600 focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60"
                   rows={1}
                   disabled={isTyping}
                 />
@@ -564,31 +619,20 @@ export function DeepgramStyleChatUI({
                       </div>
                     )}
                   </div>
-                  <button
+                  <motion.button
                     type="submit"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     disabled={!inputValue.trim() || isTyping}
                     className={clsx(
                       "flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200",
                       inputValue.trim() && !isTyping
-                        ? "bg-slate-200 text-black"
+                        ? "bg-white text-black"
                         : "cursor-not-allowed bg-slate-800 text-slate-500",
                     )}
                   >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                    >
-                      <path
-                        d="M7 11L12 6L17 11M12 18V6"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
+                    <ArrowUp size={18} strokeWidth={2.5} />
+                  </motion.button>
                 </div>
               </div>
             </form>
