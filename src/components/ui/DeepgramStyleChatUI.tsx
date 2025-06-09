@@ -12,6 +12,7 @@ import {
   Plus,
   Sidebar,
   MoreHorizontal,
+  Check,
 } from "lucide-react";
 
 interface Message {
@@ -19,6 +20,7 @@ interface Message {
   content: string;
   isUser: boolean;
   timestamp: Date;
+  status?: "sending" | "sent";
 }
 
 interface DeepgramStyleChatUIProps {
@@ -50,6 +52,12 @@ const TextSelectionMenu = ({
   onExplain,
   onTranslate,
 }: TextSelectionMenuProps) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    onCopy();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9, y: 5 }}
@@ -61,11 +69,15 @@ const TextSelectionMenu = ({
       onMouseUp={(e) => e.stopPropagation()} // Prevents menu from disappearing when clicking it
     >
       <button
-        onClick={onCopy}
+        onClick={handleCopy}
         className="rounded-md p-2 text-slate-300 transition-colors hover:bg-slate-700/80 hover:text-white"
         title="Copy"
       >
-        <Copy size={14} />
+        {copied ? (
+          <Check size={14} className="text-emerald-400" />
+        ) : (
+          <Copy size={14} />
+        )}
       </button>
       <div className="h-4 w-[1px] bg-slate-700/50" />
       <button
@@ -183,11 +195,21 @@ export function DeepgramStyleChatUI({
       content: inputValue,
       isUser: true,
       timestamp: new Date(),
+      status: "sending",
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
     setIsTyping(true);
+
+    // Simulate network delay and update message status
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === userMessage.id ? { ...msg, status: "sent" } : msg,
+        ),
+      );
+    }, 500);
 
     const aiResponse: Message = {
       id: (Date.now() + 1).toString(),
@@ -495,11 +517,19 @@ export function DeepgramStyleChatUI({
                           {message.content}
                         </p>
                       </div>
-                      <div className="pl-1 text-xs text-slate-600">
-                        {message.timestamp.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                      <div className="flex items-center justify-end gap-2 pt-1 pl-1 text-xs text-slate-600">
+                        <span>
+                          {message.timestamp.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                        {message.isUser && message.status === "sending" && (
+                          <span className="italic">Sending...</span>
+                        )}
+                        {message.isUser && message.status === "sent" && (
+                          <Check size={14} className="text-slate-500" />
+                        )}
                       </div>
                     </div>
                   </motion.div>
@@ -631,9 +661,28 @@ export function DeepgramStyleChatUI({
                         : "cursor-not-allowed bg-slate-800 text-slate-500",
                     )}
                   >
-                    <ArrowUp size={18} strokeWidth={2.5} />
+                    {isTyping ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
+                    ) : (
+                      <ArrowUp size={18} strokeWidth={2.5} />
+                    )}
                   </motion.button>
                 </div>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs">
+                <span className="text-slate-500">
+                  Press <strong>Shift+Enter</strong> for a new line
+                </span>
+                <span
+                  className={clsx(
+                    "font-medium",
+                    inputValue.length > 2000
+                      ? "text-orange-400"
+                      : "text-slate-600",
+                  )}
+                >
+                  {inputValue.length} / 2000
+                </span>
               </div>
             </form>
           </div>
