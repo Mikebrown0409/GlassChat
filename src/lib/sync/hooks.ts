@@ -15,9 +15,10 @@ export function useLiveChats(): Chat[] | undefined {
  * Hook to get live messages for a specific chat
  */
 export function useLiveMessages(chatId: string): Message[] | undefined {
-  return useLiveQuery(() =>
-    db.messages.where("chatId").equals(chatId).sortBy("createdAt"),
-  );
+  return useLiveQuery(() => {
+    if (!chatId) return [];
+    return db.messages.where("chatId").equals(chatId).sortBy("createdAt");
+  }, [chatId]);
 }
 
 /**

@@ -35,6 +35,47 @@ interface TextSelectionMenuProps {
   onTranslate: () => void;
 }
 
+const TypingText = ({
+  text,
+  speed = 30,
+  createdAt,
+}: {
+  text: string;
+  speed?: number;
+  createdAt: number;
+}) => {
+  const [displayedText, setDisplayedText] = useState("");
+
+  useEffect(() => {
+    if (!text) return;
+
+    // If message is older than 10 seconds, show instantly
+    const isRecentMessage = Date.now() - createdAt < 10000;
+
+    if (!isRecentMessage) {
+      setDisplayedText(text);
+      return;
+    }
+
+    // Otherwise, show typing animation for new messages
+    let currentIndex = 0;
+    setDisplayedText("");
+
+    const intervalId = setInterval(() => {
+      if (currentIndex < text.length) {
+        setDisplayedText(text.slice(0, currentIndex + 1));
+        currentIndex++;
+      } else {
+        clearInterval(intervalId);
+      }
+    }, speed);
+
+    return () => clearInterval(intervalId);
+  }, [text, speed, createdAt]);
+
+  return <>{displayedText}</>;
+};
+
 const TextSelectionMenu = ({
   position,
   onCopy,
@@ -100,11 +141,35 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     text: string;
   } | null>(null);
   const [currentChatId, setCurrentChatId] = useState<string | undefined>();
+
+  // Debug currentChatId changes
+  useEffect(() => {
+    console.log("Debug - currentChatId changed to:", currentChatId);
+  }, [currentChatId]);
   const [conversationMenus, setConversationMenus] = useState<
     Record<string, boolean>
   >({});
   const [renamingChat, setRenamingChat] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+
+  // Test database connectivity on mount
+  useEffect(() => {
+    const testDatabase = async () => {
+      try {
+        console.log("Debug - Testing database connectivity...");
+        // Import db directly since syncManager doesn't expose db
+        const { db } = await import("~/lib/db");
+        const testChats = await db.chats.toArray();
+        console.log(
+          "Debug - Database test successful, existing chats:",
+          testChats,
+        );
+      } catch (error) {
+        console.error("Debug - Database test failed:", error);
+      }
+    };
+    void testDatabase();
+  }, []);
 
   // Get real data from hooks
   const chats = useLiveChats();
@@ -289,8 +354,12 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   const handleNewChat = async () => {
     try {
+      console.log("Debug - Creating new chat...");
       const newChat = await syncManager.createChat("New Conversation");
+      console.log("Debug - Created new chat:", newChat);
+      console.log("Debug - Setting currentChatId to:", newChat.id);
       setCurrentChatId(newChat.id);
+      console.log("Debug - currentChatId state should now be:", newChat.id);
     } catch (error) {
       console.error("Failed to create new chat:", error);
     }
@@ -313,8 +382,28 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   const handleDeleteChat = async (chatId: string) => {
     try {
-      // TODO: Implement delete in sync manager
-      console.log("Delete chat:", chatId);
+      // Import db directly to delete chat and its messages
+      const { db } = await import("~/lib/db");
+
+      // Delete all messages in this chat first
+      await db.messages.where("chatId").equals(chatId).delete();
+
+      // Delete the chat itself
+      await db.chats.delete(chatId);
+
+      // If we deleted the current chat, select another one
+      if (currentChatId === chatId) {
+        const remainingChats = await db.chats
+          .orderBy("updatedAt")
+          .reverse()
+          .toArray();
+        if (remainingChats.length > 0) {
+          setCurrentChatId(remainingChats[0]?.id);
+        } else {
+          setCurrentChatId(undefined);
+        }
+      }
+
       setConversationMenus({});
     } catch (error) {
       console.error("Failed to delete chat:", error);
@@ -423,7 +512,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
               <AnimatePresence>
                 {filteredHistory.map((chat) => (
                   <div key={chat.id} className="relative">
-                    <motion.button
+                    <motion.div
                       layout
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -431,7 +520,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
                       transition={{ duration: 0.2, ease: DYNAMIC_EASE }}
                       onClick={() => handleChatSelect(chat.id)}
                       className={clsx(
-                        "group w-full rounded-md p-2 text-left transition-colors duration-200",
+                        "group w-full cursor-pointer rounded-md p-2 text-left transition-colors duration-200",
                         currentChatId === chat.id
                           ? "bg-slate-700/80 text-slate-100"
                           : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-100",
@@ -505,7 +594,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
                           )}
                         </div>
                       </div>
-                    </motion.button>
+                    </motion.div>
 
                     {/* Conversation Menu */}
                     <AnimatePresence>
@@ -692,7 +781,15 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
                           className="text-sm leading-relaxed"
                           data-message-content="true"
                         >
-                          {message.content}
+                          {message.role === "assistant" ? (
+                            <TypingText
+                              text={message.content}
+                              speed={20}
+                              createdAt={message.createdAt}
+                            />
+                          ) : (
+                            message.content
+                          )}
                         </p>
                       </div>
                       <div className="flex items-center justify-end gap-2 pt-1 pl-1 text-xs text-slate-600">
