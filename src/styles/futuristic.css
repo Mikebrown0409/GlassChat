@@ -1,0 +1,223 @@
+/* Futuristic Gradient Flow Optimizations */
+
+/* Force hardware acceleration for performance */
+.gradient-flow-container {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Optimize gradient animations */
+.gradient-animation {
+  will-change: background-position;
+  transform: translateZ(0);
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .gradient-flow-container {
+    border: 2px solid white;
+    background: rgba(0, 0, 0, 0.9) !important;
+  }
+  
+  .text-white\/90 {
+    color: white !important;
+  }
+  
+  .text-white\/60 {
+    color: #cccccc !important;
+  }
+  
+  .bg-gradient-to-r {
+    background: #000000 !important;
+    border: 2px solid white;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .gradient-flow-container,
+  .gradient-animation,
+  .floating-particles,
+  .shimmer-effect {
+    animation: none !important;
+    transition: none !important;
+  }
+  
+  .gradient-flow-container:hover {
+    transform: none !important;
+  }
+  
+  /* Keep essential focus states for accessibility */
+  .gradient-flow-container:focus-visible {
+    outline: 3px solid #4A90E2;
+    outline-offset: 2px;
+  }
+}
+
+/* Focus management for accessibility */
+.gradient-button:focus-visible,
+.sidebar-button:focus-visible,
+.theme-toggle:focus-visible {
+  outline: 2px dashed #4A90E2;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.2);
+}
+
+/* Ensure sufficient contrast ratios */
+.high-contrast-text {
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.high-contrast-bg {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+/* Performance optimizations for particles */
+.floating-particle {
+  will-change: transform, opacity;
+  pointer-events: none;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Smooth resize handle */
+.resize-handle {
+  will-change: transform;
+  transform: translateZ(0);
+  cursor: col-resize;
+  user-select: none;
+  touch-action: pan-y;
+}
+
+/* Message animation optimizations */
+.message-container {
+  will-change: transform, opacity;
+  contain: layout style paint;
+}
+
+/* Input focus optimizations */
+.floating-input {
+  will-change: transform;
+  contain: layout style;
+}
+
+.input-underline {
+  will-change: width;
+  transform: translateZ(0);
+}
+
+/* Sidebar transition optimizations */
+.sidebar-transition {
+  will-change: width, opacity;
+  contain: layout style paint;
+}
+
+/* Button hover optimizations */
+.gradient-button {
+  will-change: transform, box-shadow;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.gradient-button:hover {
+  transform: translateZ(0) scale(1.05);
+}
+
+.gradient-button:active {
+  transform: translateZ(0) scale(0.95);
+}
+
+/* Accessibility improvements */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Dark mode color adjustments for contrast */
+:root[data-theme="dark"] {
+  --primary-text: #ffffff;
+  --secondary-text: #cccccc;
+  --accent-orange: #fb923c;
+  --accent-green: #4ade80;
+  --accent-teal: #06b6d4;
+  --accent-purple: #a855f7;
+}
+
+:root[data-theme="light"] {
+  --primary-text: #1f2937;
+  --secondary-text: #6b7280;
+  --accent-orange: #ea580c;
+  --accent-green: #16a34a;
+  --accent-teal: #0891b2;
+  --accent-purple: #9333ea;
+}
+
+/* Loading states */
+.loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .gradient-flow-container {
+    backdrop-filter: blur(8px); /* Reduce blur for mobile performance */
+  }
+  
+  .floating-particle {
+    display: none; /* Hide particles on mobile to improve performance */
+  }
+  
+  .sidebar-collapsed {
+    width: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .gradient-flow-container {
+    backdrop-filter: blur(5px);
+    border-radius: 8px; /* Smaller radius for mobile */
+  }
+  
+  .gradient-animation {
+    animation-duration: 8s; /* Slower animations on mobile */
+  }
+}
+
+/* Print styles */
+@media print {
+  .gradient-flow-container,
+  .floating-particle,
+  .gradient-animation {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+} 
