@@ -174,3 +174,8 @@ main[data-chat-root] {
   overscroll-behavior: contain;
   overflow-anchor: none;
 }
+
+.sidebar {
+  flex: 0 0 18rem; /* 288px fixed */
+  max-width: 18rem;
+}
