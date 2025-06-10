@@ -285,7 +285,10 @@ export function MessageList({ chatId, className }: MessageListProps) {
   }
 
   return (
-    <div className={clsx("glass-scrollbar flex-1 overflow-y-auto", className)}>
+    <div
+      className={clsx("glass-scrollbar flex-1 overflow-y-auto", className)}
+      style={{ overflowAnchor: "none" }}
+    >
       <div className="space-y-0 p-4">
         {messages.map((message, index) => (
           <MessageBubble
