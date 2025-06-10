@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./theme-dark.css";
 
 @source "src/**/*.{js,ts,jsx,tsx,mdx}";
 
@@ -178,4 +179,16 @@ main[data-chat-root] {
 .sidebar {
   flex: 0 0 18rem; /* 288px fixed */
   max-width: 18rem;
+}
+
+/* Dark theme background */
+body {
+  background:
+    radial-gradient(
+      600px 600px at 50% -200px,
+      hsl(var(--accent-secondary) / 0.15),
+      transparent 70%
+    ),
+    var(--surface-0);
+  color: var(--text-primary);
 }

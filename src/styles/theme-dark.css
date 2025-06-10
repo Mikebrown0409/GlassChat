@@ -1,0 +1,16 @@
+:root[data-theme="dark"] {
+  /* Surfaces */
+  --surface-0: #0b0b0f;
+  --surface-1: #111118;
+
+  /* Content */
+  --text-primary: #f5f6f8;
+  --text-muted: #8a8d96;
+
+  /* Accent */
+  --accent-primary: 255 80% 65%; /* Violet neon */
+  --accent-secondary: 221 88% 60%; /* Cobalt */
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+}
