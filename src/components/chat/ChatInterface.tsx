@@ -19,6 +19,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import React, {
   useCallback,
   useEffect,
@@ -27,8 +28,6 @@ import React, {
   useState,
 } from "react";
 import ReactMarkdown from "react-markdown";
-import { CollaborationPanel } from "~/components/collaboration/CollaborationPanel";
-import { MemoryPanel } from "~/components/memory/MemoryPanel";
 import { AIModel } from "~/lib/ai/types";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
@@ -557,6 +556,20 @@ const MessageDisplay = React.memo(
   },
 );
 MessageDisplay.displayName = "MessageDisplay"; // For easier debugging in React DevTools
+
+// Lazy-load heavy panels to reduce initial JS bundle
+const CollaborationPanel = dynamic(
+  () =>
+    import("~/components/collaboration/CollaborationPanel").then(
+      (m) => m.CollaborationPanel,
+    ),
+  { ssr: false, loading: () => null },
+);
+
+const MemoryPanel = dynamic(
+  () => import("~/components/memory/MemoryPanel").then((m) => m.MemoryPanel),
+  { ssr: false, loading: () => null },
+);
 
 export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState("");
@@ -1487,18 +1500,23 @@ Be helpful and engaging.`;
         </div>
       </main>
 
-      {/* Collaboration Panel */}
-      <CollaborationPanel
-        currentChatId={currentChatId ?? null}
-        isOpen={collaborationOpen}
-        onToggle={() => setCollaborationOpen(!collaborationOpen)}
-      />
-      <MemoryPanel
-        currentChatId={currentChatId ?? null}
-        isOpen={isMemoryPanelOpen}
-        onToggle={() => setIsMemoryPanelOpen(!isMemoryPanelOpen)}
-        memoryHook={memory}
-      />
+      {/* Lazy panels render only when open to avoid adding weight to initial paint */}
+      {collaborationOpen && (
+        <CollaborationPanel
+          currentChatId={currentChatId ?? null}
+          isOpen={collaborationOpen}
+          onToggle={() => setCollaborationOpen(!collaborationOpen)}
+        />
+      )}
+
+      {isMemoryPanelOpen && (
+        <MemoryPanel
+          currentChatId={currentChatId ?? null}
+          isOpen={isMemoryPanelOpen}
+          onToggle={() => setIsMemoryPanelOpen(!isMemoryPanelOpen)}
+          memoryHook={memory}
+        />
+      )}
     </div>
   );
 }
