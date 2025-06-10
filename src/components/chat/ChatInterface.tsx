@@ -1217,7 +1217,10 @@ Be helpful and engaging.`;
           )}
         </AnimatePresence>
         {/* Top Bar */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-900 bg-black/80 px-6 backdrop-blur-sm">
+        <header
+          data-fixed
+          className="flex h-16 shrink-0 items-center justify-between border-b border-slate-900 bg-black/80 px-6 backdrop-blur-sm"
+        >
           <div className="flex items-center">
             {!sidebarOpen && (
               <button
@@ -1398,7 +1401,10 @@ Be helpful and engaging.`;
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-slate-900 bg-black/80 p-4 backdrop-blur-sm">
+        <footer
+          data-fixed
+          className="border-t border-slate-900 bg-black/80 p-4 backdrop-blur-sm"
+        >
           <div className="mx-auto max-w-4xl">
             <form onSubmit={handleSubmit} className="relative">
               <div className="relative flex items-center">
@@ -1502,7 +1508,7 @@ Be helpful and engaging.`;
               </div>
             </form>
           </div>
-        </div>
+        </footer>
       </main>
 
       {/* Lazy panels render only when open to avoid adding weight to initial paint */}

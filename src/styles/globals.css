@@ -3,13 +3,15 @@
 @source "src/**/*.{js,ts,jsx,tsx,mdx}";
 
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 /* Glassmorphism Animations */
 @keyframes gradient-shift {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0) translateY(0) rotate(0deg);
   }
   25% {
@@ -24,7 +26,8 @@
 }
 
 @keyframes glass-float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -33,7 +36,8 @@
 }
 
 @keyframes glass-glow {
-  0%, 100% {
+  0%,
+  100% {
     filter: brightness(1) blur(0px);
   }
   50% {
@@ -42,7 +46,8 @@
 }
 
 @keyframes backdrop-pulse {
-  0%, 100% {
+  0%,
+  100% {
     backdrop-filter: blur(10px);
   }
   50% {
@@ -123,4 +128,18 @@
   .animate-backdrop-pulse {
     animation: none;
   }
+}
+
+/* Reserve header/footer heights to prevent CLS */
+header[data-fixed] {
+  min-height: 4rem; /* 64px */
+}
+
+footer[data-fixed] {
+  min-height: 4.5rem; /* 72px */
+}
+
+/* Prevent code highlighting from causing ancestor layout shift */
+.prose pre {
+  contain: paint;
 }
