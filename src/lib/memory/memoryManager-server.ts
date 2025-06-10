@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { type JsonValue } from "@prisma/client/runtime/library";
+import { type Prisma } from "@prisma/client";
 import { env } from "~/env";
 import { db } from "~/server/db";
 import type { SmartSummary } from "~/types/memory";
@@ -26,7 +26,7 @@ class MemoryManagerServer {
         data: {
           chatId,
           content,
-          metadata: metadata as JsonValue,
+          metadata: metadata as Prisma.InputJsonValue,
         },
       });
     } catch (error) {
