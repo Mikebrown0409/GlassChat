@@ -26,7 +26,7 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("dark");
   const [glassTheme, setGlassTheme] = useState<GlassTheme>("classic");
 
   // Load theme from localStorage on mount
