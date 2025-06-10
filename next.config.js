@@ -48,6 +48,13 @@ const config = {
   env: {
     NEXT_PUBLIC_APP_NAME: "GlassChat",
   },
+
+  // Reduce bundle size by transforming deep imports for icon & animation libs
+  modularizeImports: {
+    "lucide-react": {
+      transform: "lucide-react/dist/esm/icons/{{member}}",
+    },
+  },
 };
 
 export default config;
