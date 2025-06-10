@@ -1347,45 +1347,50 @@ Be helpful and engaging.`;
                 ))}
               </AnimatePresence>
 
-              {/* Typing Indicator */}
-              {(isTyping || generateResponse.isPending) && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ ease: DYNAMIC_EASE }}
-                  className="flex items-center gap-4"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800">
-                    <motion.div
-                      className="h-1.5 w-1.5 rounded-full bg-slate-400"
-                      animate={{ scale: [1, 1.25, 1], opacity: [0.7, 1, 0.7] }}
-                      transition={{
-                        duration: 1,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                    />
-                  </div>
-                  <div className="rounded-lg border border-slate-900 bg-black p-4">
-                    <div className="flex items-center gap-1.5">
-                      {[0, 1, 2].map((i) => (
-                        <motion.div
-                          key={i}
-                          className="h-1.5 w-1.5 rounded-full bg-slate-500"
-                          animate={{ y: [0, -2, 0] }}
-                          transition={{
-                            duration: 0.8,
-                            repeat: Infinity,
-                            delay: i * 0.15,
-                            ease: "easeInOut",
-                          }}
-                        />
-                      ))}
+              {/* Typing Indicator Area (fixed height to prevent CLS) */}
+              <div style={{ minHeight: 40 }}>
+                {(isTyping || generateResponse.isPending) && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ ease: DYNAMIC_EASE }}
+                    className="flex items-center gap-4"
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800">
+                      <motion.div
+                        className="h-1.5 w-1.5 rounded-full bg-slate-400"
+                        animate={{
+                          scale: [1, 1.25, 1],
+                          opacity: [0.7, 1, 0.7],
+                        }}
+                        transition={{
+                          duration: 1,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                      />
                     </div>
-                  </div>
-                </motion.div>
-              )}
+                    <div className="rounded-lg border border-slate-900 bg-black p-4">
+                      <div className="flex items-center gap-1.5">
+                        {[0, 1, 2].map((i) => (
+                          <motion.div
+                            key={i}
+                            className="h-1.5 w-1.5 rounded-full bg-slate-500"
+                            animate={{ y: [0, -2, 0] }}
+                            transition={{
+                              duration: 0.8,
+                              repeat: Infinity,
+                              delay: i * 0.15,
+                              ease: "easeInOut",
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
 
               <div ref={messagesEndRef} />
             </div>

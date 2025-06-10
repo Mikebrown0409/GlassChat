@@ -98,6 +98,10 @@ const MessageBubble = React.memo(function MessageBubble({
         "mb-4",
         isLast && "mb-6", // Extra spacing for last message
       )}
+      style={{
+        contentVisibility: "auto", // Chrome 85+; skips off-screen rendering
+        containIntrinsicSize: "300px", // Reserve approx height to reduce CLS
+      }}
     >
       <div
         className={clsx(
