@@ -3,13 +3,15 @@
 @source "src/**/*.{js,ts,jsx,tsx,mdx}";
 
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 /* Glassmorphism Animations */
 @keyframes gradient-shift {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0) translateY(0) rotate(0deg);
   }
   25% {
@@ -24,7 +26,8 @@
 }
 
 @keyframes glass-float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -33,7 +36,8 @@
 }
 
 @keyframes glass-glow {
-  0%, 100% {
+  0%,
+  100% {
     filter: brightness(1) blur(0px);
   }
   50% {
@@ -42,7 +46,8 @@
 }
 
 @keyframes backdrop-pulse {
-  0%, 100% {
+  0%,
+  100% {
     backdrop-filter: blur(10px);
   }
   50% {
@@ -123,4 +128,54 @@
   .animate-backdrop-pulse {
     animation: none;
   }
+}
+
+/* Reserve header/footer heights to prevent CLS */
+header[data-fixed] {
+  min-height: 4rem; /* 64px */
+}
+
+footer[data-fixed] {
+  min-height: 4.5rem; /* 72px */
+}
+
+/* Prevent code highlighting from causing ancestor layout shift */
+.prose pre {
+  contain: paint;
+}
+
+/* Reserve space for every Lucide icon to stop layout shifts */
+svg.lucide {
+  width: 1.5rem; /* 24 px, Lucide default */
+  height: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* Any button that just holds an icon keeps constant size */
+button[data-icon] {
+  min-width: 2rem; /* 24 px icon + 8 px padding */
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+main[data-chat-root] {
+  overflow-anchor: none; /* don't shift viewport when its children grow */
+  contain: layout paint;
+}
+
+/* Fixed viewport height for chat messages to eliminate CLS */
+.chat-viewport {
+  block-size: calc(
+    100dvh - 4rem - 4.5rem
+  ); /* viewport minus header (64px) and footer (72px) */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-anchor: none;
+}
+
+.sidebar {
+  flex: 0 0 18rem; /* 288px fixed */
+  max-width: 18rem;
 }

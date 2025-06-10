@@ -48,6 +48,8 @@ const config = {
   env: {
     NEXT_PUBLIC_APP_NAME: "GlassChat",
   },
+
+  // modularizeImports removed due to incompatibility with lucide-react export maps
 };
 
 export default config;
