@@ -1,7 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
-import { type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 
 export type Theme = "light" | "dark";
 export type GlassTheme = "classic" | "vibrant" | "minimal" | "neon";
@@ -50,7 +55,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     root.classList.remove("light", "dark");
     root.classList.add(theme);
 
-    // Apply glass theme data attribute
+    // Apply theme and glass data attributes
+    root.setAttribute("data-theme", theme);
     root.setAttribute("data-glass-theme", glassTheme);
 
     localStorage.setItem("glasschat-theme", theme);
