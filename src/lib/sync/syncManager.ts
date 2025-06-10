@@ -115,10 +115,25 @@ class SyncManager {
     }
 
     this.syncInterval = setInterval(() => {
-      if (this.isOnline) {
+      if (this.isOnline && !this.hasActiveTextSelection()) {
         void this.performSync();
       }
     }, this.config.syncIntervalMs);
+  }
+
+  private hasActiveTextSelection(): boolean {
+    if (typeof window === "undefined") return false;
+
+    const selection = window.getSelection();
+    const hasSelection = selection && selection.toString().trim().length > 0;
+
+    if (hasSelection) {
+      console.debug(
+        "🔍 Text selection detected, pausing sync to preserve selection",
+      );
+    }
+
+    return !!hasSelection;
   }
 
   private async subscribeToRealTimeUpdates() {
@@ -134,6 +149,11 @@ class SyncManager {
       // For now, we'll implement polling for demo purposes
       const pollForUpdates = async () => {
         try {
+          // Don't poll if user has text selected
+          if (this.hasActiveTextSelection()) {
+            return;
+          }
+
           const messages = await this.redis?.lrange(
             "glasschat:messages",
             0,
