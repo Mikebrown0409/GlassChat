@@ -39,6 +39,8 @@
     "test:sync": "tsx scripts/test-sync-simple.ts",
     "test:sync:verbose": "tsx scripts/test-sync-simple.ts --verbose",
     "test:sync:full": "tsx scripts/test-sync-two-device.ts",
+    "test:collaboration": "tsx scripts/test-collaboration-three-users.ts",
+    "test:collaboration:verbose": "tsx scripts/test-collaboration-three-users.ts --verbose",
     "ai:models": "node -e \"import('./src/lib/ai/models.js').then(m => console.log('Available models:', m.aiModels.getAvailableModels().map(({model, info}) => info.displayName)))\"",
     "mock:populate": "tsx scripts/populate-mock-data.ts",
     "test:ui": "npm run mock:populate && npm run dev"

@@ -58,6 +58,36 @@ export function ChatInput({
       const response = await generateResponse.mutateAsync({
         model: AIModel.GEMINI_2_0_FLASH, // Using Gemini 2.0 Flash as default
         messages: [
+          // Add system prompt for better formatting
+          {
+            role: "system",
+            content: `You are a helpful AI assistant. Please format your responses clearly and professionally:
+
+📝 For stories and creative writing:
+- Use short, readable paragraphs (2-3 sentences each)
+- Add line breaks between paragraphs for better readability
+- Use dialogue formatting when appropriate
+
+💻 For code examples:
+- Always include comments explaining what the code does
+- Provide context about when/how to use the code  
+- Include usage examples when helpful
+- Suggest relevant file names (e.g., "Save as app.py")
+
+📋 For explanations and lists:
+- Use proper headings and subheadings
+- Break content into digestible sections
+- Use bullet points or numbered lists when appropriate
+- Include practical examples
+
+🎯 General formatting:
+- Keep paragraphs concise and scannable
+- Use markdown formatting (headers, code blocks, emphasis)
+- Provide actionable, useful responses
+- Include relevant context and next steps
+
+Your goal is to provide responses that are immediately useful and easy to copy/use.`,
+          },
           {
             role: "user",
             content: userMessage,
