@@ -1138,6 +1138,7 @@ Be helpful and engaging.`;
 
                           {renamingChat !== chat.id && (
                             <button
+                              data-icon
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleConversationMenu(chat.id);
@@ -1205,7 +1206,10 @@ Be helpful and engaging.`;
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="relative flex h-full min-w-0 flex-1 flex-col">
+      <main
+        data-chat-root
+        className="relative flex h-full min-w-0 flex-1 flex-col"
+      >
         <AnimatePresence>
           {selectionMenu && (
             <TextSelectionMenu
@@ -1239,6 +1243,7 @@ Be helpful and engaging.`;
 
           <div className="flex items-center gap-2">
             <button
+              data-icon
               onClick={() => setCollaborationOpen(!collaborationOpen)}
               className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
             >
@@ -1246,6 +1251,7 @@ Be helpful and engaging.`;
             </button>
 
             <button
+              data-icon
               onClick={() => setIsMemoryPanelOpen(!isMemoryPanelOpen)}
               className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
             >

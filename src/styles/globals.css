@@ -143,3 +143,24 @@ footer[data-fixed] {
 .prose pre {
   contain: paint;
 }
+
+/* Reserve space for every Lucide icon to stop layout shifts */
+svg.lucide {
+  width: 1.5rem; /* 24 px, Lucide default */
+  height: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* Any button that just holds an icon keeps constant size */
+button[data-icon] {
+  min-width: 2rem; /* 24 px icon + 8 px padding */
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+main[data-chat-root] {
+  overflow-anchor: none; /* don't shift viewport when its children grow */
+  contain: layout paint;
+}
