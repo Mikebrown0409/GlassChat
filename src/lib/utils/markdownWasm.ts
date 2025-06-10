@@ -12,13 +12,20 @@
  */
 export async function parseMarkdownWasm(markdown: string): Promise<string> {
   try {
-    // Dynamic import keeps the WASM module out of the main bundle
-    const wasm = (await import("markdown-wasm/dist/markdown.es.js")) as {
-      parse: (input: string) => string;
-    };
-    return wasm.parse(markdown);
-  } catch (error) {
-    console.error("[markdown-wasm] Falling back to raw markdown", error);
-    return markdown;
+    // Tryworker-based parsing first to offload heavy CPU from main thread.
+    // Import lazily to avoid circular dependency when worker imports this util
+    const { parseMarkdownWithWorker } = await import("./markdownWorkerClient");
+    return await parseMarkdownWithWorker(markdown);
+  } catch {
+    // Worker failed (e.g., older browsers); fall back to direct WASM parse on the main thread.
+    try {
+      const wasm = (await import("markdown-wasm/dist/markdown.es.js")) as {
+        parse: (input: string) => string;
+      };
+      return wasm.parse(markdown);
+    } catch (error) {
+      console.error("[markdown-wasm] Falling back to raw markdown", error);
+      return markdown;
+    }
   }
 }
