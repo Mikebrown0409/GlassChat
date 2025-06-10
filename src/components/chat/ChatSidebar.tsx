@@ -1,16 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import { GlassContainer } from "@/components/ui/GlassContainer";
+import type { Chat } from "@/lib/db";
+import { syncManager, SyncStatus, useLiveChats } from "@/lib/sync";
 import {
-  PlusIcon,
   ChatBubbleLeftIcon,
   EllipsisVerticalIcon,
+  PlusIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { GlassContainer } from "@/components/ui/GlassContainer";
-import { useLiveChats, syncManager, SyncStatus } from "@/lib/sync";
-import type { Chat } from "@/lib/db";
 import { clsx } from "clsx";
+import { useState } from "react";
 
 interface ChatSidebarProps {
   currentChatId?: string;
@@ -57,14 +57,14 @@ function ChatItem({ chat, isActive, onSelect, onDelete }: ChatItemProps) {
       <GlassContainer
         className={clsx(
           "group cursor-pointer p-3 transition-all duration-200",
-          isActive && "border-blue-400/30 bg-blue-500/20 dark:bg-blue-600/20",
+          isActive && "border-accent-primary/30 bg-accent-primary/10",
         )}
         hover={!isActive}
         rounded="md"
       >
         <div onClick={onSelect} className="flex items-start gap-3">
           <div className="mt-0.5 flex-shrink-0">
-            <ChatBubbleLeftIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            <ChatBubbleLeftIcon className="text-text-muted h-4 w-4" />
           </div>
 
           <div className="min-w-0 flex-1">
@@ -72,9 +72,7 @@ function ChatItem({ chat, isActive, onSelect, onDelete }: ChatItemProps) {
               <h3
                 className={clsx(
                   "truncate text-sm font-medium",
-                  isActive
-                    ? "text-blue-700 dark:text-blue-300"
-                    : "text-gray-900 dark:text-gray-100",
+                  isActive ? "text-accent-primary" : "text-text-primary",
                 )}
                 title={chat.title}
               >
@@ -87,7 +85,7 @@ function ChatItem({ chat, isActive, onSelect, onDelete }: ChatItemProps) {
                   setShowMenu(!showMenu);
                 }}
                 className={clsx(
-                  "rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700",
+                  "hover:bg-surface-1 rounded p-1",
                   "opacity-0 transition-opacity group-hover:opacity-100",
                   showMenu && "opacity-100",
                 )}
@@ -97,7 +95,7 @@ function ChatItem({ chat, isActive, onSelect, onDelete }: ChatItemProps) {
             </div>
 
             <div className="mt-1 flex items-center justify-between">
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-text-muted text-xs">
                 {formatDate(chat.updatedAt)}
               </span>
 
@@ -109,7 +107,7 @@ function ChatItem({ chat, isActive, onSelect, onDelete }: ChatItemProps) {
                       "h-1.5 w-1.5 rounded-full",
                       chat.syncStatus === SyncStatus.PENDING && "bg-yellow-400",
                       chat.syncStatus === SyncStatus.SYNCING &&
-                        "animate-pulse bg-blue-400",
+                        "bg-accent-primary animate-pulse",
                       chat.syncStatus === SyncStatus.ERROR && "bg-red-400",
                     )}
                   />
@@ -176,23 +174,20 @@ export function ChatSidebar({
   return (
     <div className={clsx("flex h-full w-80 flex-col", className)}>
       {/* Header */}
-      <div className="border-b border-white/10 p-4">
+      <div className="border-border-subtle border-b p-4">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Chats
-          </h2>
+          <h2 className="text-text-primary text-lg font-semibold">Chats</h2>
 
           <button
             onClick={handleNewChat}
             disabled={isCreating}
             className={clsx(
               "flex items-center gap-2 rounded-lg px-3 py-2",
-              "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
-              "dark:bg-blue-600 dark:hover:bg-blue-700 dark:active:bg-blue-800",
+              "bg-accent-primary hover:bg-accent-primary/90 active:bg-accent-primary/80",
               "text-sm font-medium text-white",
+              "shadow-accent-primary/25 shadow-lg",
               "transition-all duration-200",
               "disabled:cursor-not-allowed disabled:opacity-50",
-              "shadow-lg shadow-blue-500/25",
             )}
           >
             {isCreating ? (
