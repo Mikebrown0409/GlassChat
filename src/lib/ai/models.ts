@@ -10,20 +10,20 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "~/env";
+import { rateLimiter, waitWithBackoff } from "./rate-limiter";
 import {
+  AI_MODEL_INFO,
   AIModel,
   AIProvider,
-  type AIMessage,
-  type AIResponse,
-  type AIError,
-  type AIModelConfig,
-  type AIStreamChunk,
   DEFAULT_MODEL_CONFIGS,
-  AI_MODEL_INFO,
+  type AIError,
+  type AIMessage,
+  type AIModelConfig,
+  type AIResponse,
+  type AIStreamChunk,
 } from "./types";
-import { rateLimiter, waitWithBackoff } from "./rate-limiter";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Mock responses for testing when API keys are not available
 const MOCK_RESPONSES: Record<AIModel, string> = {
@@ -434,23 +434,36 @@ class AIModelManager {
     const genAI = new GoogleGenerativeAI(env.GOOGLE_GENERATIVE_AI_API_KEY);
     const geminiModel = genAI.getGenerativeModel({ model: model });
 
-    // Convert messages to Gemini format
-    const lastMessage = messages[messages.length - 1];
-    if (!lastMessage || lastMessage.role !== "user") {
-      throw this.createError(
-        "unknown",
-        "Last message must be from user",
-        AIProvider.GOOGLE,
-      );
-    }
-
     try {
-      const result = await geminiModel.generateContent(lastMessage.content);
+      // Extract system prompt and user/assistant messages
+      const systemMessage = messages.find((msg) => msg.role === "system");
+      const history = messages.filter((msg) => msg.role !== "system");
+
+      // Convert messages to Gemini-compatible format
+      const contents = history.map((msg) => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
+      }));
+
+      const result = await geminiModel.generateContent({
+        contents: contents,
+        systemInstruction: systemMessage
+          ? {
+              role: "system",
+              parts: [{ text: systemMessage.content }],
+            }
+          : undefined,
+        generationConfig: {
+          maxOutputTokens: config.maxTokens,
+          temperature: config.temperature,
+          topP: config.topP,
+        },
+      });
+
       const response = result.response;
       const text = response.text();
       const responseTime = Date.now() - startTime;
 
-      // Record usage for rate limiting
       rateLimiter.recordRequest(AIProvider.GOOGLE, text.length / 4);
 
       return {

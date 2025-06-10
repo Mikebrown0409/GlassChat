@@ -72,3 +72,27 @@ model VerificationToken {
 
     @@unique([identifier, token])
 }
+
+model MemoryEntry {
+    id        Int      @id @default(autoincrement())
+    chatId    String
+    content   String
+    timestamp DateTime @default(now())
+    metadata  Json
+}
+
+model SmartSummary {
+    id        Int      @id @default(autoincrement())
+    chatId    String   @unique
+    summary   String
+    keywords  String // Stored as a comma-separated string
+    createdAt DateTime @default(now())
+}
+
+model MemoryEvent {
+    id        Int      @id @default(autoincrement())
+    chatId    String
+    type      String
+    details   String
+    timestamp DateTime @default(now())
+}

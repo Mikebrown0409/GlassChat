@@ -9,16 +9,16 @@ export const env = createEnv({
   server: {
     AUTH_SECRET:
       process.env.NODE_ENV === "production"
-        ? z.string()
-        : z.string().optional(),
+        ? z.string().min(1)
+        : z.string().min(1).optional(),
     AUTH_DISCORD_ID: z.string().optional(),
     AUTH_DISCORD_SECRET: z.string().optional(),
-    DATABASE_URL: z.string().url().optional(),
+    DATABASE_URL: z.string().url(),
 
     // AI API Keys
-    OPENAI_API_KEY: z.string().optional(),
+    OPENAI_API_KEY: z.string().min(1),
     ANTHROPIC_API_KEY: z.string().optional(),
-    GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
+    GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1),
 
     // Upstash Redis
     UPSTASH_REDIS_REST_URL: z.string().optional(),

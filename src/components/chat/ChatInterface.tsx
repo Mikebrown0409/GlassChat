@@ -1,30 +1,38 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { clsx } from "clsx";
-import { useLiveChats, useLiveMessages, syncManager } from "~/lib/sync";
-import { api } from "~/trpc/react";
-import { AIModel } from "~/lib/ai/types";
-import { CollaborationPanel } from "~/components/collaboration/CollaborationPanel";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Copy,
-  Sparkles,
-  Languages,
-  Search,
   ArrowUp,
-  Plus,
-  Sidebar,
-  MoreHorizontal,
+  Brain,
   Check,
+  Code,
+  Copy,
   Edit3,
+  ExternalLink,
+  Languages,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Sidebar,
+  Sparkles,
   Trash2,
   Users,
-  Code,
-  ExternalLink,
 } from "lucide-react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ReactMarkdown from "react-markdown";
-import React from "react";
+import { CollaborationPanel } from "~/components/collaboration/CollaborationPanel";
+import { MemoryPanel } from "~/components/memory/MemoryPanel";
+import { AIModel } from "~/lib/ai/types";
+import { useMemory } from "~/lib/memory/hooks";
+import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
+import { api } from "~/trpc/react";
 
 interface ChatInterfaceProps {
   className?: string;
@@ -577,30 +585,16 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   const [renamingChat, setRenamingChat] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [collaborationOpen, setCollaborationOpen] = useState(false);
+  const [isMemoryPanelOpen, setIsMemoryPanelOpen] = useState(false);
 
-  // Test database connectivity on mount
-  useEffect(() => {
-    const testDatabase = async () => {
-      try {
-        console.log("Debug - Testing database connectivity...");
-        // Import db directly since syncManager doesn't expose db
-        const { db } = await import("~/lib/db");
-        const testChats = await db.chats.toArray();
-        console.log(
-          "Debug - Database test successful, existing chats:",
-          testChats,
-        );
-      } catch (error) {
-        console.error("Debug - Database test failed:", error);
-      }
-    };
-    void testDatabase();
-  }, []);
-
-  // Get real data from hooks
   const chats = useLiveChats();
   const rawMessages = useLiveMessages(currentChatId ?? "");
   const messages = useMemo(() => rawMessages ?? [], [rawMessages]);
+
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
+  const memory = useMemory(currentChatId ?? null, messages);
 
   // tRPC mutation for AI responses
   const generateResponse = api.ai.generateResponse.useMutation();
@@ -801,70 +795,43 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     setIsTyping(true);
 
     try {
-      // Create user message in database
       await syncManager.createMessage(currentChatId, "user", userMessage);
+      await memory.addMemory(userMessage, { role: "user" });
 
-      // Convert model name to AI model enum
-      const modelMap: Record<string, AIModel> = {
+      const map: Record<string, AIModel> = {
         "Gemini 2.0 Flash": AIModel.GEMINI_2_0_FLASH,
         "GPT-4 Turbo": AIModel.GPT_4_TURBO,
         "Claude 3": AIModel.CLAUDE_3_SONNET,
       };
+      const aiModel = map[selectedModel] ?? AIModel.GEMINI_2_0_FLASH;
 
-      const aiModel = modelMap[selectedModel] ?? AIModel.GEMINI_2_0_FLASH;
+      const systemPrompt = `You are a helpful AI assistant with a perfect memory of the conversation so far.
+Your task is to continue the chat. Use the provided message history to answer questions and maintain context.
+Be helpful and engaging.`;
 
-      // Generate AI response
+      // The history should NOT include the latest user message
+      const history = messagesRef.current.slice(0, -1);
+
+      const preparedMessages = [
+        { role: "system" as const, content: systemPrompt },
+        ...history.map((msg) => ({ role: msg.role, content: msg.content })),
+        { role: "user" as const, content: userMessage },
+      ];
+
       const response = await generateResponse.mutateAsync({
         model: aiModel,
-        messages: [
-          // Add system prompt for better formatting
-          {
-            role: "system" as const,
-            content: `You are a helpful AI assistant. Please format your responses clearly and professionally:
-
-📝 For stories and creative writing:
-- Use short, readable paragraphs (2-3 sentences each)
-- Add line breaks between paragraphs for better readability
-- Use dialogue formatting when appropriate
-
-💻 For code examples:
-- Always include comments explaining what the code does
-- Provide context about when/how to use the code  
-- Include usage examples when helpful
-- Suggest relevant file names (e.g., "Save as app.py")
-
-📋 For explanations and lists:
-- Use proper headings and subheadings
-- Break content into digestible sections
-- Use bullet points or numbered lists when appropriate
-- Include practical examples
-
-🎯 General formatting:
-- Keep paragraphs concise and scannable
-- Use markdown formatting (headers, code blocks, emphasis)
-- Provide actionable, useful responses
-- Include relevant context and next steps
-
-Your goal is to provide responses that are immediately useful and easy to copy/use.`,
-          },
-          ...messages.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          {
-            role: "user" as const,
-            content: userMessage,
-          },
-        ],
+        messages: preparedMessages,
       });
 
-      // Create AI response message
       if (response.success && response.response?.content) {
         await syncManager.createMessage(
           currentChatId,
           "assistant",
           response.response.content,
         );
+        await memory.addMemory(response.response.content, {
+          role: "assistant",
+        });
       } else {
         await syncManager.createMessage(
           currentChatId,
@@ -1254,20 +1221,21 @@ Your goal is to provide responses that are immediately useful and easy to copy/u
             </div>
           </div>
 
-          {/* Collaboration Button */}
-          <button
-            onClick={() => setCollaborationOpen(!collaborationOpen)}
-            className={clsx(
-              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              collaborationOpen
-                ? "bg-blue-600 text-white"
-                : "bg-slate-800/60 text-slate-300 hover:bg-slate-700 hover:text-white",
-            )}
-            title="Open Collaboration Panel"
-          >
-            <Users size={16} />
-            Collaborate
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCollaborationOpen(!collaborationOpen)}
+              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            >
+              <Users size={20} />
+            </button>
+
+            <button
+              onClick={() => setIsMemoryPanelOpen(!isMemoryPanelOpen)}
+              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            >
+              <Brain size={20} />
+            </button>
+          </div>
         </header>
 
         {/* Messages Area */}
@@ -1524,6 +1492,12 @@ Your goal is to provide responses that are immediately useful and easy to copy/u
         currentChatId={currentChatId ?? null}
         isOpen={collaborationOpen}
         onToggle={() => setCollaborationOpen(!collaborationOpen)}
+      />
+      <MemoryPanel
+        currentChatId={currentChatId ?? null}
+        isOpen={isMemoryPanelOpen}
+        onToggle={() => setIsMemoryPanelOpen(!isMemoryPanelOpen)}
+        memoryHook={memory}
       />
     </div>
   );

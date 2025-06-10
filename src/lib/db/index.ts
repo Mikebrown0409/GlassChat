@@ -1,9 +1,14 @@
 import Dexie, { type Table } from "dexie";
 import {
+  type MemoryEntry,
+  type MemoryEvent,
+  type SmartSummary,
+} from "~/types/memory";
+import {
   type SyncableEntity,
-  type SyncOperationRecord,
   type SyncConflict,
   type SyncMetadata,
+  type SyncOperationRecord,
   SyncStatus,
 } from "../sync/types";
 
@@ -35,9 +40,12 @@ export class GlassChatDatabase extends Dexie {
   syncOperations!: Table<SyncOperationRecord>;
   syncConflicts!: Table<SyncConflict>;
   syncMetadata!: Table<SyncMetadata>;
+  memoryEntries!: Table<MemoryEntry, number>;
+  smartSummaries!: Table<SmartSummary, number>;
+  memoryEvents!: Table<MemoryEvent, number>;
 
   constructor() {
-    super("glasschat-db");
+    super("glasschat-db-v2");
     this.version(1).stores({
       chats: "id, createdAt, updatedAt, lastModified, syncStatus",
       messages: "id, chatId, createdAt, lastModified, syncStatus",
@@ -46,6 +54,15 @@ export class GlassChatDatabase extends Dexie {
       syncConflicts: "id, entityType, entityId, timestamp, resolved",
       syncMetadata: "deviceId, lastSyncTimestamp",
     });
+    this.version(2).stores({
+      memoryEntries: "++id, chatId, timestamp",
+      smartSummaries: "++id, chatId, createdAt",
+      memoryEvents: "++id, chatId, timestamp",
+    });
+
+    this.memoryEntries = this.table("memoryEntries");
+    this.smartSummaries = this.table("smartSummaries");
+    this.memoryEvents = this.table("memoryEvents");
 
     // Initialize sync metadata after database is ready
     if (typeof window !== "undefined") {
