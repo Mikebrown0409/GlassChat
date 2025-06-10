@@ -55,3 +55,10 @@ node_modules
 
 ## Add Md files not needed to be committed
 prompts.md
+
+# reports / analysis artifacts
+lighthouse-report*.json
+
+# build caches
+node_modules/.cache/
+.cache/
