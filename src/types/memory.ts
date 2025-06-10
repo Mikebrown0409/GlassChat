@@ -22,4 +22,3 @@ export interface MemoryEvent {
   details: string;
   timestamp: number;
 }
- 
