@@ -164,3 +164,13 @@ main[data-chat-root] {
   overflow-anchor: none; /* don't shift viewport when its children grow */
   contain: layout paint;
 }
+
+/* Fixed viewport height for chat messages to eliminate CLS */
+.chat-viewport {
+  block-size: calc(
+    100dvh - 4rem - 4.5rem
+  ); /* viewport minus header (64px) and footer (72px) */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-anchor: none;
+}

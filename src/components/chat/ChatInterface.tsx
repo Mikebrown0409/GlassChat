@@ -1261,7 +1261,7 @@ Be helpful and engaging.`;
         </header>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="chat-viewport glass-scrollbar">
           {messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center p-8 text-center">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-slate-700 bg-slate-800">
