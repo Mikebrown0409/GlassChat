@@ -36,7 +36,7 @@ export function useMemory(chatId: string | null, messages: HookMessage[]) {
               data.summary.summary,
               data.summary.keywords,
             );
-          }
+    }
         },
       },
     );
@@ -72,7 +72,7 @@ export function useMemory(chatId: string | null, messages: HookMessage[]) {
 
   const addMemory = useCallback(
     async (content: string, metadata: Record<string, unknown> = {}) => {
-      if (!chatId) return;
+    if (!chatId) return;
 
       await memoryManagerClient.addMemory(chatId, content, metadata);
       // Refresh local memories after adding

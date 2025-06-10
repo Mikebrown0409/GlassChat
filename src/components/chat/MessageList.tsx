@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import ReactMarkdown from "react-markdown";
 import { GlassContainer } from "@/components/ui/GlassContainer";
-import { useLiveMessages, SyncStatus } from "@/lib/sync";
 import type { Message } from "@/lib/db";
+import { SyncStatus, useLiveMessages } from "@/lib/sync";
+import { parseMarkdownWasm } from "@/lib/utils/markdownWasm";
 import { clsx } from "clsx";
+import dynamic from "next/dynamic";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 interface MessageListProps {
   chatId: string;
@@ -17,9 +19,76 @@ interface MessageBubbleProps {
   isLast: boolean;
 }
 
-function MessageBubble({ message, isLast }: MessageBubbleProps) {
+const Virtuoso = dynamic(
+  () => import("react-virtuoso").then((m) => m.Virtuoso),
+  { ssr: false },
+);
+
+const MessageBubble = React.memo(function MessageBubble({
+  message,
+  isLast,
+}: MessageBubbleProps) {
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
+
+  const [wasmHtml, setWasmHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Use WASM parser for long messages (> 750 chars) to improve perf
+    if (message.content.length > 750) {
+      void parseMarkdownWasm(message.content).then(setWasmHtml);
+    } else {
+      setWasmHtml(null);
+    }
+  }, [message.content]);
+
+  const renderedMarkdown = useMemo(() => {
+    if (wasmHtml) {
+      return <div dangerouslySetInnerHTML={{ __html: wasmHtml }} />;
+    }
+
+    return (
+      <ReactMarkdown
+        components={{
+          // Custom code block styling
+          code: ({ className, children, ...props }) => {
+            const isInline = !className;
+            return (
+              <code
+                className={clsx(
+                  isInline
+                    ? "rounded bg-black/20 px-1 py-0.5 text-sm"
+                    : "block overflow-x-auto rounded-lg bg-black/30 p-3 text-sm",
+                  className,
+                )}
+                {...props}
+              >
+                {children}
+              </code>
+            );
+          },
+          // Custom link styling
+          a: ({ children, ...props }) => (
+            <a
+              className={clsx(
+                "underline decoration-2 underline-offset-2",
+                isUser
+                  ? "text-blue-200 hover:text-blue-100"
+                  : "text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300",
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              {...props}
+            >
+              {children}
+            </a>
+          ),
+        }}
+      >
+        {message.content}
+      </ReactMarkdown>
+    );
+  }, [message.content, wasmHtml, isUser]);
 
   return (
     <div
@@ -99,45 +168,7 @@ function MessageBubble({ message, isLast }: MessageBubbleProps) {
               "prose-blockquote:border-current prose-blockquote:text-current",
             )}
           >
-            <ReactMarkdown
-              components={{
-                // Custom code block styling
-                code: ({ className, children, ...props }) => {
-                  const isInline = !className;
-                  return (
-                    <code
-                      className={clsx(
-                        isInline
-                          ? "rounded bg-black/20 px-1 py-0.5 text-sm"
-                          : "block overflow-x-auto rounded-lg bg-black/30 p-3 text-sm",
-                        className,
-                      )}
-                      {...props}
-                    >
-                      {children}
-                    </code>
-                  );
-                },
-                // Custom link styling
-                a: ({ children, ...props }) => (
-                  <a
-                    className={clsx(
-                      "underline decoration-2 underline-offset-2",
-                      isUser
-                        ? "text-blue-200 hover:text-blue-100"
-                        : "text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300",
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    {...props}
-                  >
-                    {children}
-                  </a>
-                ),
-              }}
-            >
-              {message.content}
-            </ReactMarkdown>
+            {renderedMarkdown}
           </div>
 
           {/* Sync status indicator for development */}
@@ -166,7 +197,7 @@ function MessageBubble({ message, isLast }: MessageBubbleProps) {
       </div>
     </div>
   );
-}
+});
 
 export function MessageList({ chatId, className }: MessageListProps) {
   const messages = useLiveMessages(chatId);
@@ -176,6 +207,27 @@ export function MessageList({ chatId, className }: MessageListProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages?.length]);
+
+  const shouldVirtualize = (messages?.length ?? 0) > 100;
+
+  if (shouldVirtualize) {
+    return (
+      <Virtuoso
+        data={messages}
+        itemContent={(index, message: unknown) => {
+          const msg = message as Message;
+          return (
+            <MessageBubble
+              message={msg}
+              isLast={index === (messages?.length ?? 0) - 1}
+            />
+          );
+        }}
+        style={{ height: "100%" }}
+        className={clsx("flex-1", className)}
+      />
+    );
+  }
 
   if (!messages) {
     return (

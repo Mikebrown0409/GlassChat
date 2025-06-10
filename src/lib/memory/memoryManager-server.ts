@@ -24,7 +24,7 @@ class MemoryManagerServer {
     try {
       await db.memoryEntry.create({
         data: {
-          chatId,
+        chatId,
           content,
           metadata: metadata as Prisma.InputJsonValue,
         },

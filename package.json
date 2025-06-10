@@ -43,7 +43,8 @@
     "test:collaboration:verbose": "tsx scripts/test-collaboration-three-users.ts --verbose",
     "ai:models": "node -e \"import('./src/lib/ai/models.js').then(m => console.log('Available models:', m.aiModels.getAvailableModels().map(({model, info}) => info.displayName)))\"",
     "mock:populate": "tsx scripts/populate-mock-data.ts",
-    "test:ui": "npm run mock:populate && npm run dev"
+    "test:ui": "npm run mock:populate && npm run dev",
+    "lighthouse:audit": "lighthouse http://localhost:3000 --output=json --output-path=./lighthouse-report.json --quiet --chrome-flags='--headless'"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.2",
@@ -66,12 +67,14 @@
     "husky": "^9.1.7",
     "intro.js": "^7.2.0",
     "lucide-react": "^0.513.0",
+    "markdown-wasm": "^1.2.0",
     "nanoid": "^5.1.5",
     "next": "^15.2.3",
     "next-auth": "5.0.0-beta.25",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
+    "react-virtuoso": "^4.12.8",
     "superjson": "^2.2.1",
     "zod": "^3.24.2"
   },
@@ -84,6 +87,7 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.23.0",
     "eslint-config-next": "^15.2.3",
+    "lighthouse": "^12.6.1",
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
