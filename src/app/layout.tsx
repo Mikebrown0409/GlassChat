@@ -1,11 +1,10 @@
 import "~/styles/globals.css";
-import "~/styles/chat-professional.css";
 
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 
-import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeProvider } from "~/components/ui/ThemeProvider";
+import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
   title: "GlassChat - AI Chat with Glassmorphism",

@@ -120,7 +120,10 @@ const MessageBubble = React.memo(function MessageBubble({
           blur="lg"
           rounded="lg"
           hover={true}
-          gradient={isUser || isSystem}
+          gradient
+          accent={
+            isUser ? "primary" : !isUser && !isSystem ? "secondary" : undefined
+          }
           animated
           scale
           shadow="lg"

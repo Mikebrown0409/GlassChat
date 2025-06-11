@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "./theme-dark.css";
+@import "./theme-brand.css";
 
 @source "src/**/*.{js,ts,jsx,tsx,mdx}";
 
@@ -183,12 +183,6 @@ main[data-chat-root] {
 
 /* Dark theme background */
 body {
-  background:
-    radial-gradient(
-      600px 600px at 50% -200px,
-      hsl(var(--accent-secondary) / 0.15),
-      transparent 70%
-    ),
-    var(--surface-0);
+  background-color: var(--surface-0);
   color: var(--text-primary);
 }

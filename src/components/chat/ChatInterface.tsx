@@ -28,6 +28,7 @@ import React, {
   useState,
 } from "react";
 import ReactMarkdown from "react-markdown";
+import { Button } from "~/components/ui/Button";
 import { AIModel } from "~/lib/ai/types";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
@@ -91,7 +92,7 @@ const TextSelectionMenu = ({
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 5 }}
       transition={{ duration: 0.15, ease: DYNAMIC_EASE }}
-      className="absolute z-50 flex items-center gap-1 rounded-lg border border-slate-700/60 bg-slate-800/90 p-1.5 shadow-2xl backdrop-blur-sm"
+      className="border-border-subtle bg-surface-1/90 absolute z-50 flex items-center gap-1 rounded-lg border p-1.5 shadow-2xl backdrop-blur-sm"
       style={{ top: position.top, left: position.left }}
       data-selection-menu
       onMouseDown={(e) => e.stopPropagation()} // Prevent selection clearing
@@ -100,47 +101,47 @@ const TextSelectionMenu = ({
     >
       <button
         onClick={handleCopy}
-        className="group relative rounded-md p-2 text-slate-300 transition-all duration-200 hover:scale-105 hover:bg-slate-700/80 hover:text-white"
+        className="group text-text-muted hover:bg-surface-0 hover:text-text-primary relative rounded-md p-2 transition-all duration-200 hover:scale-105"
         title="Copy selected text"
         aria-label="Copy selected text"
       >
         {copied ? (
-          <Check size={14} className="text-emerald-400" />
+          <Check size={14} className="text-brand-utility" />
         ) : (
           <Copy size={14} />
         )}
-        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 -translate-y-1 transform rounded bg-slate-900 px-2 py-1 text-xs whitespace-nowrap text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        <span className="bg-surface-0 text-text-primary pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 -translate-y-1 transform rounded px-2 py-1 text-xs whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           {copied ? "Copied!" : "Copy"}
         </span>
       </button>
-      <div className="h-5 w-[1px] bg-slate-700/50" />
+      <div className="bg-border-subtle h-5 w-[1px]" />
       <button
         onClick={handleExplain}
-        className="group relative rounded-md p-2 text-slate-300 transition-all duration-200 hover:scale-105 hover:bg-slate-700/80 hover:text-white"
+        className="group text-text-muted hover:bg-surface-0 hover:text-text-primary relative rounded-md p-2 transition-all duration-200 hover:scale-105"
         title="Ask AI to explain this text"
         aria-label="Ask AI to explain this text"
       >
         {explained ? (
-          <Check size={14} className="text-emerald-400" />
+          <Check size={14} className="text-brand-utility" />
         ) : (
           <Sparkles size={14} />
         )}
-        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 -translate-y-1 transform rounded bg-slate-900 px-2 py-1 text-xs whitespace-nowrap text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        <span className="bg-surface-0 text-text-primary pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 -translate-y-1 transform rounded px-2 py-1 text-xs whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           {explained ? "Added to input!" : "Explain"}
         </span>
       </button>
       <button
         onClick={handleTranslate}
-        className="group relative rounded-md p-2 text-slate-300 transition-all duration-200 hover:scale-105 hover:bg-slate-700/80 hover:text-white"
+        className="group text-text-muted hover:bg-surface-0 hover:text-text-primary relative rounded-md p-2 transition-all duration-200 hover:scale-105"
         title="Ask AI to translate this text"
         aria-label="Ask AI to translate this text"
       >
         {translated ? (
-          <Check size={14} className="text-emerald-400" />
+          <Check size={14} className="text-brand-utility" />
         ) : (
           <Languages size={14} />
         )}
-        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 -translate-y-1 transform rounded bg-slate-900 px-2 py-1 text-xs whitespace-nowrap text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        <span className="bg-surface-0 text-text-primary pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 -translate-y-1 transform rounded px-2 py-1 text-xs whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           {translated ? "Added to input!" : "Translate"}
         </span>
       </button>
@@ -234,8 +235,8 @@ const CodeBlock = ({
 
   return (
     <div className="group relative my-4">
-      <div className="flex items-center justify-between rounded-t-lg border-b border-slate-700 bg-slate-800 px-4 py-2">
-        <span className="flex items-center gap-2 text-xs font-medium text-slate-300">
+      <div className="border-border-subtle bg-surface-1 flex items-center justify-between rounded-t-lg border-b px-4 py-2">
+        <span className="text-text-muted flex items-center gap-2 text-xs font-medium">
           <Code size={12} />
           {detectedLanguage}
         </span>
@@ -243,12 +244,12 @@ const CodeBlock = ({
           onClick={handleCopy}
           onMouseDown={(e) => e.preventDefault()} // Prevent focus issues
           type="button"
-          className="flex items-center gap-1 rounded border border-transparent px-3 py-1.5 text-xs text-slate-400 transition-all hover:border-slate-600 hover:bg-slate-700 hover:text-white"
+          className="text-text-muted hover:border-border-subtle hover:bg-surface-0 hover:text-text-primary flex items-center gap-1 rounded border border-transparent px-3 py-1.5 text-xs transition-all"
         >
           {copied ? (
             <>
-              <Check size={12} className="text-green-400" />
-              <span className="font-medium text-green-400">Copied!</span>
+              <Check size={12} className="text-brand-utility" />
+              <span className="text-brand-utility font-medium">Copied!</span>
             </>
           ) : (
             <>
@@ -258,7 +259,7 @@ const CodeBlock = ({
           )}
         </button>
       </div>
-      <pre className="overflow-x-auto rounded-b-lg bg-slate-900 p-4">
+      <pre className="bg-surface-0 overflow-x-auto rounded-b-lg p-4">
         <code className={clsx("font-mono text-sm", className)}>{children}</code>
       </pre>
     </div>
@@ -364,12 +365,12 @@ const MessageDisplay = React.memo(
       <div className="space-y-2">
         <div
           className={clsx(
-            "max-w-prose rounded-lg border p-4 transition-colors select-text group-hover:border-slate-700/80",
+            "group-hover:border-border-subtle max-w-prose rounded-lg border p-4 transition-colors select-text",
             isUser
-              ? "border-slate-700/50 bg-slate-800/50 text-slate-200"
+              ? "border-border-subtle bg-surface-1 text-text-primary"
               : isSystem
-                ? "border-red-900 bg-red-900/20 text-red-300"
-                : "border-slate-900 bg-black text-slate-300",
+                ? "border-brand-secondary/40 bg-brand-secondary/10 text-brand-secondary"
+                : "bg-surface-0 text-text-muted border-transparent",
           )}
           onMouseUp={handleMouseUp}
         >
@@ -377,7 +378,7 @@ const MessageDisplay = React.memo(
             <p className="text-sm leading-relaxed">{message.content}</p>
           ) : (
             <div
-              className="prose prose-sm prose-invert prose-headings:text-slate-100 prose-p:text-slate-300 prose-code:text-slate-200 prose-pre:bg-slate-900 prose-blockquote:border-blue-500 prose-strong:text-slate-200 prose-em:text-slate-300 max-w-none select-text"
+              className="prose prose-sm prose-invert prose-headings:text-text-primary prose-p:text-text-muted prose-code:text-text-primary prose-pre:bg-surface-0 prose-blockquote:border-brand-primary prose-strong:text-text-primary prose-em:text-text-muted max-w-none select-text"
               onMouseUp={handleMouseUp}
             >
               <ReactMarkdown
@@ -415,7 +416,7 @@ const MessageDisplay = React.memo(
 
                     if (isInlineCode) {
                       return (
-                        <code className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-sm text-slate-200">
+                        <code className="bg-surface-1 text-text-primary rounded px-1.5 py-0.5 font-mono text-sm">
                           {codeString}
                         </code>
                       );
@@ -434,37 +435,37 @@ const MessageDisplay = React.memo(
                     <>{children}</>
                   ), // Let CodeBlock handle the pre tag
                   h1: ({ children }: { children?: React.ReactNode }) => (
-                    <h1 className="mt-6 mb-4 border-b border-slate-700 pb-2 text-xl font-bold text-slate-100">
+                    <h1 className="border-border-subtle text-text-primary mt-6 mb-4 border-b pb-2 text-xl font-bold">
                       {children}
                     </h1>
                   ),
                   h2: ({ children }: { children?: React.ReactNode }) => (
-                    <h2 className="mt-5 mb-3 text-lg font-semibold text-slate-200">
+                    <h2 className="text-text-primary mt-5 mb-3 text-lg font-semibold">
                       {children}
                     </h2>
                   ),
                   h3: ({ children }: { children?: React.ReactNode }) => (
-                    <h3 className="mt-4 mb-2 text-base font-medium text-slate-300">
+                    <h3 className="text-text-primary mt-4 mb-2 text-base font-medium">
                       {children}
                     </h3>
                   ),
                   p: ({ children }: { children?: React.ReactNode }) => (
-                    <p className="mb-4 leading-relaxed text-slate-300">
+                    <p className="text-text-muted mb-4 leading-relaxed">
                       {children}
                     </p>
                   ),
                   ul: ({ children }: { children?: React.ReactNode }) => (
-                    <ul className="mb-4 ml-4 list-outside list-disc space-y-2 text-slate-300">
+                    <ul className="text-text-muted mb-4 ml-4 list-outside list-disc space-y-2">
                       {children}
                     </ul>
                   ),
                   ol: ({ children }: { children?: React.ReactNode }) => (
-                    <ol className="mb-4 ml-4 list-outside list-decimal space-y-2 text-slate-300">
+                    <ol className="text-text-muted mb-4 ml-4 list-outside list-decimal space-y-2">
                       {children}
                     </ol>
                   ),
                   li: ({ children, ...props }: React.ComponentProps<"li">) => (
-                    <li className="text-slate-300" {...props}>
+                    <li className="text-text-muted" {...props}>
                       {children}
                     </li>
                   ),
@@ -473,7 +474,7 @@ const MessageDisplay = React.memo(
                   }: {
                     children?: React.ReactNode;
                   }) => (
-                    <blockquote className="my-4 rounded-r-lg border-l-4 border-blue-500 bg-slate-800/50 py-2 pl-4 text-slate-400 italic">
+                    <blockquote className="border-brand-primary bg-surface-1/50 text-text-muted my-4 rounded-r-lg border-l-4 py-2 pl-4 italic">
                       {children}
                     </blockquote>
                   ),
@@ -488,7 +489,7 @@ const MessageDisplay = React.memo(
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-blue-400 underline transition-colors hover:text-blue-300"
+                      className="text-brand-primary hover:text-brand-primary/80 inline-flex items-center gap-1 underline transition-colors"
                     >
                       {children}
                       <ExternalLink size={12} />
@@ -496,36 +497,38 @@ const MessageDisplay = React.memo(
                   ),
                   table: ({ children }: { children?: React.ReactNode }) => (
                     <div className="my-4 overflow-x-auto">
-                      <table className="min-w-full rounded-lg border border-slate-700">
+                      <table className="border-border-subtle min-w-full rounded-lg border">
                         {children}
                       </table>
                     </div>
                   ),
                   thead: ({ children }: { children?: React.ReactNode }) => (
-                    <thead className="bg-slate-800">{children}</thead>
+                    <thead className="bg-surface-1">{children}</thead>
                   ),
                   tbody: ({ children }: { children?: React.ReactNode }) => (
-                    <tbody className="bg-slate-900/50">{children}</tbody>
+                    <tbody className="bg-surface-0/50">{children}</tbody>
                   ),
                   tr: ({ children }: { children?: React.ReactNode }) => (
-                    <tr className="border-b border-slate-700">{children}</tr>
+                    <tr className="border-border-subtle border-b">
+                      {children}
+                    </tr>
                   ),
                   th: ({ children }: { children?: React.ReactNode }) => (
-                    <th className="px-4 py-2 text-left font-semibold text-slate-200">
+                    <th className="text-text-primary px-4 py-2 text-left font-semibold">
                       {children}
                     </th>
                   ),
                   td: ({ children }: { children?: React.ReactNode }) => (
-                    <td className="px-4 py-2 text-slate-300">{children}</td>
+                    <td className="text-text-muted px-4 py-2">{children}</td>
                   ),
-                  hr: () => <hr className="my-6 border-slate-700" />,
+                  hr: () => <hr className="border-border-subtle my-6" />,
                   strong: ({ children }: { children?: React.ReactNode }) => (
-                    <strong className="font-semibold text-slate-200">
+                    <strong className="text-text-primary font-semibold">
                       {children}
                     </strong>
                   ),
                   em: ({ children }: { children?: React.ReactNode }) => (
-                    <em className="text-slate-300 italic">{children}</em>
+                    <em className="text-text-muted italic">{children}</em>
                   ),
                 }}
               >
@@ -534,7 +537,7 @@ const MessageDisplay = React.memo(
             </div>
           )}
         </div>
-        <div className="flex items-center justify-end gap-2 pt-1 pl-1 text-xs text-slate-600">
+        <div className="text-text-muted flex items-center justify-end gap-2 pt-1 pl-1 text-xs">
           <span>
             {new Date(message.createdAt).toLocaleTimeString([], {
               hour: "2-digit",
@@ -991,17 +994,17 @@ Be helpful and engaging.`;
   }, []);
 
   return (
-    <div className="fixed inset-0 flex h-screen w-screen overflow-hidden bg-black font-sans text-slate-200">
+    <div className="bg-surface-0 text-text-primary fixed inset-0 flex h-screen w-screen overflow-hidden font-sans">
       {/* Sidebar always mounted; slides off-screen when closed to avoid layout reflow */}
       <motion.aside
         animate={{ x: sidebarOpen ? 0 : -288 }}
         transition={{ ease: DYNAMIC_EASE, duration: 0.25 }}
-        className="sidebar relative z-20 flex w-72 shrink-0 flex-col border-r border-slate-900 bg-black/70 backdrop-blur-lg"
+        className="sidebar border-border-subtle bg-surface-0/70 relative z-20 flex w-72 shrink-0 flex-col border-r backdrop-blur-lg lg:w-80"
       >
         {/* Header */}
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-900 p-4">
+        <div className="border-border-subtle flex h-20 shrink-0 items-center justify-between border-b p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800">
+            <div className="border-border-subtle bg-surface-1 flex h-8 w-8 items-center justify-center rounded-lg border">
               <svg
                 width="16"
                 height="16"
@@ -1011,7 +1014,7 @@ Be helpful and engaging.`;
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-slate-400"
+                className="text-text-muted"
               >
                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
                 <path d="M2 17l10 5 10-5" />
@@ -1019,42 +1022,47 @@ Be helpful and engaging.`;
               </svg>
             </div>
             <div>
-              <h1 className="text-base font-semibold text-white">GlassChat</h1>
-              <p className="text-sm text-slate-500">AI Platform</p>
+              <h1 className="text-text-primary text-base font-semibold">
+                GlassChat
+              </h1>
+              <p className="text-text-muted text-sm">
+                Conversational Intelligence
+              </p>
             </div>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setSidebarOpen(false)}
-            className="rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-white"
             title="Collapse Sidebar"
           >
             <Sidebar size={18} />
-          </button>
+          </Button>
         </div>
 
         {/* New Chat Button */}
         <div className="p-3">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => void handleNewChat()}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800 p-2.5 text-sm font-medium text-slate-200 transition-colors duration-200 hover:border-slate-600 hover:bg-slate-700/80 hover:text-white"
+            className="w-full"
           >
             <Plus size={16} />
             New Conversation
-          </motion.button>
+          </Button>
         </div>
 
         {/* Search Input */}
         <div className="px-3 pb-2">
           <div className="relative">
-            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="text-text-muted absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 py-2 pr-3 pl-9 text-sm text-slate-300 placeholder-slate-500 transition-colors focus:border-slate-600 focus:bg-slate-800/60 focus:outline-none"
+              className="border-border-subtle bg-surface-1 text-text-primary placeholder-text-muted focus:border-brand-primary/50 focus:bg-surface-1 focus:ring-brand-primary/20 w-full rounded-lg border py-2 pr-3 pl-9 text-sm transition-colors focus:ring-2 focus:outline-none"
             />
           </div>
         </div>
@@ -1074,8 +1082,8 @@ Be helpful and engaging.`;
                   className={clsx(
                     "group w-full cursor-pointer rounded-md p-2 text-left transition-colors duration-200",
                     currentChatId === chat.id
-                      ? "bg-slate-700/80 text-slate-100"
-                      : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-100",
+                      ? "bg-surface-1 text-text-primary"
+                      : "text-text-muted hover:bg-surface-1/60 hover:text-text-primary",
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -1100,7 +1108,7 @@ Be helpful and engaging.`;
                             setRenameValue("");
                           }
                         }}
-                        className="flex-1 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"
+                        className="border-brand-primary/50 bg-surface-0 text-text-primary flex-1 rounded border px-2 py-1 text-sm focus:outline-none"
                         autoFocus
                       />
                     ) : (
@@ -1116,7 +1124,7 @@ Be helpful and engaging.`;
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="text-xs text-slate-600"
+                            className="text-text-muted/70 text-xs"
                           >
                             {new Date(chat.updatedAt).toLocaleDateString()}
                           </motion.span>
@@ -1124,20 +1132,21 @@ Be helpful and engaging.`;
                       </AnimatePresence>
 
                       {renamingChat !== chat.id && (
-                        <button
-                          data-icon
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleConversationMenu(chat.id);
                           }}
-                          className="rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-slate-700/50"
+                          className="opacity-0 transition-opacity group-hover:opacity-100"
                           data-conversation-menu
                         >
                           <MoreHorizontal
                             size={14}
-                            className="text-slate-400"
+                            className="text-text-muted"
                           />
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -1151,7 +1160,7 @@ Be helpful and engaging.`;
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: -10 }}
                       transition={{ duration: 0.15, ease: DYNAMIC_EASE }}
-                      className="absolute top-full right-0 z-50 mt-1 w-40 rounded-lg border border-slate-700/50 bg-slate-800/90 shadow-xl backdrop-blur-xl"
+                      className="border-border-subtle bg-surface-1/90 absolute top-full right-0 z-50 mt-1 w-40 rounded-lg border shadow-xl backdrop-blur-xl"
                       data-conversation-menu
                     >
                       <button
@@ -1160,14 +1169,14 @@ Be helpful and engaging.`;
                           setRenameValue(chat.title);
                           setConversationMenus({});
                         }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-300 transition-colors first:rounded-t-lg hover:bg-slate-700/50"
+                        className="text-text-muted hover:bg-surface-0 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg"
                       >
                         <Edit3 size={14} />
                         Rename
                       </button>
                       <button
                         onClick={() => void handleDeleteChat(chat.id)}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors last:rounded-b-lg hover:bg-red-900/20"
+                        className="text-brand-secondary hover:bg-brand-secondary/10 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors last:rounded-b-lg"
                       >
                         <Trash2 size={14} />
                         Delete
@@ -1181,9 +1190,9 @@ Be helpful and engaging.`;
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-900 p-4">
-          <button className="flex w-full items-center gap-3 rounded-md p-2 text-left text-sm text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-slate-200">
-            <div className="h-8 w-8 rounded-full bg-slate-700"></div>
+        <div className="border-border-subtle border-t p-4">
+          <button className="text-text-muted hover:bg-surface-1/60 hover:text-text-primary flex w-full items-center gap-3 rounded-md p-2 text-left text-sm transition-colors">
+            <div className="bg-surface-1 h-8 w-8 rounded-full"></div>
             <div className="flex-1 truncate">Chat User</div>
             <MoreHorizontal size={16} />
           </button>
@@ -1208,38 +1217,42 @@ Be helpful and engaging.`;
         {/* Top Bar */}
         <header
           data-fixed
-          className="flex h-16 shrink-0 items-center justify-between border-b border-slate-900 bg-black/80 px-6 backdrop-blur-sm"
+          className="border-border-subtle bg-surface-0/80 flex h-20 shrink-0 items-center justify-between border-b px-6 backdrop-blur-sm"
         >
           <div className="flex items-center">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="mr-4 -ml-2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-white"
+              className="mr-4 -ml-2"
             >
               <Sidebar size={20} />
-            </button>
+            </Button>
 
             <div className="flex items-center gap-3">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-green-400"></div>
-              <span className="text-sm text-slate-300">Voice AI Assistant</span>
+              <div className="bg-brand-utility h-2 w-2 animate-pulse rounded-full"></div>
+              <span className="text-text-primary text-sm">
+                Voice AI Assistant
+              </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              data-icon
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setCollaborationOpen(!collaborationOpen)}
-              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
             >
               <Users size={20} />
-            </button>
+            </Button>
 
-            <button
-              data-icon
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setIsMemoryPanelOpen(!isMemoryPanelOpen)}
-              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
             >
               <Brain size={20} />
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -1247,7 +1260,7 @@ Be helpful and engaging.`;
         <div className="chat-viewport glass-scrollbar">
           {messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-slate-700 bg-slate-800">
+              <div className="border-border-subtle bg-surface-1 mb-4 flex h-12 w-12 items-center justify-center rounded-lg border">
                 <svg
                   width="24"
                   height="24"
@@ -1255,17 +1268,17 @@ Be helpful and engaging.`;
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.5"
-                  className="text-slate-500"
+                  className="text-text-muted"
                 >
                   <path d="M12 2L2 7l10 5 10-5-10-5z" />
                   <path d="M2 17l10 5 10-5" />
                   <path d="M2 12l10 5 10-5" />
                 </svg>
               </div>
-              <h2 className="mb-1 text-xl font-semibold text-white">
+              <h2 className="text-text-primary mb-1 text-xl font-semibold">
                 How can I help you today?
               </h2>
-              <p className="mx-auto mb-8 max-w-sm text-slate-500">
+              <p className="text-text-muted mx-auto mb-8 max-w-sm">
                 Ask me anything about voice AI, speech-to-text, or audio
                 intelligence implementation.
               </p>
@@ -1287,7 +1300,7 @@ Be helpful and engaging.`;
                     }}
                     whileHover={{ y: -2, transition: { ease: DYNAMIC_EASE } }}
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className="rounded-full border border-slate-700/80 bg-slate-800/60 px-4 py-2 text-sm text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800"
+                    className="border-border-subtle bg-surface-1/60 text-text-muted hover:border-border-subtle hover:bg-surface-1 rounded-full border px-4 py-2 text-sm transition-colors"
                   >
                     {suggestion}
                   </motion.button>
@@ -1314,10 +1327,10 @@ Be helpful and engaging.`;
                       className={clsx(
                         "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                         message.role === "user"
-                          ? "bg-slate-700 text-slate-300"
+                          ? "bg-surface-1 text-text-muted"
                           : message.role === "system"
-                            ? "bg-red-800 text-red-300"
-                            : "bg-slate-800 text-slate-400",
+                            ? "bg-brand-secondary/20 text-brand-secondary"
+                            : "bg-surface-1 text-text-muted",
                       )}
                     >
                       {message.role === "user"
@@ -1349,9 +1362,9 @@ Be helpful and engaging.`;
                     transition={{ ease: DYNAMIC_EASE }}
                     className="flex items-center gap-4"
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800">
+                    <div className="bg-surface-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
                       <motion.div
-                        className="h-1.5 w-1.5 rounded-full bg-slate-400"
+                        className="bg-text-muted h-1.5 w-1.5 rounded-full"
                         animate={{
                           scale: [1, 1.25, 1],
                           opacity: [0.7, 1, 0.7],
@@ -1363,12 +1376,12 @@ Be helpful and engaging.`;
                         }}
                       />
                     </div>
-                    <div className="rounded-lg border border-slate-900 bg-black p-4">
+                    <div className="border-border-subtle bg-surface-0 rounded-lg border p-4">
                       <div className="flex items-center gap-1.5">
                         {[0, 1, 2].map((i) => (
                           <motion.div
                             key={i}
-                            className="h-1.5 w-1.5 rounded-full bg-slate-500"
+                            className="bg-text-muted h-1.5 w-1.5 rounded-full"
                             animate={{ y: [0, -2, 0] }}
                             transition={{
                               duration: 0.8,
@@ -1392,7 +1405,7 @@ Be helpful and engaging.`;
         {/* Input Area */}
         <footer
           data-fixed
-          className="border-t border-slate-900 bg-black/80 p-4 backdrop-blur-sm"
+          className="border-border-subtle bg-surface-0/80 border-t p-4 backdrop-blur-sm"
         >
           <div className="mx-auto max-w-4xl">
             <form onSubmit={handleSubmit} className="relative">
@@ -1410,16 +1423,17 @@ Be helpful and engaging.`;
                   placeholder={
                     isTyping ? "AI is responding..." : "Ask anything..."
                   }
-                  className="max-h-48 min-h-[50px] w-full resize-none rounded-lg border border-slate-700 bg-slate-900/50 p-3 pr-28 text-sm text-slate-200 placeholder-slate-500 transition-colors duration-200 outline-none focus:border-slate-600 focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60"
+                  className="border-border-subtle bg-surface-1 text-text-primary placeholder-text-muted focus:border-brand-primary/50 focus:ring-brand-primary/20 max-h-48 min-h-[50px] w-full resize-none rounded-lg border p-3 pr-28 text-sm transition-colors duration-200 outline-none focus:ring-2 disabled:opacity-60"
                   rows={1}
                   disabled={isTyping}
                 />
                 <div className="absolute right-3 flex items-center gap-2">
                   <div ref={dropdownRef}>
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="sm"
                       onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                      className="flex items-center gap-1.5 rounded-md bg-slate-800/50 px-2 py-1 text-xs text-slate-400 transition-colors hover:text-slate-200"
                     >
                       <span>{selectedModel}</span>
                       <svg
@@ -1437,9 +1451,9 @@ Be helpful and engaging.`;
                           d="M19 9l-7 7-7-7"
                         />
                       </svg>
-                    </button>
+                    </Button>
                     {modelDropdownOpen && (
-                      <div className="absolute right-0 bottom-full z-50 mb-2 w-48 rounded-lg border border-slate-700 bg-slate-800 shadow-2xl">
+                      <div className="border-border-subtle bg-surface-1 absolute right-0 bottom-full z-50 mb-2 w-48 rounded-lg border shadow-2xl">
                         {models.map((model) => (
                           <button
                             key={model.id}
@@ -1448,10 +1462,10 @@ Be helpful and engaging.`;
                               setSelectedModel(model.name);
                               setModelDropdownOpen(false);
                             }}
-                            className={`w-full px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-slate-700/80 ${
+                            className={`hover:bg-surface-0 w-full px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg last:rounded-b-lg ${
                               selectedModel === model.name
-                                ? "text-blue-400"
-                                : "text-slate-200"
+                                ? "text-brand-primary"
+                                : "text-text-primary"
                             }`}
                           >
                             {model.name}
@@ -1460,36 +1474,31 @@ Be helpful and engaging.`;
                       </div>
                     )}
                   </div>
-                  <motion.button
+                  <Button
                     type="submit"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    variant="primary"
+                    size="icon"
                     disabled={!inputValue.trim() || isTyping}
-                    className={clsx(
-                      "flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200",
-                      inputValue.trim() && !isTyping
-                        ? "bg-white text-black"
-                        : "cursor-not-allowed bg-slate-800 text-slate-500",
-                    )}
+                    className="h-8 w-8"
                   >
                     {isTyping ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
+                      <div className="border-text-muted h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
                     ) : (
                       <ArrowUp size={18} strokeWidth={2.5} />
                     )}
-                  </motion.button>
+                  </Button>
                 </div>
               </div>
               <div className="mt-2 flex items-center justify-between text-xs">
-                <span className="text-slate-500">
+                <span className="text-text-muted">
                   Press <strong>Shift+Enter</strong> for a new line
                 </span>
                 <span
                   className={clsx(
                     "font-medium",
                     inputValue.length > 2000
-                      ? "text-orange-400"
-                      : "text-slate-600",
+                      ? "text-brand-secondary"
+                      : "text-text-muted/70",
                   )}
                 >
                   {inputValue.length} / 2000
