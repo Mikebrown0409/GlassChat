@@ -6,6 +6,7 @@ import {
   ArrowUp,
   Brain,
   Check,
+  ChevronLeft,
   Code,
   Copy,
   Edit3,
@@ -1010,12 +1011,12 @@ Be helpful and engaging.`;
 
   return (
     <div className="bg-surface-0 text-text-primary fixed inset-0 flex h-screen w-screen overflow-hidden font-sans">
-      {/* Sidebar always mounted; slides off-screen when closed to avoid layout reflow */}
-      <aside
-        className={clsx(
-          "sidebar border-border-subtle bg-surface-0/70 relative z-20 flex shrink-0 flex-col overflow-hidden border-r backdrop-blur-lg transition-[width] duration-300 ease-in-out",
-          sidebarOpen ? "w-72 lg:w-80" : "w-0",
-        )}
+      {/* Sidebar as sliding overlay */}
+      <motion.aside
+        initial={{ x: "-100%" }}
+        animate={{ x: sidebarOpen ? 0 : "-100%" }}
+        transition={{ ease: DYNAMIC_EASE, duration: 0.3 }}
+        className="border-border-subtle bg-surface-0/70 fixed top-0 bottom-0 left-0 z-20 flex w-72 flex-col border-r backdrop-blur-lg lg:w-80"
       >
         {/* Header */}
         <div className="border-border-subtle flex h-20 shrink-0 items-center justify-between border-b p-4">
@@ -1052,173 +1053,183 @@ Be helpful and engaging.`;
             onClick={() => setSidebarOpen(false)}
             title="Collapse Sidebar"
           >
-            <Sidebar size={18} />
+            <ChevronLeft size={18} />
           </Button>
         </div>
 
-        {/* New Chat Button */}
-        <div className="p-3">
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => void handleNewChat()}
-            className="w-full"
-          >
-            <Plus size={16} />
-            New Conversation
-          </Button>
-        </div>
+        {/* New Chat Button, Search, and History Wrapper */}
+        <div className="flex flex-1 flex-col overflow-y-hidden">
+          {/* New Chat and Search */}
+          <div className="p-3">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => void handleNewChat()}
+              className="w-full"
+            >
+              <Plus size={16} />
+              New Conversation
+            </Button>
+          </div>
+          <div className="px-3 pb-2">
+            <div className="relative">
+              <Search className="text-text-muted absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border-border-subtle bg-surface-1 text-text-primary placeholder-text-muted focus:border-brand-primary/50 focus:bg-surface-1 focus:ring-brand-primary/20 w-full rounded-lg border py-2 pr-3 pl-9 text-sm transition-colors focus:ring-2 focus:outline-none"
+              />
+            </div>
+          </div>
 
-        {/* Search Input */}
-        <div className="px-3 pb-2">
-          <div className="relative">
-            <Search className="text-text-muted absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-border-subtle bg-surface-1 text-text-primary placeholder-text-muted focus:border-brand-primary/50 focus:bg-surface-1 focus:ring-brand-primary/20 w-full rounded-lg border py-2 pr-3 pl-9 text-sm transition-colors focus:ring-2 focus:outline-none"
-            />
+          {/* Conversation History */}
+          <div className="flex-1 overflow-y-auto px-3 pb-4">
+            <AnimatePresence>
+              {filteredHistory.map((chat) => (
+                <div key={chat.id} className="relative">
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2, ease: DYNAMIC_EASE }}
+                    onClick={() => handleChatSelect(chat.id)}
+                    className={clsx(
+                      "group w-full cursor-pointer rounded-md p-2 text-left transition-colors duration-200",
+                      currentChatId === chat.id
+                        ? "bg-surface-1 text-text-primary"
+                        : "text-text-muted hover:bg-surface-1/60 hover:text-text-primary",
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      {renamingChat === chat.id ? (
+                        <input
+                          type="text"
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onBlur={() => {
+                            if (renameValue.trim()) {
+                              void handleRenameChat(
+                                chat.id,
+                                renameValue.trim(),
+                              );
+                            } else {
+                              setRenamingChat(null);
+                              setRenameValue("");
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && renameValue.trim()) {
+                              void handleRenameChat(
+                                chat.id,
+                                renameValue.trim(),
+                              );
+                            } else if (e.key === "Escape") {
+                              setRenamingChat(null);
+                              setRenameValue("");
+                            }
+                          }}
+                          className="border-brand-primary/50 bg-surface-0 text-text-primary flex-1 rounded border px-2 py-1 text-sm focus:outline-none"
+                          autoFocus
+                        />
+                      ) : (
+                        <span className="truncate text-sm font-normal">
+                          {chat.title}
+                        </span>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <AnimatePresence>
+                          {searchQuery === "" && renamingChat !== chat.id && (
+                            <motion.span
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="text-text-muted/70 text-xs"
+                            >
+                              {new Date(chat.updatedAt).toLocaleDateString()}
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+
+                        {renamingChat !== chat.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleConversationMenu(chat.id);
+                            }}
+                            className="opacity-0 transition-opacity group-hover:opacity-100"
+                            data-conversation-menu
+                          >
+                            <MoreHorizontal
+                              size={14}
+                              className="text-text-muted"
+                            />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Conversation Menu */}
+                  <AnimatePresence>
+                    {conversationMenus[chat.id] && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        transition={{ duration: 0.15, ease: DYNAMIC_EASE }}
+                        className="border-border-subtle bg-surface-1/90 absolute top-full right-0 z-50 mt-1 w-40 rounded-lg border shadow-xl backdrop-blur-xl"
+                        data-conversation-menu
+                      >
+                        <button
+                          onClick={() => {
+                            setRenamingChat(chat.id);
+                            setRenameValue(chat.title);
+                            setConversationMenus({});
+                          }}
+                          className="text-text-muted hover:bg-surface-0 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg"
+                        >
+                          <Edit3 size={14} />
+                          Rename
+                        </button>
+                        <button
+                          onClick={() => void handleDeleteChat(chat.id)}
+                          className="text-brand-secondary hover:bg-brand-secondary/10 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors last:rounded-b-lg"
+                        >
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </AnimatePresence>
           </div>
         </div>
 
-        {/* Conversation History */}
-        <div className="flex-1 overflow-y-auto px-3 pb-4">
-          <AnimatePresence>
-            {filteredHistory.map((chat) => (
-              <div key={chat.id} className="relative">
-                <motion.div
-                  layout
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2, ease: DYNAMIC_EASE }}
-                  onClick={() => handleChatSelect(chat.id)}
-                  className={clsx(
-                    "group w-full cursor-pointer rounded-md p-2 text-left transition-colors duration-200",
-                    currentChatId === chat.id
-                      ? "bg-surface-1 text-text-primary"
-                      : "text-text-muted hover:bg-surface-1/60 hover:text-text-primary",
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    {renamingChat === chat.id ? (
-                      <input
-                        type="text"
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onBlur={() => {
-                          if (renameValue.trim()) {
-                            void handleRenameChat(chat.id, renameValue.trim());
-                          } else {
-                            setRenamingChat(null);
-                            setRenameValue("");
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && renameValue.trim()) {
-                            void handleRenameChat(chat.id, renameValue.trim());
-                          } else if (e.key === "Escape") {
-                            setRenamingChat(null);
-                            setRenameValue("");
-                          }
-                        }}
-                        className="border-brand-primary/50 bg-surface-0 text-text-primary flex-1 rounded border px-2 py-1 text-sm focus:outline-none"
-                        autoFocus
-                      />
-                    ) : (
-                      <span className="truncate text-sm font-normal">
-                        {chat.title}
-                      </span>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <AnimatePresence>
-                        {searchQuery === "" && renamingChat !== chat.id && (
-                          <motion.span
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="text-text-muted/70 text-xs"
-                          >
-                            {new Date(chat.updatedAt).toLocaleDateString()}
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
-
-                      {renamingChat !== chat.id && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleConversationMenu(chat.id);
-                          }}
-                          className="opacity-0 transition-opacity group-hover:opacity-100"
-                          data-conversation-menu
-                        >
-                          <MoreHorizontal
-                            size={14}
-                            className="text-text-muted"
-                          />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Conversation Menu */}
-                <AnimatePresence>
-                  {conversationMenus[chat.id] && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                      transition={{ duration: 0.15, ease: DYNAMIC_EASE }}
-                      className="border-border-subtle bg-surface-1/90 absolute top-full right-0 z-50 mt-1 w-40 rounded-lg border shadow-xl backdrop-blur-xl"
-                      data-conversation-menu
-                    >
-                      <button
-                        onClick={() => {
-                          setRenamingChat(chat.id);
-                          setRenameValue(chat.title);
-                          setConversationMenus({});
-                        }}
-                        className="text-text-muted hover:bg-surface-0 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg"
-                      >
-                        <Edit3 size={14} />
-                        Rename
-                      </button>
-                      <button
-                        onClick={() => void handleDeleteChat(chat.id)}
-                        className="text-brand-secondary hover:bg-brand-secondary/10 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors last:rounded-b-lg"
-                      >
-                        <Trash2 size={14} />
-                        Delete
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ))}
-          </AnimatePresence>
-        </div>
-
         {/* Footer */}
-        <div className="border-border-subtle border-t p-4">
+        <div className="mt-auto p-4">
           <button className="text-text-muted hover:bg-surface-1/60 hover:text-text-primary flex w-full items-center gap-3 rounded-md p-2 text-left text-sm transition-colors">
             <div className="bg-surface-1 h-8 w-8 rounded-full"></div>
             <div className="flex-1 truncate">Chat User</div>
             <MoreHorizontal size={16} />
           </button>
         </div>
-      </aside>
+      </motion.aside>
 
-      {/* Main Content */}
+      {/* Main Content with dynamic margin for sidebar */}
       <main
         data-chat-root
-        className="relative flex h-full min-w-0 flex-1 flex-col"
+        className={clsx(
+          "relative flex h-full min-w-0 flex-1 flex-col transition-[margin] duration-300 ease-in-out",
+          sidebarOpen ? "ml-72 lg:ml-80" : "ml-0",
+        )}
       >
         <AnimatePresence>
           {selectionMenu && (
@@ -1233,17 +1244,20 @@ Be helpful and engaging.`;
         {/* Top Bar */}
         <header
           data-fixed
-          className="border-border-subtle bg-surface-0/80 flex h-20 shrink-0 items-center justify-between border-b px-6 backdrop-blur-sm"
+          className="bg-surface-0/80 flex h-20 shrink-0 items-center justify-between px-6 backdrop-blur-sm"
         >
           <div className="flex items-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="mr-4 -ml-2"
-            >
-              <Sidebar size={20} />
-            </Button>
+            {!sidebarOpen && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(true)}
+                className="mr-4 -ml-2"
+                title="Expand Sidebar"
+              >
+                <Sidebar size={20} />
+              </Button>
+            )}
 
             <div className="flex items-center gap-3">
               <div className="bg-brand-utility h-2 w-2 animate-pulse rounded-full"></div>
@@ -1492,13 +1506,14 @@ Be helpful and engaging.`;
                   </div>
                   {isTyping ? (
                     <Button
-                      variant="secondary"
+                      variant="ghost"
                       size="icon"
                       onClick={handleStop}
-                      className="h-8 w-8 animate-pulse"
                       aria-label="Stop response generation"
+                      className="bg-surface-0 text-text-primary ring-border-subtle flex h-8 w-8 animate-pulse items-center justify-center rounded-full ring-1"
+                      style={{ animationDuration: "2.5s" }}
                     >
-                      <Square size={18} />
+                      <Square size={14} />
                     </Button>
                   ) : (
                     <Button
