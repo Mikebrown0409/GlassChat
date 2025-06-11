@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import { GlassContainer } from "@/components/ui/GlassContainer";
-import { syncManager } from "@/lib/sync";
-import { api } from "~/trpc/react";
 import { AIModel } from "@/lib/ai/types";
+import { syncManager } from "@/lib/sync";
+import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import { clsx } from "clsx";
+import React, { useEffect, useRef, useState } from "react";
+import { api } from "~/trpc/react";
 
 interface ChatInputProps {
   chatId: string;
@@ -159,14 +159,13 @@ Your goal is to provide responses that are immediately useful and easy to copy/u
             className={clsx(
               "flex items-center justify-center",
               "h-10 w-10 rounded-lg",
-              "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
-              "dark:bg-blue-600 dark:hover:bg-blue-700 dark:active:bg-blue-800",
+              "bg-accent-primary hover:bg-accent-primary/90 active:bg-accent-primary/80",
               "text-white",
               "transition-all duration-200",
               "disabled:cursor-not-allowed disabled:opacity-50",
-              "disabled:hover:bg-blue-500 dark:disabled:hover:bg-blue-600",
-              "shadow-lg shadow-blue-500/25",
-              "border border-blue-400/30",
+              "disabled:hover:bg-accent-primary",
+              "shadow-accent-primary/25 shadow-lg",
+              "border-accent-primary/30 border",
             )}
           >
             {isLoading ? (

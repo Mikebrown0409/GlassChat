@@ -73,8 +73,8 @@ const MessageBubble = React.memo(function MessageBubble({
               className={clsx(
                 "underline decoration-2 underline-offset-2",
                 isUser
-                  ? "text-blue-200 hover:text-blue-100"
-                  : "text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300",
+                  ? "text-accent-primary/80 hover:text-accent-primary"
+                  : "text-accent-secondary hover:text-accent-secondary/80",
               )}
               target="_blank"
               rel="noopener noreferrer"
@@ -132,7 +132,7 @@ const MessageBubble = React.memo(function MessageBubble({
               className={clsx(
                 "text-xs font-medium",
                 isUser
-                  ? "text-blue-100"
+                  ? "text-accent-primary/90"
                   : isSystem
                     ? "text-yellow-800 dark:text-yellow-200"
                     : "text-gray-500 dark:text-gray-400",
@@ -148,7 +148,7 @@ const MessageBubble = React.memo(function MessageBubble({
               className={clsx(
                 "text-xs",
                 isUser
-                  ? "text-blue-200"
+                  ? "text-accent-primary/60"
                   : isSystem
                     ? "text-yellow-700 dark:text-yellow-300"
                     : "text-gray-400 dark:text-gray-500",
@@ -183,14 +183,14 @@ const MessageBubble = React.memo(function MessageBubble({
                   "h-2 w-2 rounded-full",
                   message.syncStatus === SyncStatus.PENDING && "bg-yellow-400",
                   message.syncStatus === SyncStatus.SYNCING &&
-                    "animate-pulse bg-blue-400",
+                    "bg-accent-primary animate-pulse",
                   message.syncStatus === SyncStatus.ERROR && "bg-red-400",
                 )}
               />
               <span
                 className={clsx(
                   "text-xs",
-                  isUser ? "text-blue-200" : "text-gray-400 dark:text-gray-500",
+                  isUser ? "text-accent-primary/60" : "text-text-muted",
                 )}
               >
                 {message.syncStatus.toLowerCase()}
