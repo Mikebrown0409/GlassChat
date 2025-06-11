@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "./theme-brand.css";
+@import "./theme-notion.css";
 
 @source "src/**/*.{js,ts,jsx,tsx,mdx}";
 
@@ -7,70 +7,6 @@
   --font-sans:
     var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-}
-
-/* Glassmorphism Animations */
-@keyframes gradient-shift {
-  0%,
-  100% {
-    transform: translateX(0) translateY(0) rotate(0deg);
-  }
-  25% {
-    transform: translateX(5px) translateY(-5px) rotate(1deg);
-  }
-  50% {
-    transform: translateX(-3px) translateY(3px) rotate(-0.5deg);
-  }
-  75% {
-    transform: translateX(2px) translateY(-2px) rotate(0.5deg);
-  }
-}
-
-@keyframes glass-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes glass-glow {
-  0%,
-  100% {
-    filter: brightness(1) blur(0px);
-  }
-  50% {
-    filter: brightness(1.1) blur(0.5px);
-  }
-}
-
-@keyframes backdrop-pulse {
-  0%,
-  100% {
-    backdrop-filter: blur(10px);
-  }
-  50% {
-    backdrop-filter: blur(15px);
-  }
-}
-
-/* Animation classes */
-.animate-gradient-shift {
-  animation: gradient-shift 20s ease-in-out infinite;
-}
-
-.animate-glass-float {
-  animation: glass-float 6s ease-in-out infinite;
-}
-
-.animate-glass-glow {
-  animation: glass-glow 4s ease-in-out infinite;
-}
-
-.animate-backdrop-pulse {
-  animation: backdrop-pulse 3s ease-in-out infinite;
 }
 
 /* Firefox fallback for backdrop-filter */
@@ -181,8 +117,38 @@ main[data-chat-root] {
   max-width: 18rem;
 }
 
-/* Dark theme background */
+/* Radial background + subtle grid texture */
 body {
-  background-color: var(--surface-0);
   color: var(--text-primary);
+  background:
+    radial-gradient(
+      circle at 25% 15%,
+      var(--surface-1) 0%,
+      var(--surface-0) 100%
+    ),
+    var(--surface-0);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+/* Grid overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  z-index: -1;
+  transition: opacity 0.3s ease;
+}
+
+.dark body::before {
+  opacity: 0.5;
+  background-image:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 }

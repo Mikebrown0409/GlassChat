@@ -15,22 +15,31 @@ export default {
         surface: {
           0: "var(--surface-0)",
           1: "var(--surface-1)",
+          2: "var(--surface-2)",
+          3: "var(--surface-3)",
         },
         text: {
           primary: "var(--text-primary)",
           muted: "var(--text-muted)",
+          secondary: "var(--text-secondary)",
+          placeholder: "var(--text-placeholder)",
         },
         border: {
           subtle: "var(--border-subtle)",
         },
         accent: {
-          primary: "hsl(var(--accent-primary))",
-          secondary: "hsl(var(--accent-secondary))",
+          100: "hsl(var(--accent-100))",
+          200: "hsl(var(--accent-200))",
+          500: "hsl(var(--accent-500))",
         },
       },
       backgroundImage: {
         "gradient-brand":
           "linear-gradient(135deg,hsl(var(--accent-primary)) 0%,hsl(var(--accent-secondary)) 100%)",
+      },
+      boxShadow: {
+        message: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "message-dark": "0 1px 2px 0 rgb(0 0 0 / 0.2)",
       },
       container: {
         padding: {

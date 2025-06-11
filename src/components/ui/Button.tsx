@@ -19,8 +19,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       primary:
         "bg-gradient-brand text-white hover:brightness-110 active:scale-[.98]",
       secondary:
-        "bg-surface-1 text-text-primary hover:bg-surface-0 active:scale-[.98]",
-      ghost: "hover:bg-surface-1/60 text-text-primary active:scale-[.98]",
+        "bg-surface-1 text-primary hover:bg-surface-0 active:scale-[.98]",
+      ghost: "hover:bg-surface-1/60 text-primary active:scale-[.98]",
     };
 
     const sizes: Record<string, string> = {

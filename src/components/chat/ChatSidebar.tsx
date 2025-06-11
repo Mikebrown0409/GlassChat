@@ -61,7 +61,7 @@ function ChatItem({ chat, isActive, onSelect, onDelete }: ChatItemProps) {
       >
         <div onClick={onSelect} className="flex items-start gap-3">
           <div className="mt-0.5 flex-shrink-0">
-            <ChatBubbleLeftIcon className="text-text-muted h-4 w-4" />
+            <ChatBubbleLeftIcon className="text-muted h-4 w-4" />
           </div>
 
           <div className="min-w-0 flex-1">
@@ -69,7 +69,7 @@ function ChatItem({ chat, isActive, onSelect, onDelete }: ChatItemProps) {
               <h3
                 className={clsx(
                   "truncate text-sm font-medium",
-                  isActive ? "text-accent-primary" : "text-text-primary",
+                  isActive ? "text-accent-primary" : "text-primary",
                 )}
                 title={chat.title}
               >
@@ -92,7 +92,7 @@ function ChatItem({ chat, isActive, onSelect, onDelete }: ChatItemProps) {
             </div>
 
             <div className="mt-1 flex items-center justify-between">
-              <span className="text-text-muted text-xs">
+              <span className="text-muted text-xs">
                 {formatDate(chat.updatedAt)}
               </span>
 
@@ -173,7 +173,7 @@ export function ChatSidebar({
       {/* Header */}
       <div className="border-border-subtle border-b p-4">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-text-primary text-lg font-semibold">Chats</h2>
+          <h2 className="text-primary text-lg font-semibold">Chats</h2>
 
           <button
             onClick={handleNewChat}

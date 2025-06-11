@@ -1,7 +1,8 @@
 "use client";
 
+import BeamLoader from "@/components/ui/BeamLoader";
 import { AnimatePresence, motion } from "framer-motion";
-import { Brain, FileText, Loader, X } from "lucide-react";
+import { Brain, FileText, X } from "lucide-react";
 import type { useMemory } from "~/lib/memory/hooks";
 
 interface MemoryPanelProps {
@@ -30,10 +31,10 @@ export function MemoryPanel({
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="absolute top-0 right-0 h-full w-96 border-l border-slate-800 bg-slate-900/95 shadow-2xl backdrop-blur-md"
+          className="bg-gradient-brand absolute top-0 right-0 h-full w-96 p-[2px] shadow-2xl"
         >
-          <div className="flex h-full flex-col">
-            <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-800 px-4">
+          <div className="flex h-full flex-col rounded-lg bg-slate-900/95 backdrop-blur-md">
+            <header className="bg-gradient-brand flex h-16 shrink-0 items-center justify-between border-b border-transparent px-4 shadow-md">
               <div className="flex items-center gap-3">
                 <Brain className="text-slate-400" />
                 <h2 className="text-lg font-semibold text-white">
@@ -58,7 +59,7 @@ export function MemoryPanel({
                   <div className="rounded-lg border border-slate-800 bg-slate-800/50 p-4">
                     {isSummarizing ? (
                       <div className="flex items-center gap-2 text-slate-400">
-                        <Loader className="h-4 w-4 animate-spin" />
+                        <BeamLoader size={16} />
                         <span>Generating...</span>
                       </div>
                     ) : summary ? (

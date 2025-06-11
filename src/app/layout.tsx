@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 
 import { ThemeProvider } from "~/components/ui/ThemeProvider";
+import { ThemeSwitcher } from "~/components/ui/ThemeSwitcher";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
@@ -22,8 +23,34 @@ export default function RootLayout({
       className={`${GeistSans.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const storedTheme = localStorage.getItem('glasschat-theme');
+                const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                const theme = storedTheme || systemTheme;
+                
+                if (theme === 'dark') {
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                  document.documentElement.setAttribute('data-theme', 'light');
+                }
+              } catch (e) {
+                console.error('Failed to initialize theme:', e);
+              }
+            `,
+          }}
+        />
+      </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
-        <ThemeProvider>
+        <ThemeProvider storageKey="glasschat-theme">
+          <div className="absolute top-4 right-4">
+            <ThemeSwitcher />
+          </div>
           <TRPCReactProvider>{children}</TRPCReactProvider>
         </ThemeProvider>
       </body>

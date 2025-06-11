@@ -1,568 +1,39 @@
 "use client";
 
+import BeamLoader from "@/components/ui/BeamLoader";
 import { clsx } from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowUp,
   Brain,
-  Check,
   ChevronLeft,
-  Code,
-  Copy,
   Edit3,
-  ExternalLink,
-  Languages,
   MoreHorizontal,
   Plus,
   Search,
   Sidebar,
-  Sparkles,
   Square,
   Trash2,
   Users,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import ReactMarkdown from "react-markdown";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "~/components/ui/Button";
 import { AIModel } from "~/lib/ai/types";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 import { api } from "~/trpc/react";
 
+import { ThemeSwitcher } from "../ui/ThemeSwitcher";
+import { MessageDisplay } from "./MessageDisplay";
+import { TextSelectionMenu } from "./TextSelectionMenu";
+
 interface ChatInterfaceProps {
   className?: string;
 }
 
-// Message type definition for proper typing
-interface Message {
-  id: string;
-  role: "user" | "assistant" | "system";
-  content: string;
-  createdAt: number;
-  updatedAt?: number;
-}
-
 // Professional easing curve for all animations
 const DYNAMIC_EASE = [0.22, 1, 0.36, 1];
-
-// --- TextSelectionMenu Component Definition ---
-interface TextSelectionMenuProps {
-  position: { top: number; left: number };
-  onCopy: () => void;
-  onExplain: () => void;
-  onTranslate: () => void;
-}
-
-const TextSelectionMenu = ({
-  position,
-  onCopy,
-  onExplain,
-  onTranslate,
-}: TextSelectionMenuProps) => {
-  const [copied, setCopied] = useState(false);
-  const [explained, setExplained] = useState(false);
-  const [translated, setTranslated] = useState(false);
-
-  const handleCopy = () => {
-    onCopy();
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleExplain = () => {
-    onExplain();
-    setExplained(true);
-    setTimeout(() => setExplained(false), 2000);
-  };
-
-  const handleTranslate = () => {
-    onTranslate();
-    setTranslated(true);
-    setTimeout(() => setTranslated(false), 2000);
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9, y: 5 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: 5 }}
-      transition={{ duration: 0.15, ease: DYNAMIC_EASE }}
-      className="border-border-subtle bg-surface-1/90 absolute z-50 flex items-center gap-1 rounded-lg border p-1.5 shadow-2xl backdrop-blur-sm"
-      style={{ top: position.top, left: position.left }}
-      data-selection-menu
-      onMouseDown={(e) => e.stopPropagation()} // Prevent selection clearing
-      onMouseUp={(e) => e.stopPropagation()} // Prevent menu from disappearing when clicking it
-      onClick={(e) => e.stopPropagation()} // Prevent event bubbling
-    >
-      <button
-        onClick={handleCopy}
-        className="group text-text-muted hover:bg-surface-0 hover:text-text-primary relative rounded-md p-2 transition-all duration-200 hover:scale-105"
-        title="Copy selected text"
-        aria-label="Copy selected text"
-      >
-        {copied ? (
-          <Check size={14} className="text-brand-utility" />
-        ) : (
-          <Copy size={14} />
-        )}
-        <span className="bg-surface-0 text-text-primary pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 -translate-y-1 transform rounded px-2 py-1 text-xs whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          {copied ? "Copied!" : "Copy"}
-        </span>
-      </button>
-      <div className="bg-border-subtle h-5 w-[1px]" />
-      <button
-        onClick={handleExplain}
-        className="group text-text-muted hover:bg-surface-0 hover:text-text-primary relative rounded-md p-2 transition-all duration-200 hover:scale-105"
-        title="Ask AI to explain this text"
-        aria-label="Ask AI to explain this text"
-      >
-        {explained ? (
-          <Check size={14} className="text-brand-utility" />
-        ) : (
-          <Sparkles size={14} />
-        )}
-        <span className="bg-surface-0 text-text-primary pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 -translate-y-1 transform rounded px-2 py-1 text-xs whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          {explained ? "Added to input!" : "Explain"}
-        </span>
-      </button>
-      <button
-        onClick={handleTranslate}
-        className="group text-text-muted hover:bg-surface-0 hover:text-text-primary relative rounded-md p-2 transition-all duration-200 hover:scale-105"
-        title="Ask AI to translate this text"
-        aria-label="Ask AI to translate this text"
-      >
-        {translated ? (
-          <Check size={14} className="text-brand-utility" />
-        ) : (
-          <Languages size={14} />
-        )}
-        <span className="bg-surface-0 text-text-primary pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 -translate-y-1 transform rounded px-2 py-1 text-xs whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          {translated ? "Added to input!" : "Translate"}
-        </span>
-      </button>
-    </motion.div>
-  );
-};
-// -----------------------------------------
-
-// Enhanced CodeBlock component with copy functionality
-const CodeBlock = ({
-  children,
-  className,
-  language,
-}: {
-  children: string;
-  className?: string;
-  language?: string;
-}) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      console.log("Copy button clicked, text to copy:", children);
-
-      // Ensure document is focused
-      window.focus();
-      document.body.focus();
-
-      // Try modern clipboard API first
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard
-          .writeText(children)
-          .then(() => {
-            console.log("Clipboard copy successful");
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          })
-          .catch((err) => {
-            console.error("Clipboard copy failed:", err);
-            fallbackCopy(children);
-          });
-      } else {
-        console.log("Using fallback copy method");
-        fallbackCopy(children);
-      }
-    },
-    [children],
-  );
-
-  const fallbackCopy = (text: string) => {
-    console.log("Executing fallback copy for:", text);
-    try {
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      textArea.style.position = "fixed";
-      textArea.style.left = "-9999px";
-      textArea.style.top = "-9999px";
-      textArea.style.opacity = "0";
-      textArea.style.pointerEvents = "none";
-      textArea.setAttribute("readonly", "");
-      textArea.setAttribute("aria-hidden", "true");
-
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      textArea.setSelectionRange(0, text.length);
-
-      const result = document.execCommand("copy");
-      document.body.removeChild(textArea);
-
-      if (result) {
-        console.log("Fallback copy successful");
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } else {
-        console.error("Fallback copy failed");
-        alert("Copy failed. Please try selecting and copying manually.");
-      }
-    } catch (err) {
-      console.error("Fallback copy error:", err);
-      alert("Copy failed. Please try selecting and copying manually.");
-    }
-  };
-
-  // Extract language from className (format: language-javascript)
-  const detectedLanguage =
-    className?.replace("language-", "") ?? language ?? "text";
-
-  return (
-    <div className="group relative my-4">
-      <div className="border-border-subtle bg-surface-1 flex items-center justify-between rounded-t-lg border-b px-4 py-2">
-        <span className="text-text-muted flex items-center gap-2 text-xs font-medium">
-          <Code size={12} />
-          {detectedLanguage}
-        </span>
-        <button
-          onClick={handleCopy}
-          onMouseDown={(e) => e.preventDefault()} // Prevent focus issues
-          type="button"
-          className="text-text-muted hover:border-border-subtle hover:bg-surface-0 hover:text-text-primary flex items-center gap-1 rounded border border-transparent px-3 py-1.5 text-xs transition-all"
-        >
-          {copied ? (
-            <>
-              <Check size={12} className="text-brand-utility" />
-              <span className="text-brand-utility font-medium">Copied!</span>
-            </>
-          ) : (
-            <>
-              <Copy size={12} />
-              <span>Copy</span>
-            </>
-          )}
-        </button>
-      </div>
-      <pre className="bg-surface-0 overflow-x-auto rounded-b-lg p-4">
-        <code className={clsx("font-mono text-sm", className)}>{children}</code>
-      </pre>
-    </div>
-  );
-};
-
-// Enhanced Message Display Component with Text Selection
-const MessageDisplay = React.memo(
-  function MessageDisplay({
-    message,
-    onTextSelect,
-  }: {
-    message: Message;
-    onTextSelect?: (
-      text: string,
-      position: { top: number; left: number },
-    ) => void;
-  }) {
-    const isUser = message.role === "user";
-    const isSystem = message.role === "system";
-    const [displayedContent, setDisplayedContent] = useState("");
-
-    // Handle typing animation for assistant messages
-    useEffect(() => {
-      if (message.role === "assistant") {
-        const isRecentMessage = Date.now() - message.createdAt < 10000;
-
-        if (!isRecentMessage) {
-          setDisplayedContent(message.content);
-          return;
-        }
-
-        // Check if there's already a text selection anywhere on the page
-        if (typeof window !== "undefined") {
-          const hasInitialSelection = window.getSelection()?.toString().trim();
-          if (hasInitialSelection) {
-            // Skip animation entirely if user already has text selected
-            setDisplayedContent(message.content);
-            return;
-          }
-        }
-
-        // Typing animation for new messages
-        let currentIndex = 0;
-        setDisplayedContent("");
-        // Speed up animation for long messages
-        const speed = message.content.length > 500 ? 5 : 20;
-
-        const intervalId = setInterval(() => {
-          // Constantly check if user has started selecting text
-          if (typeof window !== "undefined") {
-            const hasSelection = window.getSelection()?.toString().trim();
-            if (hasSelection) {
-              clearInterval(intervalId);
-              setDisplayedContent(message.content); // Show full content immediately
-              return;
-            }
-          }
-
-          if (currentIndex < message.content.length) {
-            setDisplayedContent(message.content.slice(0, currentIndex + 1));
-            currentIndex++;
-          } else {
-            clearInterval(intervalId);
-          }
-        }, speed);
-
-        return () => clearInterval(intervalId);
-      } else {
-        setDisplayedContent(message.content);
-        return;
-      }
-    }, [message.content, message.createdAt, message.role]);
-
-    // Handle text selection
-    const handleMouseUp = (e: React.MouseEvent) => {
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
-
-      // Immediate selection detection - no delay needed
-      const selection = window.getSelection();
-      const selectionText = selection?.toString().trim();
-
-      if (selectionText && onTextSelect) {
-        // Position menu near the mouse cursor
-        const top = mouseY + window.scrollY + 10;
-        let left = mouseX + window.scrollX - 100;
-
-        // Ensure menu stays within viewport
-        const menuWidth = 200;
-        const viewportWidth = window.innerWidth;
-
-        if (left + menuWidth > viewportWidth - 20) {
-          left = viewportWidth - menuWidth - 20;
-        }
-        if (left < 20) {
-          left = 20;
-        }
-
-        onTextSelect(selectionText, { top, left });
-      }
-    };
-
-    return (
-      <div className="space-y-2">
-        <div
-          className={clsx(
-            "group-hover:border-border-subtle max-w-prose rounded-lg border p-4 transition-colors select-text",
-            isUser
-              ? "border-border-subtle bg-surface-1 text-text-primary"
-              : isSystem
-                ? "border-brand-secondary/40 bg-brand-secondary/10 text-brand-secondary"
-                : "bg-surface-0 text-text-muted border-transparent",
-          )}
-          onMouseUp={handleMouseUp}
-        >
-          {isUser || isSystem ? (
-            <p className="text-sm leading-relaxed">{message.content}</p>
-          ) : (
-            <div
-              className="prose prose-sm prose-invert prose-headings:text-text-primary prose-p:text-text-muted prose-code:text-text-primary prose-pre:bg-surface-0 prose-blockquote:border-brand-primary prose-strong:text-text-primary prose-em:text-text-muted max-w-none select-text"
-              onMouseUp={handleMouseUp}
-            >
-              <ReactMarkdown
-                components={{
-                  code: ({
-                    children,
-                    className,
-                  }: {
-                    children?: React.ReactNode;
-                    className?: string;
-                  }) => {
-                    const isInlineCode = !className;
-
-                    // Safely convert ReactNode to string - simplified approach
-                    const getCodeContent = (node: React.ReactNode): string => {
-                      if (typeof node === "string") return node;
-                      if (typeof node === "number") return String(node);
-                      if (typeof node === "boolean") return String(node);
-                      if (node === null || node === undefined) return "";
-                      if (Array.isArray(node)) {
-                        return node
-                          .map((child: React.ReactNode) =>
-                            getCodeContent(child),
-                          )
-                          .join("");
-                      }
-                      // For React elements, just return empty string to avoid unsafe operations
-                      return "";
-                    };
-
-                    const codeString = getCodeContent(children).replace(
-                      /\n$/,
-                      "",
-                    );
-
-                    if (isInlineCode) {
-                      return (
-                        <code className="bg-surface-1 text-text-primary rounded px-1.5 py-0.5 font-mono text-sm">
-                          {codeString}
-                        </code>
-                      );
-                    }
-
-                    return (
-                      <CodeBlock
-                        className={className}
-                        language={className?.replace("language-", "")}
-                      >
-                        {codeString}
-                      </CodeBlock>
-                    );
-                  },
-                  pre: ({ children }: { children?: React.ReactNode }) => (
-                    <>{children}</>
-                  ), // Let CodeBlock handle the pre tag
-                  h1: ({ children }: { children?: React.ReactNode }) => (
-                    <h1 className="border-border-subtle text-text-primary mt-6 mb-4 border-b pb-2 text-xl font-bold">
-                      {children}
-                    </h1>
-                  ),
-                  h2: ({ children }: { children?: React.ReactNode }) => (
-                    <h2 className="text-text-primary mt-5 mb-3 text-lg font-semibold">
-                      {children}
-                    </h2>
-                  ),
-                  h3: ({ children }: { children?: React.ReactNode }) => (
-                    <h3 className="text-text-primary mt-4 mb-2 text-base font-medium">
-                      {children}
-                    </h3>
-                  ),
-                  p: ({ children }: { children?: React.ReactNode }) => (
-                    <p className="text-text-muted mb-4 leading-relaxed">
-                      {children}
-                    </p>
-                  ),
-                  ul: ({ children }: { children?: React.ReactNode }) => (
-                    <ul className="text-text-muted mb-4 ml-4 list-outside list-disc space-y-2">
-                      {children}
-                    </ul>
-                  ),
-                  ol: ({ children }: { children?: React.ReactNode }) => (
-                    <ol className="text-text-muted mb-4 ml-4 list-outside list-decimal space-y-2">
-                      {children}
-                    </ol>
-                  ),
-                  li: ({ children, ...props }: React.ComponentProps<"li">) => (
-                    <li className="text-text-muted" {...props}>
-                      {children}
-                    </li>
-                  ),
-                  blockquote: ({
-                    children,
-                  }: {
-                    children?: React.ReactNode;
-                  }) => (
-                    <blockquote className="border-brand-primary bg-surface-1/50 text-text-muted my-4 rounded-r-lg border-l-4 py-2 pl-4 italic">
-                      {children}
-                    </blockquote>
-                  ),
-                  a: ({
-                    children,
-                    href,
-                  }: {
-                    children?: React.ReactNode;
-                    href?: string;
-                  }) => (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-brand-primary hover:text-brand-primary/80 inline-flex items-center gap-1 underline transition-colors"
-                    >
-                      {children}
-                      <ExternalLink size={12} />
-                    </a>
-                  ),
-                  table: ({ children }: { children?: React.ReactNode }) => (
-                    <div className="my-4 overflow-x-auto">
-                      <table className="border-border-subtle min-w-full rounded-lg border">
-                        {children}
-                      </table>
-                    </div>
-                  ),
-                  thead: ({ children }: { children?: React.ReactNode }) => (
-                    <thead className="bg-surface-1">{children}</thead>
-                  ),
-                  tbody: ({ children }: { children?: React.ReactNode }) => (
-                    <tbody className="bg-surface-0/50">{children}</tbody>
-                  ),
-                  tr: ({ children }: { children?: React.ReactNode }) => (
-                    <tr className="border-border-subtle border-b">
-                      {children}
-                    </tr>
-                  ),
-                  th: ({ children }: { children?: React.ReactNode }) => (
-                    <th className="text-text-primary px-4 py-2 text-left font-semibold">
-                      {children}
-                    </th>
-                  ),
-                  td: ({ children }: { children?: React.ReactNode }) => (
-                    <td className="text-text-muted px-4 py-2">{children}</td>
-                  ),
-                  hr: () => <hr className="border-border-subtle my-6" />,
-                  strong: ({ children }: { children?: React.ReactNode }) => (
-                    <strong className="text-text-primary font-semibold">
-                      {children}
-                    </strong>
-                  ),
-                  em: ({ children }: { children?: React.ReactNode }) => (
-                    <em className="text-text-muted italic">{children}</em>
-                  ),
-                }}
-              >
-                {displayedContent}
-              </ReactMarkdown>
-            </div>
-          )}
-        </div>
-        <div className="text-text-muted flex items-center justify-end gap-2 pt-1 pl-1 text-xs">
-          <span>
-            {new Date(message.createdAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        </div>
-      </div>
-    );
-  },
-  (prevProps, nextProps) => {
-    // This custom comparison function is the key to preventing re-renders.
-    // It only re-renders if the message content or update timestamp changes.
-    return (
-      prevProps.message.id === nextProps.message.id &&
-      prevProps.message.content === nextProps.message.content &&
-      prevProps.message.updatedAt === nextProps.message.updatedAt
-    );
-  },
-);
-MessageDisplay.displayName = "MessageDisplay"; // For easier debugging in React DevTools
 
 // Lazy-load heavy panels to reduce initial JS bundle
 const CollaborationPanel = dynamic(
@@ -1010,18 +481,18 @@ Be helpful and engaging.`;
   }, []);
 
   return (
-    <div className="bg-surface-0 text-text-primary fixed inset-0 flex h-screen w-screen overflow-hidden font-sans">
+    <div className="bg-surface-0 text-primary fixed inset-0 flex h-screen w-screen overflow-hidden font-sans">
       {/* Sidebar as sliding overlay */}
       <motion.aside
         initial={{ x: "-100%" }}
         animate={{ x: sidebarOpen ? 0 : "-100%" }}
         transition={{ ease: DYNAMIC_EASE, duration: 0.3 }}
-        className="border-border-subtle bg-surface-0/70 fixed top-0 bottom-0 left-0 z-20 flex w-72 flex-col border-r backdrop-blur-lg lg:w-80"
+        className="border-border-subtle bg-surface-0/70 glass-effect fixed top-0 bottom-0 left-0 z-20 flex w-72 flex-col border-r backdrop-blur-lg lg:w-80"
       >
         {/* Header */}
         <div className="border-border-subtle flex h-20 shrink-0 items-center justify-between border-b p-4">
           <div className="flex items-center gap-3">
-            <div className="border-border-subtle bg-surface-1 flex h-8 w-8 items-center justify-center rounded-lg border">
+            <div className="border-border-subtle bg-surface-1 flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-200 hover:scale-105">
               <svg
                 width="16"
                 height="16"
@@ -1031,7 +502,7 @@ Be helpful and engaging.`;
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-text-muted"
+                className="text-muted transition-colors duration-200"
               >
                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
                 <path d="M2 17l10 5 10-5" />
@@ -1039,10 +510,10 @@ Be helpful and engaging.`;
               </svg>
             </div>
             <div>
-              <h1 className="text-text-primary text-base font-semibold">
+              <h1 className="text-primary text-base font-semibold transition-colors duration-200">
                 GlassChat
               </h1>
-              <p className="text-text-muted text-sm">
+              <p className="text-muted text-sm transition-colors duration-200">
                 Conversational Intelligence
               </p>
             </div>
@@ -1052,6 +523,7 @@ Be helpful and engaging.`;
             size="icon"
             onClick={() => setSidebarOpen(false)}
             title="Collapse Sidebar"
+            className="button-hover"
           >
             <ChevronLeft size={18} />
           </Button>
@@ -1073,13 +545,13 @@ Be helpful and engaging.`;
           </div>
           <div className="px-3 pb-2">
             <div className="relative">
-              <Search className="text-text-muted absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+              <Search className="text-muted absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-border-subtle bg-surface-1 text-text-primary placeholder-text-muted focus:border-brand-primary/50 focus:bg-surface-1 focus:ring-brand-primary/20 w-full rounded-lg border py-2 pr-3 pl-9 text-sm transition-colors focus:ring-2 focus:outline-none"
+                className="border-border-subtle bg-surface-1 text-primary placeholder:text-muted focus:border-brand-primary/50 focus:bg-surface-1 focus:ring-brand-primary/20 w-full rounded-lg border py-2 pr-3 pl-9 text-sm transition-colors focus:ring-2 focus:outline-none"
               />
             </div>
           </div>
@@ -1099,8 +571,8 @@ Be helpful and engaging.`;
                     className={clsx(
                       "group w-full cursor-pointer rounded-md p-2 text-left transition-colors duration-200",
                       currentChatId === chat.id
-                        ? "bg-surface-1 text-text-primary"
-                        : "text-text-muted hover:bg-surface-1/60 hover:text-text-primary",
+                        ? "bg-surface-1 text-primary"
+                        : "text-muted hover:bg-surface-1/60 hover:text-primary",
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -1131,7 +603,7 @@ Be helpful and engaging.`;
                               setRenameValue("");
                             }
                           }}
-                          className="border-brand-primary/50 bg-surface-0 text-text-primary flex-1 rounded border px-2 py-1 text-sm focus:outline-none"
+                          className="border-brand-primary/50 bg-surface-0 text-primary flex-1 rounded border px-2 py-1 text-sm focus:outline-none"
                           autoFocus
                         />
                       ) : (
@@ -1147,7 +619,7 @@ Be helpful and engaging.`;
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
-                              className="text-text-muted/70 text-xs"
+                              className="text-muted/70 text-xs"
                             >
                               {new Date(chat.updatedAt).toLocaleDateString()}
                             </motion.span>
@@ -1165,10 +637,7 @@ Be helpful and engaging.`;
                             className="opacity-0 transition-opacity group-hover:opacity-100"
                             data-conversation-menu
                           >
-                            <MoreHorizontal
-                              size={14}
-                              className="text-text-muted"
-                            />
+                            <MoreHorizontal size={14} className="text-muted" />
                           </Button>
                         )}
                       </div>
@@ -1192,7 +661,7 @@ Be helpful and engaging.`;
                             setRenameValue(chat.title);
                             setConversationMenus({});
                           }}
-                          className="text-text-muted hover:bg-surface-0 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg"
+                          className="text-muted hover:bg-surface-0 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg"
                         >
                           <Edit3 size={14} />
                           Rename
@@ -1215,7 +684,7 @@ Be helpful and engaging.`;
 
         {/* Footer */}
         <div className="mt-auto p-4">
-          <button className="text-text-muted hover:bg-surface-1/60 hover:text-text-primary flex w-full items-center gap-3 rounded-md p-2 text-left text-sm transition-colors">
+          <button className="text-muted hover:bg-surface-1/60 hover:text-primary flex w-full items-center gap-3 rounded-md p-2 text-left text-sm transition-colors">
             <div className="bg-surface-1 h-8 w-8 rounded-full"></div>
             <div className="flex-1 truncate">Chat User</div>
             <MoreHorizontal size={16} />
@@ -1244,7 +713,7 @@ Be helpful and engaging.`;
         {/* Top Bar */}
         <header
           data-fixed
-          className="bg-surface-0/80 flex h-20 shrink-0 items-center justify-between px-6 backdrop-blur-sm"
+          className="bg-surface-0/80 flex h-20 shrink-0 items-center justify-between px-6 backdrop-blur-sm transition-colors duration-200"
         >
           <div className="flex items-center">
             {!sidebarOpen && (
@@ -1261,13 +730,12 @@ Be helpful and engaging.`;
 
             <div className="flex items-center gap-3">
               <div className="bg-brand-utility h-2 w-2 animate-pulse rounded-full"></div>
-              <span className="text-text-primary text-sm">
-                Voice AI Assistant
-              </span>
+              <span className="text-primary text-sm">Voice AI Assistant</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeSwitcher />
             <Button
               variant="ghost"
               size="icon"
@@ -1289,8 +757,18 @@ Be helpful and engaging.`;
         {/* Messages Area */}
         <div className="chat-viewport glass-scrollbar">
           {messages.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-              <div className="border-border-subtle bg-surface-1 mb-4 flex h-12 w-12 items-center justify-center rounded-lg border">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: DYNAMIC_EASE }}
+              className="flex h-full flex-col items-center justify-center p-8 text-center"
+            >
+              <motion.div
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
+                className="border-border-subtle bg-surface-1 mb-4 flex h-12 w-12 items-center justify-center rounded-lg border transition-all duration-200 hover:scale-105"
+              >
                 <svg
                   width="24"
                   height="24"
@@ -1298,20 +776,30 @@ Be helpful and engaging.`;
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.5"
-                  className="text-text-muted"
+                  className="text-muted transition-colors duration-200"
                 >
                   <path d="M12 2L2 7l10 5 10-5-10-5z" />
                   <path d="M2 17l10 5 10-5" />
                   <path d="M2 12l10 5 10-5" />
                 </svg>
-              </div>
-              <h2 className="text-text-primary mb-1 text-xl font-semibold">
+              </motion.div>
+              <motion.h2
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1, ease: DYNAMIC_EASE }}
+                className="text-primary mb-1 text-xl font-semibold transition-colors duration-200"
+              >
                 How can I help you today?
-              </h2>
-              <p className="text-text-muted mx-auto mb-8 max-w-sm">
+              </motion.h2>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2, ease: DYNAMIC_EASE }}
+                className="text-muted mx-auto mb-8 max-w-sm transition-colors duration-200"
+              >
                 Ask me anything about voice AI, speech-to-text, or audio
                 intelligence implementation.
-              </p>
+              </motion.p>
 
               {/* Suggestion Chips */}
               <div className="flex flex-wrap items-center justify-center gap-2">
@@ -1330,13 +818,13 @@ Be helpful and engaging.`;
                     }}
                     whileHover={{ y: -2, transition: { ease: DYNAMIC_EASE } }}
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className="border-border-subtle bg-surface-1/60 text-text-muted hover:border-border-subtle hover:bg-surface-1 rounded-full border px-4 py-2 text-sm transition-colors"
+                    className="border-border-subtle bg-surface-1/60 text-muted hover:border-border-subtle hover:bg-surface-1 rounded-full border px-4 py-2 text-sm transition-colors"
                   >
                     {suggestion}
                   </motion.button>
                 ))}
               </div>
-            </div>
+            </motion.div>
           ) : (
             <div className="mx-auto max-w-4xl space-y-8 p-6">
               <AnimatePresence mode="popLayout">
@@ -1355,12 +843,12 @@ Be helpful and engaging.`;
                   >
                     <div
                       className={clsx(
-                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-200",
                         message.role === "user"
-                          ? "bg-surface-1 text-text-muted"
+                          ? "bg-surface-2 text-secondary"
                           : message.role === "system"
-                            ? "bg-brand-secondary/20 text-brand-secondary"
-                            : "bg-surface-1 text-text-muted",
+                            ? "bg-accent-100 text-accent-500"
+                            : "bg-surface-1 text-secondary",
                       )}
                     >
                       {message.role === "user"
@@ -1369,14 +857,29 @@ Be helpful and engaging.`;
                           ? "!"
                           : "AI"}
                     </div>
-                    <div className="space-y-2">
+                    <div
+                      className={clsx(
+                        "flex max-w-[85%] flex-col gap-1",
+                        message.role === "user" ? "items-end" : "items-start",
+                      )}
+                    >
                       <MessageDisplay
                         message={message}
                         onTextSelect={(text, position) => {
-                          // Set menu immediately when selection is detected
                           setSelectionMenu({ position, text });
                         }}
                       />
+                      <span
+                        className={clsx(
+                          "text-muted text-xs",
+                          message.role === "user" ? "text-right" : "text-left",
+                        )}
+                      >
+                        {new Date(message.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
                     </div>
                   </motion.div>
                 ))}
@@ -1393,25 +896,14 @@ Be helpful and engaging.`;
                     className="flex items-center gap-4"
                   >
                     <div className="bg-surface-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-                      <motion.div
-                        className="bg-text-muted h-1.5 w-1.5 rounded-full"
-                        animate={{
-                          scale: [1, 1.25, 1],
-                          opacity: [0.7, 1, 0.7],
-                        }}
-                        transition={{
-                          duration: 1,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                      />
+                      <BeamLoader size={18} />
                     </div>
                     <div className="border-border-subtle bg-surface-0 rounded-lg border p-4">
                       <div className="flex items-center gap-1.5">
                         {[0, 1, 2].map((i) => (
                           <motion.div
                             key={i}
-                            className="bg-text-muted h-1.5 w-1.5 rounded-full"
+                            className="bg-accent-500 h-1.5 w-1.5 rounded-full"
                             animate={{ y: [0, -2, 0] }}
                             transition={{
                               duration: 0.8,
@@ -1435,7 +927,7 @@ Be helpful and engaging.`;
         {/* Input Area */}
         <footer
           data-fixed
-          className="border-border-subtle bg-surface-0/80 border-t p-4 backdrop-blur-sm"
+          className="border-border-subtle bg-surface-0/80 glass-effect border-t p-4 backdrop-blur-sm transition-all duration-200"
         >
           <div className="mx-auto max-w-4xl">
             <form onSubmit={handleSubmit} className="relative">
@@ -1453,7 +945,7 @@ Be helpful and engaging.`;
                   placeholder={
                     isTyping ? "AI is responding..." : "Ask anything..."
                   }
-                  className="border-border-subtle bg-surface-1 text-text-primary placeholder-text-muted focus:border-brand-primary/50 focus:ring-brand-primary/20 max-h-48 min-h-[50px] w-full resize-none rounded-lg border p-3 pr-28 text-sm transition-colors duration-200 outline-none focus:ring-2 disabled:opacity-60"
+                  className="border-border-subtle bg-surface-1 text-primary placeholder:text-muted focus:border-brand-primary/50 focus:ring-brand-primary/20 max-h-48 min-h-[50px] w-full resize-none rounded-lg border p-3 pr-28 text-sm transition-all duration-200 outline-none focus:ring-2 disabled:opacity-60"
                   rows={1}
                   disabled={isTyping}
                 />
@@ -1495,7 +987,7 @@ Be helpful and engaging.`;
                             className={`hover:bg-surface-0 w-full px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg last:rounded-b-lg ${
                               selectedModel === model.name
                                 ? "text-brand-primary"
-                                : "text-text-primary"
+                                : "text-primary"
                             }`}
                           >
                             {model.name}
@@ -1510,7 +1002,7 @@ Be helpful and engaging.`;
                       size="icon"
                       onClick={handleStop}
                       aria-label="Stop response generation"
-                      className="bg-surface-0 text-text-primary ring-border-subtle flex h-8 w-8 animate-pulse items-center justify-center rounded-full ring-1"
+                      className="bg-surface-0 text-primary ring-border-subtle flex h-8 w-8 animate-pulse items-center justify-center rounded-full ring-1"
                       style={{ animationDuration: "2.5s" }}
                     >
                       <Square size={14} />
@@ -1529,7 +1021,7 @@ Be helpful and engaging.`;
                 </div>
               </div>
               <div className="mt-2 flex items-center justify-between text-xs">
-                <span className="text-text-muted">
+                <span className="text-muted">
                   Press <strong>Shift+Enter</strong> for a new line
                 </span>
                 <span
@@ -1537,7 +1029,7 @@ Be helpful and engaging.`;
                     "font-medium",
                     inputValue.length > 2000
                       ? "text-brand-secondary"
-                      : "text-text-muted/70",
+                      : "text-muted/70",
                   )}
                 >
                   {inputValue.length} / 2000

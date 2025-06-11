@@ -1,0 +1,115 @@
+/* Notion-inspired light & dark theme variables */
+
+/* ---------- LIGHT (default) ---------- */
+:root,
+html[data-theme="light"],
+body[data-theme="light"] {
+  /* Accents */
+  --accent-primary: 215 85% 55%; /* Notion blue link */
+  --accent-secondary: 215 70% 45%; /* Darker variant */
+  --accent-utility: 169 95% 38%; /* Success green */
+
+  /* Derived accent tints */
+  --accent-100: rgba(41, 98, 255, 0.1); /* fallback static */
+  --accent-200: rgba(41, 98, 255, 0.25);
+  --accent-500: hsl(var(--accent-primary));
+
+  /* Surfaces */
+  --surface-0: #f7f7f8; /* Page background */
+  --surface-1: #ffffff; /* Raised cards/panels */
+  --surface-2: #fafafa; /* subtle inner card */
+  --surface-3: #ededf0; /* menus / popovers */
+
+  /* Text */
+  --text-primary: #37352f; /* Almost-black text */
+  --text-muted: #6e6d7a; /* Muted grey */
+  --text-secondary: #4e4d5a; /* mid grey */
+  --text-placeholder: #9e9ea8;
+
+  /* Borders */
+  --border-subtle: rgba(55, 53, 47, 0.16);
+}
+
+/* ---------- DARK ---------- */
+:root[data-theme="dark"],
+html[data-theme="dark"],
+body[data-theme="dark"],
+.dark {
+  /* Surfaces */
+  --surface-0: #1a1b1e; /* Darker background for better contrast */
+  --surface-1: #2c2d30; /* Slightly elevated surfaces */
+  --surface-2: #36373a; /* More elevated surfaces */
+  --surface-3: #404244; /* Highest elevation */
+
+  /* Text */
+  --text-primary: #f3f4f5; /* Bright white for primary text */
+  --text-muted: #a0a0ab; /* Muted text */
+  --text-secondary: #d1d1d6; /* Secondary text */
+  --text-placeholder: #8e8e99; /* Placeholder text */
+
+  /* Accents */
+  --accent-primary: 215 85% 65%; /* Brighter accent for dark mode */
+  --accent-secondary: 215 70% 55%; /* Brighter secondary accent */
+
+  /* Derived accent tints */
+  --accent-100: rgba(83, 155, 255, 0.15);
+  --accent-200: rgba(83, 155, 255, 0.3);
+  --accent-500: hsl(var(--accent-primary));
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+}
+
+/* Smooth theme transitions */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
+}
+
+/* Enhanced scrollbar for dark mode */
+.dark .glass-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.dark .glass-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dark .glass-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Glass effect enhancements for dark mode */
+.dark .glass-effect {
+  background: rgba(26, 27, 30, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Button hover states for dark mode */
+.dark .button-hover {
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.dark .button-hover:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Input focus states for dark mode */
+.dark input:focus,
+.dark textarea:focus {
+  border-color: hsl(var(--accent-primary) / 0.5);
+  box-shadow: 0 0 0 2px hsl(var(--accent-primary) / 0.2);
+}

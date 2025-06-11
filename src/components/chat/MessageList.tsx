@@ -181,7 +181,7 @@ const MessageBubble = React.memo(function MessageBubble({
               <span
                 className={clsx(
                   "text-xs",
-                  isUser ? "text-accent-primary/60" : "text-text-muted",
+                  isUser ? "text-accent-primary/60" : "text-muted",
                 )}
               >
                 {message.syncStatus.toLowerCase()}
