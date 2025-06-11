@@ -6,99 +6,84 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface CodeBlockProps {
-  children: string;
   language: string;
+  children: string;
   className?: string;
+  isInline?: boolean;
 }
 
-export function CodeBlock({ children, language, className }: CodeBlockProps) {
+export function CodeBlock({
+  language,
+  children,
+  className,
+  isInline = false,
+}: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
-  const copyToClipboard = async () => {
+  const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(children);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // fallback
-      const textArea = document.createElement("textarea");
-      textArea.value = children;
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textArea);
+    } catch (err) {
+      console.error("Failed to copy text:", err);
     }
   };
 
-  return (
-    <div className="relative">
-      <div className="absolute top-2 right-2 z-10">
-        <button
-          onClick={copyToClipboard}
-          className={clsx(
-            "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200",
-            copied
-              ? "bg-green-500/20 text-green-400"
-              : "bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-gray-300",
-          )}
-        >
-          {copied ? (
-            <>
-              <svg
-                className="h-3 w-3"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              <span>Copied</span>
-            </>
-          ) : (
-            <>
-              <svg
-                className="h-3 w-3"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
-                />
-              </svg>
-              <span>Copy</span>
-            </>
-          )}
-        </button>
-      </div>
-      <div className="rounded-lg bg-[#1e1e1e]">
-        <div className="flex items-center justify-between border-b border-gray-800 px-4 py-2">
-          <span className="text-xs font-medium text-gray-400">{language}</span>
+  if (isInline) {
+    return (
+      <div className={clsx("group relative inline-block", className)}>
+        <div className="absolute top-1 right-1 z-10 opacity-0 transition-opacity group-hover:opacity-100">
+          <button
+            onClick={handleCopy}
+            className="rounded bg-gray-800/50 px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-200"
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
         </div>
         <SyntaxHighlighter
           language={language}
           style={vscDarkPlus}
           customStyle={{
             margin: 0,
-            padding: "1rem",
-            background: "transparent",
+            padding: "0.5rem",
+            borderRadius: "0.375rem",
             fontSize: "0.875rem",
             lineHeight: "1.5",
+            display: "inline-block",
           }}
-          className={clsx("rounded-b-lg", className)}
         >
           {children}
         </SyntaxHighlighter>
       </div>
+    );
+  }
+
+  return (
+    <div className={clsx("group relative", className)}>
+      <div className="absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
+        <button
+          onClick={handleCopy}
+          className="rounded bg-gray-800/50 px-2 py-1 text-xs text-gray-400 hover:text-gray-200"
+        >
+          {copied ? "Copied!" : "Copy"}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        language={language}
+        style={vscDarkPlus}
+        customStyle={{
+          margin: 0,
+          padding: "1rem",
+          borderRadius: "0.5rem",
+          fontSize: "0.875rem",
+          lineHeight: "1.5",
+        }}
+        showLineNumbers
+        wrapLines
+      >
+        {children}
+      </SyntaxHighlighter>
     </div>
   );
 }
