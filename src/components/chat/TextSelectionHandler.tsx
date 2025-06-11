@@ -1,7 +1,6 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Copy, Languages, Lightbulb } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface TextSelectionHandlerProps {
@@ -111,33 +110,69 @@ export function TextSelectionHandler({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="border-border-subtle bg-surface-0 absolute z-50 flex gap-1 rounded-lg border p-1 shadow-lg"
+            className="border-surface-2/20 bg-surface-1/80 fixed z-50 flex items-center gap-1 rounded-lg border p-1 shadow-lg backdrop-blur-md"
             style={{
-              top: `${menuPosition.top - 40}px`,
+              top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
-              transform: "translateX(-50%)",
+              transform: "translate(-50%, -100%)",
             }}
           >
             <button
               onClick={() => handleAction("copy")}
-              className="hover:bg-surface-1 rounded p-2 transition-colors"
-              title="Copy"
+              className="text-surface-1 hover:bg-surface-2/20 flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium"
             >
-              <Copy size={16} />
+              <svg
+                className="h-3 w-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                />
+              </svg>
+              Copy
             </button>
             <button
               onClick={() => handleAction("translate")}
-              className="hover:bg-surface-1 rounded p-2 transition-colors"
-              title="Translate"
+              className="text-surface-1 hover:bg-surface-2/20 flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium"
             >
-              <Languages size={16} />
+              <svg
+                className="h-3 w-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+                />
+              </svg>
+              Translate
             </button>
             <button
               onClick={() => handleAction("explain")}
-              className="hover:bg-surface-1 rounded p-2 transition-colors"
-              title="Explain"
+              className="text-surface-1 hover:bg-surface-2/20 flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium"
             >
-              <Lightbulb size={16} />
+              <svg
+                className="h-3 w-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Explain
             </button>
           </motion.div>
         )}

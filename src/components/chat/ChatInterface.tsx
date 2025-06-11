@@ -548,10 +548,10 @@ Be helpful and engaging.`;
               <Search className="text-muted absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search chats..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-border-subtle bg-surface-1 text-primary placeholder:text-muted focus:border-brand-primary/50 focus:bg-surface-1 focus:ring-brand-primary/20 w-full rounded-lg border py-2 pr-3 pl-9 text-sm transition-colors focus:ring-2 focus:outline-none"
+                className="text-surface-1 placeholder:text-surface-1/50 w-full bg-transparent px-4 py-2 text-sm focus:outline-none"
               />
             </div>
           </div>
@@ -933,12 +933,11 @@ Be helpful and engaging.`;
                       void handleSubmit(e);
                     }
                   }}
-                  placeholder={
-                    isTyping ? "AI is responding..." : "Ask anything..."
-                  }
-                  className="border-border-subtle bg-surface-1 text-primary placeholder:text-muted focus:border-brand-primary/50 focus:ring-brand-primary/20 max-h-48 min-h-[50px] w-full resize-none rounded-lg border p-3 pr-28 text-sm transition-all duration-200 outline-none focus:ring-2 disabled:opacity-60"
-                  rows={1}
-                  disabled={isTyping}
+                  placeholder="Type a message..."
+                  className="text-surface-1 placeholder:text-surface-1/50 w-full resize-none bg-transparent px-4 py-2 text-sm focus:outline-none"
+                  style={{
+                    height: `${Math.min(textareaRef.current?.scrollHeight ?? 0, 200)}px`,
+                  }}
                 />
                 <div className="absolute right-3 flex items-center gap-2">
                   <div ref={dropdownRef}>
