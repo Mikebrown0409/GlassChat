@@ -1,6 +1,5 @@
 "use client";
 
-import { GlassContainer } from "@/components/ui/GlassContainer";
 import { AIModel } from "@/lib/ai/types";
 import { syncManager } from "@/lib/sync";
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
@@ -126,7 +125,7 @@ Your goal is to provide responses that are immediately useful and easy to copy/u
 
   return (
     <div className={clsx("p-4", className)}>
-      <GlassContainer className="p-3" blur="lg" opacity="high">
+      <div className="p-3">
         <form onSubmit={handleSubmit} className="flex items-end gap-3">
           {/* Message input */}
           <div className="flex-1">
@@ -191,7 +190,7 @@ Your goal is to provide responses that are immediately useful and easy to copy/u
             Press Enter to send, Shift+Enter for new line
           </div>
         </div>
-      </GlassContainer>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { GlassContainer } from "@/components/ui/GlassContainer";
 import type { Chat } from "@/lib/db";
 import { syncManager, SyncStatus, useLiveChats } from "@/lib/sync";
 import {
@@ -54,13 +53,11 @@ function ChatItem({ chat, isActive, onSelect, onDelete }: ChatItemProps) {
 
   return (
     <div className="relative">
-      <GlassContainer
+      <div
         className={clsx(
           "group cursor-pointer p-3 transition-all duration-200",
           isActive && "border-accent-primary/30 bg-accent-primary/10",
         )}
-        hover={!isActive}
-        rounded="md"
       >
         <div onClick={onSelect} className="flex items-start gap-3">
           <div className="mt-0.5 flex-shrink-0">
@@ -116,12 +113,12 @@ function ChatItem({ chat, isActive, onSelect, onDelete }: ChatItemProps) {
             </div>
           </div>
         </div>
-      </GlassContainer>
+      </div>
 
       {/* Context menu */}
       {showMenu && (
         <div className="absolute top-full right-0 z-50 mt-1">
-          <GlassContainer className="min-w-[120px] p-1" blur="lg">
+          <div className="min-w-[120px] p-1">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -133,7 +130,7 @@ function ChatItem({ chat, isActive, onSelect, onDelete }: ChatItemProps) {
               <TrashIcon className="h-3 w-3" />
               Delete
             </button>
-          </GlassContainer>
+          </div>
         </div>
       )}
     </div>
@@ -206,12 +203,12 @@ export function ChatSidebar({
           // Loading state
           <div className="space-y-3">
             {Array.from({ length: 3 }, (_, i) => (
-              <GlassContainer key={i} className="p-3">
+              <div key={i} className="p-3">
                 <div className="animate-pulse">
                   <div className="mb-2 h-4 w-3/4 rounded bg-gray-300 dark:bg-gray-700"></div>
                   <div className="h-3 w-1/2 rounded bg-gray-300 dark:bg-gray-700"></div>
                 </div>
-              </GlassContainer>
+              </div>
             ))}
           </div>
         ) : chats.length === 0 ? (

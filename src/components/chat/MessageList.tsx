@@ -1,6 +1,5 @@
 "use client";
 
-import { GlassContainer } from "@/components/ui/GlassContainer";
 import type { Message } from "@/lib/db";
 import { SyncStatus, useLiveMessages } from "@/lib/sync";
 import { parseMarkdownWasm } from "@/lib/utils/markdownWasm";
@@ -110,24 +109,13 @@ const MessageBubble = React.memo(function MessageBubble({
           !isUser && "mr-12", // Push assistant messages to left
         )}
       >
-        <GlassContainer
+        <div
           className={clsx(
             "glass-optimized p-4",
             isUser && "text-white",
             !isUser && !isSystem && "text-gray-900 dark:text-gray-100",
             isSystem && "text-yellow-900 dark:text-yellow-100",
           )}
-          blur="lg"
-          rounded="lg"
-          hover={true}
-          gradient
-          accent={
-            isUser ? "primary" : !isUser && !isSystem ? "secondary" : undefined
-          }
-          animated
-          scale
-          shadow="lg"
-          opacity={isUser ? "high" : "medium"}
         >
           {/* Message metadata */}
           <div className="mb-2 flex items-center justify-between">
@@ -200,7 +188,7 @@ const MessageBubble = React.memo(function MessageBubble({
               </span>
             </div>
           )}
-        </GlassContainer>
+        </div>
       </div>
     </div>
   );
@@ -241,14 +229,7 @@ export function MessageList({ chatId, className }: MessageListProps) {
       <div
         className={clsx("flex flex-1 items-center justify-center", className)}
       >
-        <GlassContainer
-          className="p-8"
-          gradient
-          animated
-          blur="xl"
-          shadow="xl"
-          pulse
-        >
+        <div className="p-8">
           <div className="flex animate-pulse space-x-4">
             <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-700"></div>
             <div className="flex-1 space-y-2 py-1">
@@ -256,7 +237,7 @@ export function MessageList({ chatId, className }: MessageListProps) {
               <div className="h-4 w-1/2 rounded bg-gray-300 dark:bg-gray-700"></div>
             </div>
           </div>
-        </GlassContainer>
+        </div>
       </div>
     );
   }
@@ -266,23 +247,13 @@ export function MessageList({ chatId, className }: MessageListProps) {
       <div
         className={clsx("flex flex-1 items-center justify-center", className)}
       >
-        <GlassContainer
-          className="p-8 text-center"
-          gradient
-          animated
-          blur="xl"
-          shadow="xl"
-          hover
-          scale
-        >
-          <div className="text-gray-500 dark:text-gray-400">
-            <div className="animate-glass-float mb-2 text-2xl">💬</div>
-            <p className="font-medium">Start a conversation</p>
-            <p className="mt-1 text-sm">
-              Send a message to begin chatting with AI
-            </p>
-          </div>
-        </GlassContainer>
+        <div className="p-8 text-center">
+          <div className="animate-glass-float mb-2 text-2xl">💬</div>
+          <p className="font-medium">Start a conversation</p>
+          <p className="mt-1 text-sm">
+            Send a message to begin chatting with AI
+          </p>
+        </div>
       </div>
     );
   }

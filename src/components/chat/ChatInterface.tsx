@@ -16,6 +16,7 @@ import {
   Search,
   Sidebar,
   Sparkles,
+  Square,
   Trash2,
   Users,
 } from "lucide-react";
@@ -305,6 +306,8 @@ const MessageDisplay = React.memo(
         // Typing animation for new messages
         let currentIndex = 0;
         setDisplayedContent("");
+        // Speed up animation for long messages
+        const speed = message.content.length > 500 ? 5 : 20;
 
         const intervalId = setInterval(() => {
           // Constantly check if user has started selecting text
@@ -323,7 +326,7 @@ const MessageDisplay = React.memo(
           } else {
             clearInterval(intervalId);
           }
-        }, 20);
+        }, speed);
 
         return () => clearInterval(intervalId);
       } else {
@@ -871,6 +874,18 @@ Be helpful and engaging.`;
     }
   };
 
+  // Handler to stop response generation
+  const handleStop = async () => {
+    if (!currentChatId) return;
+    // Notify user that response was stopped
+    await syncManager.createMessage(
+      currentChatId,
+      "system",
+      "Response generation stopped by user.",
+    );
+    setIsTyping(false);
+  };
+
   const handleSuggestionClick = (suggestion: string) => {
     setInputValue(suggestion);
     textareaRef.current?.focus();
@@ -996,10 +1011,11 @@ Be helpful and engaging.`;
   return (
     <div className="bg-surface-0 text-text-primary fixed inset-0 flex h-screen w-screen overflow-hidden font-sans">
       {/* Sidebar always mounted; slides off-screen when closed to avoid layout reflow */}
-      <motion.aside
-        animate={{ x: sidebarOpen ? 0 : -288 }}
-        transition={{ ease: DYNAMIC_EASE, duration: 0.25 }}
-        className="sidebar border-border-subtle bg-surface-0/70 relative z-20 flex w-72 shrink-0 flex-col border-r backdrop-blur-lg lg:w-80"
+      <aside
+        className={clsx(
+          "sidebar border-border-subtle bg-surface-0/70 relative z-20 flex shrink-0 flex-col overflow-hidden border-r backdrop-blur-lg transition-[width] duration-300 ease-in-out",
+          sidebarOpen ? "w-72 lg:w-80" : "w-0",
+        )}
       >
         {/* Header */}
         <div className="border-border-subtle flex h-20 shrink-0 items-center justify-between border-b p-4">
@@ -1197,7 +1213,7 @@ Be helpful and engaging.`;
             <MoreHorizontal size={16} />
           </button>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* Main Content */}
       <main
@@ -1474,19 +1490,27 @@ Be helpful and engaging.`;
                       </div>
                     )}
                   </div>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="icon"
-                    disabled={!inputValue.trim() || isTyping}
-                    className="h-8 w-8"
-                  >
-                    {isTyping ? (
-                      <div className="border-text-muted h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
-                    ) : (
+                  {isTyping ? (
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      onClick={handleStop}
+                      className="h-8 w-8 animate-pulse"
+                      aria-label="Stop response generation"
+                    >
+                      <Square size={18} />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="icon"
+                      disabled={!inputValue.trim()}
+                      className="h-8 w-8"
+                    >
                       <ArrowUp size={18} strokeWidth={2.5} />
-                    )}
-                  </Button>
+                    </Button>
+                  )}
                 </div>
               </div>
               <div className="mt-2 flex items-center justify-between text-xs">
