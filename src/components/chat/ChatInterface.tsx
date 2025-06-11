@@ -828,7 +828,7 @@ Be helpful and engaging.`;
           ) : (
             <div className="mx-auto max-w-4xl space-y-8 p-6">
               <AnimatePresence mode="popLayout">
-                {messages.map((message) => (
+                {messages.map((message, index) => (
                   <motion.div
                     key={message.id}
                     layout
@@ -864,22 +864,13 @@ Be helpful and engaging.`;
                       )}
                     >
                       <MessageDisplay
+                        key={message.id}
                         message={message}
-                        onTextSelect={(text, position) => {
-                          setSelectionMenu({ position, text });
-                        }}
+                        _isTyping={index === messages.length - 1 && isTyping}
+                        onTranslate={handleTranslateSelection}
+                        onExplain={handleExplainSelection}
+                        _isNewMessage={index === messages.length - 1}
                       />
-                      <span
-                        className={clsx(
-                          "text-muted text-xs",
-                          message.role === "user" ? "text-right" : "text-left",
-                        )}
-                      >
-                        {new Date(message.createdAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
                     </div>
                   </motion.div>
                 ))}
