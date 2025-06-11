@@ -73,7 +73,11 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                         <div className="overflow-x-auto">{children}</div>
                       ),
                       table: ({ children }) => (
-                        <div className="overflow-x-auto">{children}</div>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full text-left">
+                            {children}
+                          </table>
+                        </div>
                       ),
                       p: ({ children, ...props }) => {
                         let isShortMessage = false;
