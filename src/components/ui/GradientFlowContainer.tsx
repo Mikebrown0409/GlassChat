@@ -1,9 +1,9 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { useTheme } from "./ThemeProvider";
 import { clsx } from "clsx";
+import { AnimatePresence, motion } from "framer-motion";
 import { type ReactNode, useState } from "react";
+import { useTheme } from "./ThemeProvider";
 
 interface GradientFlowContainerProps {
   children: ReactNode;
@@ -11,6 +11,15 @@ interface GradientFlowContainerProps {
   isActive?: boolean;
   intensity?: "low" | "medium" | "high";
   variant?: "primary" | "secondary" | "accent";
+}
+
+// Add a type-safe helper function for safe object access
+function getSafe<T extends object, K extends keyof T>(
+  obj: T,
+  key: K,
+  fallback: T[K],
+): T[K] {
+  return key in obj ? obj[key] : fallback;
 }
 
 export function GradientFlowContainer({
@@ -65,7 +74,14 @@ export function GradientFlowContainer({
     },
   };
 
-  const currentGradient = gradients[theme][variant];
+  // Map 'system' to 'light' for safety (could be improved to detect system theme)
+  const themeKey = theme === "system" ? "light" : theme;
+  const variantKey = variant in gradients[themeKey] ? variant : "primary";
+  const currentGradient = getSafe(
+    getSafe(gradients, themeKey, gradients.light),
+    variantKey,
+    gradients.light.primary,
+  );
   const gradientClass = isActive
     ? currentGradient.active
     : isHovered
@@ -79,12 +95,20 @@ export function GradientFlowContainer({
     high: "backdrop-blur-lg border border-white/30 shadow-xl shadow-purple-500/20",
   };
 
+  // Safe access for intensityEffects
+  const intensityKey = intensity in intensityEffects ? intensity : "medium";
+  const intensityClass = getSafe(
+    intensityEffects,
+    intensityKey,
+    intensityEffects.medium,
+  );
+
   return (
     <motion.div
       className={clsx(
         "relative overflow-hidden rounded-xl transition-all duration-500",
         gradientClass,
-        intensityEffects[intensity],
+        intensityClass,
         className,
       )}
       onMouseEnter={() => setIsHovered(true)}
