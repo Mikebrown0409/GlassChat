@@ -1,29 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Users,
-  MessageCircle,
-  Code,
-  Send,
-  X,
   Check,
+  Code,
+  MessageCircle,
   Play,
-  UserPlus,
+  Send,
   Share2,
+  UserPlus,
+  Users,
   Wifi,
+  X,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useCollaboration } from "~/lib/collaboration/hooks";
 import {
   CollaborationEventType,
-  type CollaborationRoom,
+  type CollaborationEvent,
   type CollaborationMessage,
+  type CollaborationRoom,
   type CollaborationUser,
   type TypingIndicator,
   type UserPresence,
-  type CollaborationEvent,
 } from "~/lib/collaboration/types";
 
 interface CollaborationPanelProps {
@@ -211,14 +211,14 @@ export function CollaborationPanel({
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0 }}
             transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
-            className="fixed top-0 right-0 z-40 h-full w-80 border-l border-slate-700/60 bg-slate-900/95 backdrop-blur-sm"
+            className="border-border-subtle bg-surface-0/70 glass-effect fixed top-0 right-0 z-40 h-full w-80 border-l backdrop-blur-lg"
           >
             <div className="flex h-full flex-col p-6">
               <div className="mb-6">
-                <h2 className="text-xl font-semibold text-white">
+                <h2 className="text-primary text-xl font-semibold">
                   Welcome to Collaboration
                 </h2>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="text-muted mt-2 text-sm">
                   Enter your name to start collaborating in real-time with
                   others. You&apos;ll be able to share rooms, chat, and even
                   code together!
@@ -227,7 +227,7 @@ export function CollaborationPanel({
 
               <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                  <label className="text-muted mb-2 block text-xs font-medium">
                     Your Name
                   </label>
                   <input
@@ -236,7 +236,7 @@ export function CollaborationPanel({
                     onChange={(e) => setUserName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleCreateUser()}
                     placeholder="Enter your display name"
-                    className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                    className="bg-surface-1/60 border-border-subtle text-primary placeholder:text-muted focus:ring-brand-primary w-full rounded-lg border px-3 py-2 focus:ring-1 focus:outline-none"
                     autoFocus
                   />
                 </div>
@@ -244,7 +244,7 @@ export function CollaborationPanel({
                 <button
                   onClick={handleCreateUser}
                   disabled={!userName.trim() || collaboration.user.isCreating}
-                  className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="bg-brand-primary hover:bg-brand-primary/80 w-full rounded-lg px-4 py-2 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {collaboration.user.isCreating
                     ? "Creating..."
@@ -266,17 +266,17 @@ export function CollaborationPanel({
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: "100%", opacity: 0 }}
           transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
-          className="fixed top-0 right-0 z-40 h-full w-80 border-l border-slate-700/60 bg-slate-900/95 backdrop-blur-sm"
+          className="border-border-subtle bg-surface-0/70 glass-effect fixed top-0 right-0 z-40 h-full w-80 border-l backdrop-blur-lg"
         >
           {/* Header */}
-          <div className="border-b border-slate-700/60 p-4">
+          <div className="border-border-subtle bg-surface-1/70 border-b p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-primary text-lg font-semibold">
                 Collaboration
               </h2>
               <button
                 onClick={onToggle}
-                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+                className="text-muted hover:bg-surface-1/60 hover:text-primary rounded-lg p-2 transition-colors"
               >
                 <X size={18} />
               </button>
@@ -291,7 +291,7 @@ export function CollaborationPanel({
                 >
                   {collaboration.user.user.name[0]?.toUpperCase()}
                 </div>
-                <span className="text-sm text-slate-300">
+                <span className="text-primary/80 text-sm">
                   {collaboration.user.user.name}
                 </span>
               </div>
@@ -299,7 +299,7 @@ export function CollaborationPanel({
           </div>
 
           {/* Tabs */}
-          <div className="border-b border-slate-700/60">
+          <div className="border-border-subtle border-b">
             <div className="flex">
               {[
                 { id: "rooms", label: "Rooms", icon: Users },
@@ -317,8 +317,8 @@ export function CollaborationPanel({
                   className={clsx(
                     "flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
                     activeTab === id
-                      ? "border-blue-500 bg-slate-800/50 text-white"
-                      : "border-transparent text-slate-400 hover:text-slate-300",
+                      ? "border-brand-primary text-primary bg-surface-1/60"
+                      : "text-muted hover:text-primary border-transparent",
                   )}
                 >
                   <Icon size={16} />

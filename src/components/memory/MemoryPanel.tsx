@@ -31,19 +31,19 @@ export function MemoryPanel({
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="bg-gradient-brand absolute top-0 right-0 h-full w-96 p-[2px] shadow-2xl"
+          className="border-border-subtle bg-surface-0/70 glass-effect fixed top-0 right-0 h-full w-96 border-l backdrop-blur-lg"
         >
-          <div className="flex h-full flex-col rounded-lg bg-slate-900/95 backdrop-blur-md">
-            <header className="bg-gradient-brand flex h-16 shrink-0 items-center justify-between border-b border-transparent px-4 shadow-md">
+          <div className="bg-surface-0/80 flex h-full flex-col backdrop-blur-lg">
+            <header className="border-border-subtle bg-surface-1/70 flex h-16 shrink-0 items-center justify-between border-b px-4 shadow-md backdrop-blur-lg">
               <div className="flex items-center gap-3">
-                <Brain className="text-slate-400" />
-                <h2 className="text-lg font-semibold text-white">
+                <Brain className="text-muted" />
+                <h2 className="text-primary text-lg font-semibold">
                   Contextual Memory
                 </h2>
               </div>
               <button
                 onClick={onToggle}
-                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800"
+                className="text-muted hover:bg-surface-1/60 rounded-lg p-2 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -53,10 +53,10 @@ export function MemoryPanel({
               <div className="space-y-6">
                 {/* Smart Summary Section */}
                 <div>
-                  <h3 className="mb-3 text-sm font-semibold tracking-wider text-slate-400 uppercase">
+                  <h3 className="text-muted mb-3 text-xs font-semibold tracking-wider uppercase">
                     Smart Summary
                   </h3>
-                  <div className="rounded-lg border border-slate-800 bg-slate-800/50 p-4">
+                  <div className="border-border-subtle bg-surface-1/60 rounded-lg border p-4">
                     {isSummarizing ? (
                       <div className="flex items-center gap-2 text-slate-400">
                         <BeamLoader size={16} />
@@ -64,14 +64,14 @@ export function MemoryPanel({
                       </div>
                     ) : summary ? (
                       <div>
-                        <p className="text-sm text-slate-300">
+                        <p className="text-primary/90 text-sm">
                           {summary.summary}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           {summary.keywords.map((kw) => (
                             <span
                               key={kw}
-                              className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-300"
+                              className="bg-surface-2 text-primary/80 rounded-full px-2 py-0.5 text-[10px]"
                             >
                               {kw}
                             </span>
@@ -79,7 +79,7 @@ export function MemoryPanel({
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-500">
+                      <p className="text-muted/80 text-sm">
                         No summary available for this chat yet.
                       </p>
                     )}
@@ -87,7 +87,7 @@ export function MemoryPanel({
                   <button
                     onClick={handleGenerateSummary}
                     disabled={isSummarizing || memories.length === 0}
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-700"
+                    className="bg-brand-primary hover:bg-brand-primary/80 mt-3 flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isSummarizing ? "Please wait..." : "Update Summary"}
                   </button>
@@ -95,7 +95,7 @@ export function MemoryPanel({
 
                 {/* Memories Section */}
                 <div>
-                  <h3 className="mb-3 text-sm font-semibold tracking-wider text-slate-400 uppercase">
+                  <h3 className="text-muted mb-3 text-xs font-semibold tracking-wider uppercase">
                     Memories
                   </h3>
                   <div className="space-y-3">
@@ -103,18 +103,18 @@ export function MemoryPanel({
                       memories.map((entry) => (
                         <div
                           key={entry.id}
-                          className="rounded-lg border border-slate-800 bg-slate-800/50 p-3"
+                          className="border-border-subtle bg-surface-1/60 rounded-lg border p-3"
                         >
                           <div className="flex items-start gap-3">
-                            <FileText className="mt-1 h-4 w-4 shrink-0 text-slate-500" />
-                            <p className="flex-1 text-sm text-slate-300">
+                            <FileText className="text-muted mt-1 h-4 w-4 shrink-0" />
+                            <p className="text-primary/90 flex-1 text-sm">
                               {entry.content}
                             </p>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-slate-500">
+                      <p className="text-muted/80 text-sm">
                         No memories stored for this chat yet.
                       </p>
                     )}
