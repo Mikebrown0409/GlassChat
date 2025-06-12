@@ -14,7 +14,7 @@ import {
   Wifi,
   X,
 } from "lucide-react";
-import { memo, useEffect, useState } from "react";
+import { memo, useDeferredValue, useEffect, useState } from "react";
 import { useCollaboration } from "~/lib/collaboration/hooks";
 import {
   CollaborationEventType,
@@ -529,18 +529,23 @@ function ChatTab({
   currentUser: CollaborationUser | null;
   typingUsers: TypingIndicator[];
 }) {
-  return (
-    <div className="flex h-full max-h-[calc(100vh-280px)] flex-col">
-      {/* Messages Area */}
+  const deferredMessages = useDeferredValue(messages);
+
+  const MessagesList = memo(function MessagesListComponent({
+    msgs,
+  }: {
+    msgs: CollaborationMessage[];
+  }) {
+    return (
       <div className="mb-4 flex-1 space-y-3 overflow-y-auto">
-        {messages.length === 0 ? (
+        {msgs.length === 0 ? (
           <div className="py-8 text-center">
             <MessageCircle size={32} className="mx-auto mb-2 text-slate-600" />
             <p className="text-sm text-slate-400">No messages yet</p>
             <p className="text-xs text-slate-500">Start the conversation!</p>
           </div>
         ) : (
-          messages.map((message) => (
+          msgs.map((message) => (
             <div
               key={message.id}
               className={clsx(
@@ -565,6 +570,12 @@ function ChatTab({
           ))
         )}
       </div>
+    );
+  });
+
+  return (
+    <div className="flex h-full max-h-[calc(100vh-280px)] flex-col">
+      <MessagesList msgs={deferredMessages} />
 
       {/* Typing Indicators */}
       {typingUsers.length > 0 && (
