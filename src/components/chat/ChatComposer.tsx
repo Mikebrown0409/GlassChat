@@ -47,7 +47,7 @@ export function ChatComposer({
       <div className="pointer-events-auto w-full max-w-3xl px-4">
         <div className="border-border-subtle bg-surface-0/90 glass-effect focus-within:ring-brand-primary rounded-xl border p-4 shadow-lg backdrop-blur-lg focus-within:ring-2">
           <form onSubmit={onSubmit} className="relative">
-            <div className="relative flex items-center">
+            <div className="flex items-end gap-2">
               <textarea
                 ref={textareaRef}
                 value={inputValue}
@@ -59,12 +59,12 @@ export function ChatComposer({
                   }
                 }}
                 placeholder="Type a message..."
-                className="text-surface-1 placeholder:text-surface-1/50 w-full resize-none bg-transparent px-4 py-2 pr-44 text-sm focus:outline-none"
+                className="text-surface-1 placeholder:text-surface-1/50 flex-1 resize-none bg-transparent px-4 py-2 text-sm focus:outline-none"
                 style={{
                   height: `${Math.min(textareaRef.current?.scrollHeight ?? 0, 200)}px`,
                 }}
               />
-              <div className="absolute right-3 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <div ref={dropdownRef}>
                   <Button
                     type="button"
@@ -90,7 +90,7 @@ export function ChatComposer({
                     </svg>
                   </Button>
                   {modelDropdownOpen && (
-                    <div className="border-border-subtle bg-surface-1/80 ring-border-subtle absolute right-0 bottom-full z-50 mb-2 w-56 rounded-xl shadow-2xl ring-1 backdrop-blur-2xl">
+                    <div className="border-border-subtle bg-surface-0/90 ring-border-subtle absolute right-0 bottom-full z-50 mb-2 w-56 rounded-xl shadow-2xl ring-1 backdrop-blur-3xl">
                       {models.map((model) => (
                         <button
                           key={model.id}
