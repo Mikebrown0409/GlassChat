@@ -45,7 +45,7 @@ export function ChatComposer({
       className="pointer-events-none fixed right-0 bottom-4 left-0 flex justify-center"
     >
       <div className="pointer-events-auto w-full max-w-3xl px-4">
-        <div className="border-border-subtle bg-surface-0/90 glass-effect rounded-xl border shadow-lg backdrop-blur-lg">
+        <div className="border-border-subtle bg-surface-0/90 glass-effect focus-within:ring-brand-primary rounded-xl border p-4 shadow-lg backdrop-blur-lg focus-within:ring-2">
           <form onSubmit={onSubmit} className="relative">
             <div className="relative flex items-center">
               <textarea
@@ -135,7 +135,7 @@ export function ChatComposer({
                 )}
               </div>
             </div>
-            <div className="mt-2 flex items-center justify-between text-xs">
+            <div className="mt-2 flex items-center justify-between px-1 pb-1 text-xs">
               <span className="text-muted">
                 Press <strong>Shift+Enter</strong> for a new line
               </span>
