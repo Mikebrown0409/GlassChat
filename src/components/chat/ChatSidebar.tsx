@@ -125,7 +125,7 @@ export function ChatSidebar({
               placeholder="Search chats..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="text-surface-1 placeholder:text-surface-1/50 w-full bg-transparent px-4 py-2 text-sm focus:outline-none"
+              className="text-surface-1 placeholder:text-surface-1/50 w-full bg-transparent py-2 pr-4 pl-8 text-sm focus:outline-none"
             />
           </div>
         </div>
@@ -145,7 +145,7 @@ export function ChatSidebar({
                   className={clsx(
                     "group w-full cursor-pointer rounded-md p-2 text-left transition-colors duration-200",
                     currentChatId === chat.id
-                      ? "bg-surface-1 text-primary"
+                      ? "bg-surface-1/70 text-primary"
                       : "text-muted hover:bg-surface-1/60 hover:text-primary",
                   )}
                 >
