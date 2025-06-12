@@ -127,7 +127,7 @@ export function ChatMessages({
           </div>
         </motion.div>
       ) : (
-        <div className="mx-auto max-w-4xl space-y-8 p-6">
+        <div className="mx-auto flex max-w-4xl flex-col gap-[var(--chat-gap)] p-6">
           <AnimatePresence mode="popLayout">
             {messages.map((message, idx) => (
               <motion.div

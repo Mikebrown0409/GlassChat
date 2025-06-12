@@ -3,6 +3,7 @@
 import { clsx } from "clsx";
 import { Brain, Sidebar, Users } from "lucide-react";
 import { Button } from "~/components/ui/Button";
+import { DensityToggle } from "../ui/DensityToggle";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 
 interface ChatHeaderProps {
@@ -48,6 +49,7 @@ export function ChatHeader({
       </div>
 
       <div className="flex items-center gap-2">
+        <DensityToggle />
         <ThemeSwitcher />
         <Button variant="ghost" size="icon" onClick={onToggleCollaboration}>
           <Users size={20} />
