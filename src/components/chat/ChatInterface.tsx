@@ -1,36 +1,20 @@
 "use client";
 
 import { clsx } from "clsx";
-import { AnimatePresence } from "framer-motion";
-import dynamic from "next/dynamic";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useChatGeneration } from "~/lib/ai/useChatGeneration";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 
+import { InsightsDrawer } from "../insights/InsightsDrawer";
 import { ChatComposer } from "./ChatComposer";
 import { ChatHeader } from "./ChatHeader";
 import { ChatMessages } from "./ChatMessages";
 import { ChatSidebar } from "./ChatSidebar";
-import { TextSelectionMenu } from "./TextSelectionMenu";
 
 interface ChatInterfaceProps {
   className?: string;
 }
-
-// Lazy-load heavy panels to reduce initial JS bundle
-const CollaborationPanel = dynamic(
-  () =>
-    import("~/components/collaboration/CollaborationPanel").then(
-      (m) => m.CollaborationPanel,
-    ),
-  { ssr: false, loading: () => null },
-);
-
-const MemoryPanel = dynamic(
-  () => import("~/components/memory/MemoryPanel").then((m) => m.MemoryPanel),
-  { ssr: false, loading: () => null },
-);
 
 export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   const [inputValue, setInputValue] = useState("");
@@ -49,8 +33,10 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   useEffect(() => {
     console.log("Debug - currentChatId changed to:", currentChatId);
   }, [currentChatId]);
-  const [collaborationOpen, setCollaborationOpen] = useState(false);
-  const [isMemoryPanelOpen, setIsMemoryPanelOpen] = useState(false);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [insightsTab, setInsightsTab] = useState<"memory" | "collaboration">(
+    "memory",
+  );
 
   const chats = useLiveChats();
   const rawMessages = useLiveMessages(currentChatId ?? "");
@@ -168,81 +154,14 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   }, []); // Remove selectionMenu dependency to prevent constant re-registration
 
   // Text selection handlers
-  const handleCopySelection = () => {
-    if (selectionMenu?.text) {
-      // Ensure document is focused before attempting clipboard operation
-      window.focus();
-      document.body.focus();
-
-      // Try modern clipboard API first
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard
-          .writeText(selectionMenu.text)
-          .then(() => {
-            console.log("Selection copied successfully");
-            // Don't clear the selection or menu - let user copy again or use Cmd+C
-            // setSelectionMenu(null);
-            // window.getSelection()?.removeAllRanges();
-          })
-          .catch((err) => {
-            console.error("Clipboard API failed:", err);
-            fallbackCopy(selectionMenu.text);
-          });
-      } else {
-        // Use fallback method immediately
-        fallbackCopy(selectionMenu.text);
-      }
-    }
-  };
-
-  // Reliable fallback copy method
-  const fallbackCopy = (text: string) => {
-    try {
-      // Create a temporary textarea element
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      textArea.style.position = "fixed";
-      textArea.style.left = "-9999px";
-      textArea.style.top = "-9999px";
-      textArea.style.opacity = "0";
-      textArea.style.pointerEvents = "none";
-      textArea.setAttribute("readonly", "");
-      textArea.setAttribute("aria-hidden", "true");
-
-      document.body.appendChild(textArea);
-
-      // Focus and select the text
-      textArea.focus();
-      textArea.select();
-      textArea.setSelectionRange(0, text.length);
-
-      // Execute copy command
-      const result = document.execCommand("copy");
-
-      // Clean up
-      document.body.removeChild(textArea);
-
-      if (result) {
-        console.log("Fallback copy successful");
-        // Don't clear the original selection - preserve it for user
-        // setSelectionMenu(null);
-        // window.getSelection()?.removeAllRanges();
-      } else {
-        console.error("Fallback copy failed");
-        alert("Copy failed. Please try selecting and copying manually.");
-      }
-    } catch (err) {
-      console.error("Fallback copy error:", err);
-      alert("Copy failed. Please try selecting and copying manually.");
-    }
-  };
+  // Remove the old selection menu handlers (copy handled by browser shortcuts)
 
   const handleExplainSelection = async (text?: string) => {
     const content = text ?? selectionMenu?.text;
     if (content && currentChatId) {
       const explanationPrompt = `Please explain this text: "${content}"`;
       setInputValue(explanationPrompt);
-      setSelectionMenu(null); // clear any old menu state
+      setSelectionMenu(null);
     }
   };
 
@@ -366,6 +285,16 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     void handleSubmitFromHook(inputValue, () => setInputValue(""));
   };
 
+  const handleToggleCollaboration = () => {
+    setInsightsTab("collaboration");
+    setInsightsOpen((prev) => (insightsTab === "collaboration" ? !prev : true));
+  };
+
+  const handleToggleMemory = () => {
+    setInsightsTab("memory");
+    setInsightsOpen((prev) => (insightsTab === "memory" ? !prev : true));
+  };
+
   return (
     <div className="bg-surface-0 text-primary fixed inset-0 flex h-screen w-screen overflow-hidden font-sans">
       {/* Sidebar extracted into dedicated component */}
@@ -387,23 +316,12 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           sidebarOpen ? "ml-72 lg:ml-80" : "ml-0",
         )}
       >
-        <AnimatePresence>
-          {selectionMenu && (
-            <TextSelectionMenu
-              key="selection-menu"
-              position={selectionMenu.position}
-              onCopy={handleCopySelection}
-              onExplain={handleExplainSelection}
-              onTranslate={handleTranslateSelection}
-            />
-          )}
-        </AnimatePresence>
         {/* Top Bar */}
         <ChatHeader
           sidebarOpen={sidebarOpen}
           onOpenSidebar={() => setSidebarOpen(true)}
-          onToggleCollaboration={() => setCollaborationOpen(!collaborationOpen)}
-          onToggleMemory={() => setIsMemoryPanelOpen(!isMemoryPanelOpen)}
+          onToggleCollaboration={handleToggleCollaboration}
+          onToggleMemory={handleToggleMemory}
         />
 
         {/* Messages Area */}
@@ -434,23 +352,15 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         />
       </main>
 
-      {/* Lazy panels render only when open to avoid adding weight to initial paint */}
-      {collaborationOpen && (
-        <CollaborationPanel
-          currentChatId={currentChatId ?? null}
-          isOpen={collaborationOpen}
-          onToggle={() => setCollaborationOpen(!collaborationOpen)}
-        />
-      )}
-
-      {isMemoryPanelOpen && (
-        <MemoryPanel
-          currentChatId={currentChatId ?? null}
-          isOpen={isMemoryPanelOpen}
-          onToggle={() => setIsMemoryPanelOpen(!isMemoryPanelOpen)}
-          memoryHook={memory}
-        />
-      )}
+      {/* Insights Drawer */}
+      <InsightsDrawer
+        open={insightsOpen}
+        tab={insightsTab}
+        setTab={setInsightsTab}
+        onClose={() => setInsightsOpen(false)}
+        currentChatId={currentChatId ?? null}
+        memoryHook={memory}
+      />
     </div>
   );
 }
