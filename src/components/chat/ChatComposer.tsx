@@ -151,30 +151,41 @@ export function ChatComposer({
               />
               <div className="flex items-center gap-2">
                 <div ref={dropdownRef}>
-                  <Button
-                    ref={triggerRef}
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                  >
-                    <span>{selectedModel}</span>
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      className={`transition-transform duration-200 ${modelDropdownOpen ? "rotate-180" : ""}`}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </Button>
+                  {(() => {
+                    const info = models.find((m) => m.name === selectedModel);
+                    const tooltip = info?.description
+                      ? `${info.name} – ${info.description}`
+                      : (info?.name ?? "");
+                    return (
+                      <Button
+                        ref={triggerRef}
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                        title={tooltip}
+                      >
+                        <span>{selectedModel}</span>
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          className={`transition-transform duration-200 ${
+                            modelDropdownOpen ? "rotate-180" : ""
+                          }`}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </Button>
+                    );
+                  })()}
                 </div>
                 {isTyping ? (
                   <Button
