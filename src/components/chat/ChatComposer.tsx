@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowUp, Square } from "lucide-react";
-import React, { type RefObject } from "react";
+import React, { useEffect, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "~/components/ui/Button";
 
 interface ModelOption {
@@ -39,6 +40,90 @@ export function ChatComposer({
   textareaRef,
   dropdownRef,
 }: ChatComposerProps) {
+  // Local ref to the trigger button to calculate dropdown position
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const [dropdownCoords, setDropdownCoords] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // Ref to measure dropdown height after it renders
+  const dropdownRefInternal = useRef<HTMLDivElement>(null);
+
+  // Re-calculate coordinates whenever dropdown opens or window resizes/scrolls
+  useEffect(() => {
+    if (!modelDropdownOpen) return;
+
+    const calcCoords = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      // Default gap between dropdown and trigger
+      const GAP = 6;
+
+      // Measure dropdown height if already rendered
+      const dropdownHeight = dropdownRefInternal.current?.offsetHeight ?? 0;
+
+      setDropdownCoords({
+        x: rect.right - 224 /* dropdown width */,
+        // Position so the dropdown sits above the trigger
+        y: rect.top - dropdownHeight - GAP,
+      }); // 224px = w-56 in Tailwind
+    };
+
+    calcCoords();
+    window.addEventListener("resize", calcCoords);
+    window.addEventListener("scroll", calcCoords, true);
+    return () => {
+      window.removeEventListener("resize", calcCoords);
+      window.removeEventListener("scroll", calcCoords, true);
+    };
+  }, [modelDropdownOpen]);
+
+  // Close when clicking outside
+  useEffect(() => {
+    if (!modelDropdownOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
+      ) {
+        setModelDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [modelDropdownOpen]);
+
+  const dropdownElement =
+    modelDropdownOpen && dropdownCoords
+      ? createPortal(
+          <div
+            ref={dropdownRefInternal}
+            className="fixed z-50 w-40 rounded-md border-none bg-neutral-900 shadow-lg"
+            style={{ top: dropdownCoords.y, left: dropdownCoords.x }}
+          >
+            {models.map((model) => (
+              <button
+                key={model.id}
+                type="button"
+                onClick={() => {
+                  setSelectedModel(model.name);
+                  setModelDropdownOpen(false);
+                }}
+                className={`w-full px-2 py-1 text-left text-xs transition-colors first:rounded-t-md last:rounded-b-md hover:bg-neutral-800 ${
+                  selectedModel === model.name ? "text-white" : "text-gray-300"
+                }`}
+              >
+                {model.name}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
     <footer
       data-fixed
@@ -67,6 +152,7 @@ export function ChatComposer({
               <div className="flex items-center gap-2">
                 <div ref={dropdownRef}>
                   <Button
+                    ref={triggerRef}
                     type="button"
                     variant="secondary"
                     size="sm"
@@ -89,27 +175,6 @@ export function ChatComposer({
                       />
                     </svg>
                   </Button>
-                  {modelDropdownOpen && (
-                    <div className="border-border-subtle bg-surface-0/95 ring-border-subtle shadow-3xl absolute right-0 bottom-full z-50 mb-2 w-56 rounded-xl ring-1 backdrop-blur-xl">
-                      {models.map((model) => (
-                        <button
-                          key={model.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedModel(model.name);
-                            setModelDropdownOpen(false);
-                          }}
-                          className={`hover:bg-surface-0 w-full px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                            selectedModel === model.name
-                              ? "text-brand-primary"
-                              : "text-primary"
-                          }`}
-                        >
-                          {model.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 {isTyping ? (
                   <Button
@@ -150,6 +215,7 @@ export function ChatComposer({
               </span>
             </div>
           </form>
+          {dropdownElement}
         </div>
       </div>
     </footer>

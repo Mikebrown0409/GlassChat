@@ -27,7 +27,25 @@ export function TextSelectionHandler({
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
+
+      // Guard clauses – clear the menu if the selection is collapsed or outside this container
       if (!selection || selection.isCollapsed) {
+        setMenuPosition(null);
+        setSelectedText("");
+        return;
+      }
+
+      const { anchorNode, focusNode } = selection;
+      const container = containerRef.current;
+
+      // Show a menu only if both ends of the selection are inside this specific container
+      if (
+        !container ||
+        !anchorNode ||
+        !focusNode ||
+        !container.contains(anchorNode) ||
+        !container.contains(focusNode)
+      ) {
         setMenuPosition(null);
         setSelectedText("");
         return;
@@ -39,9 +57,8 @@ export function TextSelectionHandler({
       // Store the range for later use
       selectionRangeRef.current = range.cloneRange();
 
-      // Calculate menu position
-      const containerRect = containerRef.current?.getBoundingClientRect();
-      if (!containerRect) return;
+      // Calculate menu position relative to the container
+      const containerRect = container.getBoundingClientRect();
 
       setMenuPosition({
         top: rect.top - containerRect.top,
@@ -110,7 +127,7 @@ export function TextSelectionHandler({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="border-surface-2/20 bg-surface-1/80 fixed z-50 flex items-center gap-1 rounded-lg border p-1 shadow-lg backdrop-blur-md"
+            className="border-surface-2/20 bg-surface-1/80 absolute z-50 flex items-center gap-1 rounded-lg border p-1 shadow-lg backdrop-blur-md"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,

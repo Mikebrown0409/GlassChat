@@ -237,25 +237,21 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     }
   };
 
-  const handleExplainSelection = async () => {
-    if (selectionMenu?.text && currentChatId) {
-      const explanationPrompt = `Please explain this text: "${selectionMenu.text}"`;
+  const handleExplainSelection = async (text?: string) => {
+    const content = text ?? selectionMenu?.text;
+    if (content && currentChatId) {
+      const explanationPrompt = `Please explain this text: "${content}"`;
       setInputValue(explanationPrompt);
-      // Only clear menu, keep the text selection highlighted
-      setSelectionMenu(null);
-      // Don't clear the text selection - let user keep it highlighted
-      // window.getSelection()?.removeAllRanges();
+      setSelectionMenu(null); // clear any old menu state
     }
   };
 
-  const handleTranslateSelection = async () => {
-    if (selectionMenu?.text && currentChatId) {
-      const translationPrompt = `Please translate this text to English: "${selectionMenu.text}"`;
+  const handleTranslateSelection = async (text?: string) => {
+    const content = text ?? selectionMenu?.text;
+    if (content && currentChatId) {
+      const translationPrompt = `Please translate this text to English: "${content}"`;
       setInputValue(translationPrompt);
-      // Only clear menu, keep the text selection highlighted
       setSelectionMenu(null);
-      // Don't clear the text selection - let user keep it highlighted
-      // window.getSelection()?.removeAllRanges();
     }
   };
 

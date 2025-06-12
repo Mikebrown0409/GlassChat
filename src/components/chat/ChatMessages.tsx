@@ -18,8 +18,8 @@ interface ChatMessagesProps {
   messages: ChatMessage[];
   isTyping: boolean;
   isPending: boolean;
-  onTranslate: () => void;
-  onExplain: () => void;
+  onTranslate: (text?: string) => void;
+  onExplain: (text?: string) => void;
   onSuggestionClick: (text: string) => void;
   messagesEndRef: RefObject<HTMLDivElement | null>;
 }
