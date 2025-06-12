@@ -145,7 +145,7 @@ export function ChatSidebar({
                   className={clsx(
                     "group w-full cursor-pointer rounded-md p-2 text-left transition-colors duration-200",
                     currentChatId === chat.id
-                      ? "bg-surface-1/80 text-primary border-brand-primary border-l-2"
+                      ? "bg-brand-primary/20 text-primary border-brand-primary border-l-2"
                       : "text-muted hover:bg-surface-1/60 hover:text-primary",
                   )}
                 >
