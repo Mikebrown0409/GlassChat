@@ -1,13 +1,13 @@
 "use client";
 
 import { clsx } from "clsx";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChatGeneration } from "~/lib/ai/useChatGeneration";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 
 import { InsightsDrawer } from "../insights/InsightsDrawer";
-import { ChatComposer } from "./ChatComposer";
+import { ChatComposer, type ChatComposerHandle } from "./ChatComposer";
 import { ChatHeader } from "./ChatHeader";
 import { ChatMessages } from "./ChatMessages";
 import { ChatSidebar } from "./ChatSidebar";
@@ -17,7 +17,6 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ className: _className }: ChatInterfaceProps) {
-  const [inputValue, setInputValue] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectionMenu, setSelectionMenu] = useState<{
     position: { top: number; left: number };
@@ -59,8 +58,10 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   } = useChatGeneration(currentChatId, messages);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Ref to call imperative methods on ChatComposer (setInput, focusInput)
+  const composerRef = useRef<ChatComposerHandle>(null);
 
   // Auto-select first chat if none selected
   useEffect(() => {
@@ -98,13 +99,6 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isTyping]);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [inputValue]);
 
   // Handle mouse events for dropdown and selection menu
   useEffect(() => {
@@ -160,7 +154,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     const content = text ?? selectionMenu?.text;
     if (content && currentChatId) {
       const explanationPrompt = `Please explain this text: "${content}"`;
-      setInputValue(explanationPrompt);
+      composerRef.current?.setInput(explanationPrompt);
+      composerRef.current?.focusInput();
       setSelectionMenu(null);
     }
   };
@@ -169,14 +164,15 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     const content = text ?? selectionMenu?.text;
     if (content && currentChatId) {
       const translationPrompt = `Please translate this text to English: "${content}"`;
-      setInputValue(translationPrompt);
+      composerRef.current?.setInput(translationPrompt);
+      composerRef.current?.focusInput();
       setSelectionMenu(null);
     }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    setInputValue(suggestion);
-    textareaRef.current?.focus();
+    composerRef.current?.setInput(suggestion);
+    composerRef.current?.focusInput();
   };
 
   const handleNewChat = async () => {
@@ -280,9 +276,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     };
   }, []);
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    void handleSubmitFromHook(inputValue, () => setInputValue(""));
+  const handleComposerSubmit = (text: string) => {
+    void handleSubmitFromHook(text, () => composerRef.current?.setInput(""));
   };
 
   const handleToggleCollaboration = () => {
@@ -336,17 +331,15 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
         {/* Input Area (Composer) */}
         <ChatComposer
-          inputValue={inputValue}
-          setInputValue={setInputValue}
+          ref={composerRef}
           isTyping={isTyping}
-          onSubmit={handleFormSubmit}
+          onSubmit={handleComposerSubmit}
           onStop={handleStop}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
           modelDropdownOpen={modelDropdownOpen}
           setModelDropdownOpen={setModelDropdownOpen}
           models={models}
-          textareaRef={textareaRef}
           dropdownRef={dropdownRef}
         />
       </main>
