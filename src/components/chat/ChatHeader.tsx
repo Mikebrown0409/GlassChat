@@ -1,9 +1,10 @@
 "use client";
 
 import { clsx } from "clsx";
-import { Brain, Sidebar, Users } from "lucide-react";
+import { Sidebar } from "lucide-react";
 import { Button } from "~/components/ui/Button";
 import { DensityToggle } from "../ui/DensityToggle";
+import { InsightsToggle } from "../ui/InsightsToggle";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 
 interface ChatHeaderProps {
@@ -51,12 +52,7 @@ export function ChatHeader({
       <div className="flex items-center gap-2">
         <DensityToggle />
         <ThemeSwitcher />
-        <Button variant="ghost" size="icon" onClick={onToggleCollaboration}>
-          <Users size={20} />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={onToggleMemory}>
-          <Brain size={20} />
-        </Button>
+        <InsightsToggle onClick={() => onToggleMemory()} />
       </div>
     </header>
   );
