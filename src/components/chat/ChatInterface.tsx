@@ -320,7 +320,6 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         <ChatHeader
           sidebarOpen={sidebarOpen}
           onOpenSidebar={() => setSidebarOpen(true)}
-          onToggleCollaboration={handleToggleCollaboration}
           onToggleMemory={handleToggleMemory}
         />
 

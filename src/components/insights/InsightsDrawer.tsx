@@ -99,6 +99,7 @@ export function InsightsDrawer({
               />
             ) : (
               <CollaborationPanel
+                embedded
                 currentChatId={currentChatId}
                 isOpen={true}
                 onToggle={onClose}

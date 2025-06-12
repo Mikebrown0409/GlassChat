@@ -10,7 +10,6 @@ import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 interface ChatHeaderProps {
   sidebarOpen: boolean;
   onOpenSidebar: () => void;
-  onToggleCollaboration: () => void;
   onToggleMemory: () => void;
   className?: string;
 }
@@ -18,7 +17,6 @@ interface ChatHeaderProps {
 export function ChatHeader({
   sidebarOpen,
   onOpenSidebar,
-  onToggleCollaboration,
   onToggleMemory,
   className,
 }: ChatHeaderProps) {
