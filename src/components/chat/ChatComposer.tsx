@@ -59,7 +59,7 @@ export function ChatComposer({
                   }
                 }}
                 placeholder="Type a message..."
-                className="text-surface-1 placeholder:text-surface-1/50 w-full resize-none bg-transparent px-4 py-2 pr-36 text-sm focus:outline-none"
+                className="text-surface-1 placeholder:text-surface-1/50 w-full resize-none bg-transparent px-4 py-2 pr-44 text-sm focus:outline-none"
                 style={{
                   height: `${Math.min(textareaRef.current?.scrollHeight ?? 0, 200)}px`,
                 }}
@@ -90,7 +90,7 @@ export function ChatComposer({
                     </svg>
                   </Button>
                   {modelDropdownOpen && (
-                    <div className="border-border-subtle bg-surface-0/60 absolute right-0 bottom-full z-50 mb-2 w-56 rounded-xl border shadow-2xl backdrop-blur-xl">
+                    <div className="border-border-subtle bg-surface-1/80 ring-border-subtle absolute right-0 bottom-full z-50 mb-2 w-56 rounded-xl shadow-2xl ring-1 backdrop-blur-2xl">
                       {models.map((model) => (
                         <button
                           key={model.id}
