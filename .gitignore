@@ -62,3 +62,5 @@ lighthouse-report*.json
 # build caches
 node_modules/.cache/
 .cache/
+
+designaudit.md
