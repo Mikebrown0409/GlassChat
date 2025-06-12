@@ -14,7 +14,7 @@ import {
   Wifi,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useCollaboration } from "~/lib/collaboration/hooks";
 import {
   CollaborationEventType,
@@ -269,7 +269,7 @@ export function CollaborationPanel({
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
         {activeTab === "rooms" && (
-          <RoomsTab
+          <MemoRoomsTab
             rooms={collaboration.rooms.rooms}
             currentRoomId={currentRoomId}
             onCreateRoom={handleCreateRoom}
@@ -283,7 +283,7 @@ export function CollaborationPanel({
         )}
 
         {activeTab === "messages" && currentRoomId && (
-          <ChatTab
+          <MemoChatTab
             _roomId={currentRoomId}
             messages={collaboration.messages.messages}
             messageInput={messageInput}
@@ -313,7 +313,7 @@ export function CollaborationPanel({
         )}
 
         {activeTab === "live-coding" && currentRoomId && (
-          <LiveCodingTab
+          <MemoLiveCodingTab
             _roomId={currentRoomId}
             liveCoding={collaboration.liveCoding}
             currentUser={collaboration.user.user}
@@ -339,7 +339,7 @@ export function CollaborationPanel({
         )}
 
         {activeTab === "users" && (
-          <UsersTab
+          <MemoUsersTab
             _roomId={currentRoomId ?? ""}
             onlineUsers={collaboration.presence.onlineUsers}
             typingUsers={collaboration.typing.typingUsers}
@@ -788,3 +788,8 @@ function UsersTab({
     </div>
   );
 }
+
+const MemoRoomsTab = memo(RoomsTab);
+const MemoChatTab = memo(ChatTab);
+const MemoLiveCodingTab = memo(LiveCodingTab);
+const MemoUsersTab = memo(UsersTab);
