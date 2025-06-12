@@ -37,7 +37,7 @@ export function ChatMessages({
   messagesEndRef,
 }: ChatMessagesProps) {
   return (
-    <div className="chat-viewport glass-scrollbar">
+    <div className="chat-viewport glass-scrollbar pb-28">
       {messages.length === 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -90,7 +90,7 @@ export function ChatComposer({
                     </svg>
                   </Button>
                   {modelDropdownOpen && (
-                    <div className="border-border-subtle bg-surface-0/90 ring-border-subtle absolute right-0 bottom-full z-50 mb-2 w-56 rounded-xl shadow-2xl ring-1 backdrop-blur-3xl">
+                    <div className="border-border-subtle bg-surface-0 ring-border-subtle shadow-3xl absolute right-0 bottom-full z-50 mb-2 w-56 rounded-xl ring-1 backdrop-blur-2xl">
                       {models.map((model) => (
                         <button
                           key={model.id}
