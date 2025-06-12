@@ -92,6 +92,7 @@ export function InsightsDrawer({
           <div className="flex-1 overflow-y-auto p-4">
             {tab === "memory" ? (
               <MemoryPanel
+                embedded
                 currentChatId={currentChatId}
                 isOpen={true}
                 onToggle={onClose}
