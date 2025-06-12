@@ -394,6 +394,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         <AnimatePresence>
           {selectionMenu && (
             <TextSelectionMenu
+              key="selection-menu"
               position={selectionMenu.position}
               onCopy={handleCopySelection}
               onExplain={handleExplainSelection}
