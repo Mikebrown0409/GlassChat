@@ -67,7 +67,7 @@ export function AttachmentPicker({
           {attachments.map((file, idx) => (
             <span
               key={idx}
-              className="bg-surface-1 text-muted flex items-center gap-1 rounded px-2 py-0.5 text-[10px]"
+              className="bg-surface-1 text-muted flex items-center gap-1 rounded px-2 py-0.5 text-xs"
             >
               {file.name}
               <button

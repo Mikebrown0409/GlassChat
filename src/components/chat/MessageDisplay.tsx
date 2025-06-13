@@ -65,7 +65,7 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                     : "bg-surface-1 rounded-2xl shadow-sm backdrop-blur-sm",
                 )}
               >
-                <div className="prose prose-sm dark:prose-invert max-w-none break-words">
+                <div className="prose prose-base dark:prose-invert max-w-none text-[15px] leading-relaxed break-words">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
                     rehypePlugins={[rehypeKatex]}
