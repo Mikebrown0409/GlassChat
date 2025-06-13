@@ -8,6 +8,7 @@ import rehypeKatex from "rehype-katex";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { TextToSpeechButton } from "~/components/ui/TextToSpeechButton";
 import type { Message } from "~/types/index";
 import { CodeBlock } from "./CodeBlock";
 import { TextSelectionHandler } from "./TextSelectionHandler";
@@ -64,7 +65,7 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                     : "bg-surface-1 rounded-2xl shadow-sm backdrop-blur-sm",
                 )}
               >
-                <div className="prose prose-sm dark:prose-invert max-w-none break-words">
+                <div className="prose prose-base dark:prose-invert max-w-none text-[15px] leading-relaxed break-words">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
                     rehypePlugins={[rehypeKatex]}
@@ -160,6 +161,18 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                           </code>
                         );
                       },
+                      img: ({ src, alt, ...props }) => {
+                        if (!src || typeof src !== "string") return null;
+                        return (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={src}
+                            alt={typeof alt === "string" ? alt : "Image"}
+                            className="max-w-full rounded"
+                            {...props}
+                          />
+                        );
+                      },
                       h1: ({ children, ...props }) => (
                         <h1 className="mb-4 text-2xl font-bold" {...props}>
                           {children}
@@ -235,6 +248,13 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                 </div>
               </div>
             </TextSelectionHandler>
+
+            {/* TTS button for assistant messages */}
+            {message.role === "assistant" && (
+              <div className="mt-2">
+                <TextToSpeechButton text={message.content} buttonSize={20} />
+              </div>
+            )}
 
             <span
               className={clsx(

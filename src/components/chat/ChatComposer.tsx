@@ -10,7 +10,10 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { AttachmentPicker } from "~/components/ui/AttachmentPicker";
 import { Button } from "~/components/ui/Button";
+import { SpeechToTextButton } from "~/components/ui/SpeechToTextButton";
+import { uploadFiles } from "~/lib/utils/upload";
 
 interface ModelOption {
   id: string;
@@ -39,6 +42,9 @@ interface ChatComposerProps {
   dropdownRef: RefObject<HTMLDivElement | null>;
 }
 
+// Utility regex once to test image extension
+const imageExtRegex = /\.(png|jpe?g|gif|webp|svg)$/i;
+
 export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   (
     {
@@ -56,6 +62,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   ) => {
     // Internal textarea state & ref
     const [input, setInput] = useState("");
+    const [attachments, setAttachments] = useState<File[]>([]);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Expose imperative methods to parent
@@ -160,6 +167,35 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           )
         : null;
 
+    const handleSend = async () => {
+      if (!input.trim() && attachments.length === 0) return;
+
+      // Upload files and obtain public URLs
+      let uploaded: { name: string; url: string }[] = [];
+      try {
+        uploaded = await uploadFiles(attachments);
+      } catch (err: unknown) {
+        console.error("Upload failed", err as Error);
+      }
+
+      const attachmentMarkdown = uploaded
+        .map(({ name, url }) => {
+          if (imageExtRegex.test(name)) {
+            return `![${name}](${url})`;
+          }
+          return `[${name}](${url})`;
+        })
+        .join("\n");
+
+      const finalContent = [input.trim(), attachmentMarkdown]
+        .filter(Boolean)
+        .join("\n\n");
+
+      onSubmit(finalContent);
+      setInput("");
+      setAttachments([]);
+    };
+
     return (
       <footer
         data-fixed
@@ -184,20 +220,41 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      if (input.trim()) {
-                        onSubmit(input);
-                        setInput("");
-                      }
+                      void handleSend();
                     }
                   }}
                   placeholder="Type a message..."
-                  className="text-surface-1 placeholder:text-surface-1/50 flex-1 resize-none bg-transparent px-4 py-2 text-sm focus:outline-none"
+                  className="text-surface-1 placeholder:text-surface-1/50 flex-1 resize-none border-none bg-transparent px-4 py-2 text-sm focus:ring-0 focus:ring-offset-0 focus:outline-none focus-visible:outline-none"
                   style={{
                     height: `${Math.min(textareaRef.current?.scrollHeight ?? 0, 200)}px`,
+                    outline: "none",
+                    boxShadow: "none",
+                    border: "none",
                   }}
                 />
+              </div>
+
+              {/* Second row */}
+              <div className="mt-1 flex items-center justify-between px-1 text-[11px]">
+                {/* Left icons */}
                 <div className="flex items-center gap-2">
-                  <div ref={dropdownRef}>
+                  <AttachmentPicker
+                    attachments={attachments}
+                    setAttachments={setAttachments}
+                    buttonSize={20}
+                  />
+                  <SpeechToTextButton
+                    buttonSize={20}
+                    onResult={(transcript) =>
+                      setInput((prev) => `${prev} ${transcript}`.trim())
+                    }
+                  />
+                </div>
+
+                {/* Right cluster */}
+                <div className="flex items-center gap-2">
+                  {/* Model selector */}
+                  <div ref={dropdownRef} className="self-center">
                     {(() => {
                       const info = models.find((m) => m.name === selectedModel);
                       const tooltip = info?.description
@@ -213,15 +270,18 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                             setModelDropdownOpen(!modelDropdownOpen)
                           }
                           title={tooltip}
+                          className="h-6 px-2"
                         >
-                          <span>{selectedModel}</span>
+                          <span className="max-w-[90px] truncate text-[11px] font-medium">
+                            {selectedModel}
+                          </span>
                           <svg
-                            width="12"
-                            height="12"
+                            width="7"
+                            height="7"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            className={`transition-transform duration-200 ${
+                            className={`ml-0.5 transition-transform duration-200 ${
                               modelDropdownOpen ? "rotate-180" : ""
                             }`}
                           >
@@ -236,44 +296,58 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                       );
                     })()}
                   </div>
+
+                  {/* Send / Stop */}
                   {isTyping ? (
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={onStop}
                       aria-label="Stop response generation"
-                      className="bg-surface-0 text-primary ring-border-subtle flex h-8 w-8 animate-pulse items-center justify-center rounded-full ring-1"
+                      className="bg-surface-0 text-primary ring-border-subtle flex h-5 w-5 animate-pulse items-center justify-center rounded-full ring-1"
                       style={{ animationDuration: "2.5s" }}
                     >
-                      <Square size={14} />
+                      <Square size={9} />
                     </Button>
                   ) : (
                     <Button
-                      type="submit"
+                      type="button"
                       variant="primary"
                       size="icon"
-                      disabled={!input.trim()}
-                      className="h-8 w-8"
+                      onClick={() => void handleSend()}
+                      disabled={!input.trim() && attachments.length === 0}
+                      className="h-5 w-5"
                     >
-                      <ArrowUp size={18} strokeWidth={2.5} />
+                      <ArrowUp size={11} strokeWidth={2.5} />
                     </Button>
                   )}
                 </div>
               </div>
-              <div className="mt-2 flex items-center justify-between px-1 pb-1 text-xs">
-                <span className="text-muted">
-                  Press <strong>Shift+Enter</strong> for a new line
-                </span>
-                <span
-                  className={
-                    input.length > 2000
-                      ? "text-brand-secondary font-medium"
-                      : "text-muted/70 font-medium"
-                  }
-                >
-                  {input.length} / 2000
-                </span>
-              </div>
+
+              {/* chips row */}
+              {attachments.length > 0 && (
+                <div className="my-1 flex flex-wrap gap-1 px-1">
+                  {attachments.map((file, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-surface-1 text-muted flex items-center gap-1 rounded px-2 py-0.5 text-xs"
+                    >
+                      {file.name}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAttachments((prev) =>
+                            prev.filter((_, i) => i !== idx),
+                          )
+                        }
+                        className="hover:text-primary"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </form>
             {dropdownElement}
           </div>
