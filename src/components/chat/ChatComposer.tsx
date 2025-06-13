@@ -261,6 +261,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   className="text-surface-1 placeholder:text-surface-1/50 flex-1 resize-none border-none bg-transparent px-4 py-2 text-sm focus:ring-0 focus:ring-offset-0 focus:outline-none focus-visible:outline-none"
                   style={{
                     height: `${Math.min(textareaRef.current?.scrollHeight ?? 0, 200)}px`,
+                    outline: "none",
+                    boxShadow: "none",
+                    border: "none",
                   }}
                 />
                 {/* hidden file input */}
@@ -272,8 +275,46 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   onChange={handleFilesSelected}
                 />
                 {renderAttachmentChips()}
-                {/* Right side action cluster */}
-                <div className="flex items-center gap-1 self-stretch">
+              </div>
+
+              {/* Second row */}
+              <div className="mt-1 flex items-center justify-between px-1 text-[11px]">
+                {/* Left icons */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleAttachClick}
+                    aria-label="Attach files"
+                    className="h-5 w-5"
+                  >
+                    <Paperclip size={11} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleSpeak}
+                    aria-label="Speak text"
+                    disabled={!input.trim()}
+                    className="h-5 w-5"
+                  >
+                    <Volume1 size={11} />
+                  </Button>
+                </div>
+
+                {/* Right cluster */}
+                <div className="flex items-center gap-2">
+                  {/* Char counter */}
+                  <span
+                    className={
+                      input.length > 2000
+                        ? "text-brand-secondary font-medium"
+                        : "text-muted/70 font-medium"
+                    }
+                  >
+                    {input.length}
+                  </span>
+
                   {/* Model selector */}
                   <div ref={dropdownRef} className="self-center">
                     {(() => {
@@ -291,14 +332,14 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                             setModelDropdownOpen(!modelDropdownOpen)
                           }
                           title={tooltip}
-                          className="h-6 px-1"
+                          className="h-5 px-1"
                         >
-                          <span className="max-w-[70px] truncate text-[10px]">
+                          <span className="max-w-[60px] truncate text-[9px]">
                             {selectedModel}
                           </span>
                           <svg
-                            width="8"
-                            height="8"
+                            width="7"
+                            height="7"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -318,29 +359,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                     })()}
                   </div>
 
-                  {/* Attachment icon */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleAttachClick}
-                    aria-label="Attach files"
-                    className="h-6 w-6"
-                  >
-                    <Paperclip size={12} />
-                  </Button>
-
-                  {/* Text to speech icon */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleSpeak}
-                    aria-label="Speak text"
-                    disabled={!input.trim()}
-                    className="h-6 w-6"
-                  >
-                    <Volume1 size={12} />
-                  </Button>
-
                   {/* Send / Stop */}
                   {isTyping ? (
                     <Button
@@ -348,10 +366,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                       size="icon"
                       onClick={onStop}
                       aria-label="Stop response generation"
-                      className="bg-surface-0 text-primary ring-border-subtle flex h-6 w-6 animate-pulse items-center justify-center rounded-full ring-1"
+                      className="bg-surface-0 text-primary ring-border-subtle flex h-5 w-5 animate-pulse items-center justify-center rounded-full ring-1"
                       style={{ animationDuration: "2.5s" }}
                     >
-                      <Square size={10} />
+                      <Square size={9} />
                     </Button>
                   ) : (
                     <Button
@@ -360,22 +378,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                       size="icon"
                       onClick={handleSend}
                       disabled={!input.trim() && attachments.length === 0}
-                      className="h-6 w-6"
+                      className="h-5 w-5"
                     >
-                      <ArrowUp size={12} strokeWidth={2.5} />
+                      <ArrowUp size={11} strokeWidth={2.5} />
                     </Button>
                   )}
-
-                  {/* Char counter */}
-                  <span
-                    className={
-                      input.length > 2000
-                        ? "text-brand-secondary text-[10px] font-medium"
-                        : "text-muted/70 text-[10px] font-medium"
-                    }
-                  >
-                    {input.length}
-                  </span>
                 </div>
               </div>
             </form>
