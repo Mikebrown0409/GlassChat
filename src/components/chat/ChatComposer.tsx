@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, Square } from "lucide-react";
+import { ArrowUp, Paperclip, Square, Volume2 } from "lucide-react";
 import {
   forwardRef,
   useEffect,
@@ -57,6 +57,28 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     // Internal textarea state & ref
     const [input, setInput] = useState("");
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // File attachment handling (initial stub)
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleAttachClick = () => {
+      fileInputRef.current?.click();
+    };
+
+    const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      // TODO: integrate attachments into message payload
+      console.log("Selected files", files);
+    };
+
+    const handleSpeak = () => {
+      if (!input.trim()) return;
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(input);
+        window.speechSynthesis.speak(utterance);
+      }
+    };
 
     // Expose imperative methods to parent
     useImperativeHandle(ref, () => ({
@@ -191,10 +213,18 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                     }
                   }}
                   placeholder="Type a message..."
-                  className="text-surface-1 placeholder:text-surface-1/50 flex-1 resize-none bg-transparent px-4 py-2 text-sm focus:outline-none"
+                  className="text-surface-1 placeholder:text-surface-1/50 flex-1 resize-none border-none bg-transparent px-4 py-2 text-sm focus:ring-0 focus:outline-none"
                   style={{
                     height: `${Math.min(textareaRef.current?.scrollHeight ?? 0, 200)}px`,
                   }}
+                />
+                {/* hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFilesSelected}
                 />
                 <div className="flex items-center gap-2">
                   <div ref={dropdownRef}>
@@ -236,6 +266,27 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                       );
                     })()}
                   </div>
+                  {/* Attachment icon */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleAttachClick}
+                    aria-label="Attach files"
+                    className="h-8 w-8"
+                  >
+                    <Paperclip size={16} />
+                  </Button>
+                  {/* Text to speech icon */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleSpeak}
+                    aria-label="Speak text"
+                    disabled={!input.trim()}
+                    className="h-8 w-8"
+                  >
+                    <Volume2 size={16} />
+                  </Button>
                   {isTyping ? (
                     <Button
                       variant="ghost"
