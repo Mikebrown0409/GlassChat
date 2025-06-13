@@ -1,7 +1,12 @@
 "use client";
 
 import { clsx } from "clsx";
-import { Menu, Sidebar as SidebarIcon } from "lucide-react";
+import {
+  LogOut,
+  Menu,
+  Settings as SettingsIcon,
+  Sidebar as SidebarIcon,
+} from "lucide-react";
 import { Button } from "~/components/ui/Button";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import {
@@ -67,10 +72,18 @@ export function ChatHeader({
               </Avatar>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="bottom" align="end">
-              <DropdownMenuItem onSelect={() => alert("Settings")}>
+              <DropdownMenuItem
+                onSelect={() => alert("Settings")}
+                className="flex items-center gap-2"
+              >
+                <SettingsIcon size={16} />
                 Settings
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => alert("Logout")}>
+              <DropdownMenuItem
+                onSelect={() => alert("Logout")}
+                className="flex items-center gap-2 text-red-500 focus:text-red-500"
+              >
+                <LogOut size={16} />
                 Logout
               </DropdownMenuItem>
             </DropdownMenuContent>

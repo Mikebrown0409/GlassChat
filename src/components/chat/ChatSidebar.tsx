@@ -1,7 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ChevronLeft, MessageCircle, MoreHorizontal, Plus } from "lucide-react";
+import {
+  ChevronLeft,
+  LogOut,
+  MessageCircle,
+  MoreHorizontal,
+  Plus,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/Button";
@@ -121,10 +128,18 @@ export function ChatSidebar({
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start">
-            <DropdownMenuItem onSelect={() => alert("Settings")}>
+            <DropdownMenuItem
+              onSelect={() => alert("Settings")}
+              className="flex items-center gap-2"
+            >
+              <SettingsIcon size={16} />
               Settings
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => alert("Logout")}>
+            <DropdownMenuItem
+              onSelect={() => alert("Logout")}
+              className="flex items-center gap-2 text-red-500 focus:text-red-500"
+            >
+              <LogOut size={16} />
               Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
