@@ -6,7 +6,6 @@ import { useChatGeneration } from "~/lib/ai/useChatGeneration";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 
-import { Sheet, SheetContent } from "~/components/ui/sheet";
 import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { InsightsDrawer } from "../insights/InsightsDrawer";
 import { ChatComposer, type ChatComposerHandle } from "./ChatComposer";
@@ -19,7 +18,7 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ className: _className }: ChatInterfaceProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectionMenu, setSelectionMenu] = useState<{
     position: { top: number; left: number };
     text: string;
@@ -296,48 +295,23 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   return (
     <div className="bg-surface-0 text-primary fixed inset-0 flex h-screen w-screen overflow-hidden font-sans">
-      {/* Desktop Sidebar */}
-      {isDesktop && (
-        <ChatSidebar
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          currentChatId={currentChatId}
-          onSelectChat={handleChatSelect}
-          onDeleteChat={handleDeleteChat}
-          onRenameChat={handleRenameChat}
-          onNewChat={handleNewChat}
-        />
-      )}
-
-      {/* Mobile Sidebar (Sheet) */}
-      {!isDesktop && (
-        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetContent side="left" className="w-72 p-0 sm:w-80">
-            <ChatSidebar
-              sidebarOpen={sidebarOpen}
-              setSidebarOpen={setSidebarOpen}
-              currentChatId={currentChatId}
-              onSelectChat={(id) => {
-                handleChatSelect(id);
-                setSidebarOpen(false);
-              }}
-              onDeleteChat={handleDeleteChat}
-              onRenameChat={handleRenameChat}
-              onNewChat={async () => {
-                await handleNewChat();
-                setSidebarOpen(false);
-              }}
-            />
-          </SheetContent>
-        </Sheet>
-      )}
+      {/* Sidebar (always rendered) */}
+      <ChatSidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        currentChatId={currentChatId}
+        onSelectChat={handleChatSelect}
+        onDeleteChat={handleDeleteChat}
+        onRenameChat={handleRenameChat}
+        onNewChat={handleNewChat}
+      />
 
       {/* Main Content with dynamic margin for sidebar */}
       <main
         data-chat-root
         className={clsx(
           "relative flex h-full min-w-0 flex-1 flex-col transition-[margin] duration-300 ease-in-out",
-          sidebarOpen && isDesktop ? "ml-72 lg:ml-80" : "ml-0",
+          sidebarOpen && isDesktop ? "ml-64" : "ml-0",
         )}
       >
         {/* Top Bar */}

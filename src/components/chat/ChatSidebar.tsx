@@ -1,32 +1,20 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  ChevronLeft,
-  MessageCircle,
-  MoreHorizontal,
-  Plus,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { ChevronLeft, MessageCircle, MoreHorizontal, Plus } from "lucide-react";
 import { useState } from "react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "~/components/ui/accordion";
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/Button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
-import { SidebarNavItem } from "~/components/ui/sidebar-nav-item";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "~/components/ui/tooltip";
 import { useLiveChats } from "~/lib/sync";
+import { cn } from "~/utils/cn";
 
 // Professional easing curve for all animations (keep in sync with ChatInterface)
 const DYNAMIC_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
@@ -65,201 +53,83 @@ export function ChatSidebar({
       initial={{ x: "-100%" }}
       animate={{ x: sidebarOpen ? 0 : "-100%" }}
       transition={{ ease: DYNAMIC_EASE, duration: 0.3 }}
-      className="border-border-subtle fixed top-0 bottom-0 left-0 z-20 flex w-64 flex-col border-r bg-[#111] text-white"
+      className="flex h-screen w-64 flex-col rounded-r-2xl bg-zinc-900 text-zinc-200 shadow-inner ring-1 ring-zinc-800/40"
     >
-      {/* Header */}
-      <div className="flex h-16 shrink-0 items-center justify-between px-4">
-        <div className="flex items-center gap-3">
-          <div className="border-border-subtle flex h-8 w-8 items-center justify-center rounded-lg border bg-[#1a1a1a] transition-all duration-200 hover:scale-105">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-muted transition-colors duration-200"
-            >
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-primary text-base font-semibold transition-colors duration-200">
-              GlassChat
-            </h1>
-            <p className="text-muted text-sm transition-colors duration-200">
-              Conversational Intelligence
-            </p>
-          </div>
-        </div>
+      <div className="flex items-center gap-2 p-4 text-lg font-semibold">
+        <MessageCircle size={20} />
+        GlassChat
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setSidebarOpen(false)}
-          title="Collapse Sidebar"
-          className="button-hover"
+          className="ml-auto"
         >
-          <ChevronLeft size={18} />
+          <ChevronLeft size={16} />
         </Button>
       </div>
 
-      {/* New Chat Button, Search, and History Wrapper */}
-      <div className="flex flex-1 flex-col overflow-y-hidden">
-        {/* New Chat and Search */}
-        <div className="px-4 py-3">
-          <Button
-            variant="default"
-            size="md"
-            onClick={() => void onNewChat()}
-            className="w-full gap-2"
-          >
-            <Plus size={16} />
-            New Conversation
-          </Button>
-        </div>
+      {/* New Chat Button */}
+      <div className="space-y-2 px-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => void onNewChat()}
+          className="w-full justify-start gap-2 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+        >
+          <Plus size={16} />
+          New Chat
+        </Button>
 
-        <div className="px-4 pb-3">
-          <div className="relative">
-            <Search className="text-muted pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-            <Input
-              placeholder="Search chats..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-        </div>
-
-        {/* Conversation History */}
-        <ScrollArea className="flex-1 px-3 pb-4">
-          <AnimatePresence>
-            {filteredHistory.map((chat) => (
-              <div key={chat.id} className="relative">
-                <SidebarNavItem
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2, ease: DYNAMIC_EASE }}
-                  onClick={() => onSelectChat(chat.id)}
-                  active={currentChatId === chat.id}
-                  data-testid="chat-sidebar-item"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <MessageCircle
-                      size={16}
-                      className="text-muted/70 shrink-0"
-                    />
-                    {renamingChat === chat.id ? (
-                      <input
-                        type="text"
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onBlur={() => {
-                          if (renameValue.trim()) {
-                            void onRenameChat(chat.id, renameValue.trim());
-                          }
-                          setRenamingChat(null);
-                          setRenameValue("");
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && renameValue.trim()) {
-                            void onRenameChat(chat.id, renameValue.trim());
-                            setRenamingChat(null);
-                            setRenameValue("");
-                          } else if (e.key === "Escape") {
-                            setRenamingChat(null);
-                            setRenameValue("");
-                          }
-                        }}
-                        className="border-brand-primary/50 bg-surface-0 text-primary flex-1 rounded border px-2 py-1 text-sm focus:outline-none"
-                        autoFocus
-                      />
-                    ) : (
-                      <span className="truncate text-sm">{chat.title}</span>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <AnimatePresence>
-                        {searchQuery === "" && renamingChat !== chat.id && (
-                          <motion.span
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="text-muted/70 text-xs"
-                          >
-                            {new Date(chat.updatedAt).toLocaleDateString()}
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
-
-                      {renamingChat !== chat.id && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="destructive"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void onDeleteChat(chat.id);
-                                }}
-                                className="opacity-0 transition-opacity group-hover:opacity-100"
-                              >
-                                <Trash2
-                                  size={14}
-                                  className="text-muted group-hover:text-red-600"
-                                />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">Delete</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </div>
-                  </div>
-                </SidebarNavItem>
-              </div>
-            ))}
-          </AnimatePresence>
-        </ScrollArea>
-
-        {/* Bottom Accordion */}
-        <div className="mt-auto px-4 py-2">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="settings">
-              <AccordionTrigger>Settings</AccordionTrigger>
-              <AccordionContent>
-                {/* Placeholder settings */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start"
-                >
-                  <ChevronLeft size={14} className="mr-2" /> Back
-                </Button>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="trash">
-              <AccordionTrigger>Trash</AccordionTrigger>
-              <AccordionContent>
-                <p className="text-muted text-xs">No deleted chats.</p>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
+        {/* Search */}
+        <Input
+          placeholder="Search chats..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="focus:ring-brand-primary h-8 rounded-md border-none bg-zinc-800 text-zinc-200 placeholder:text-zinc-500 focus:ring-2"
+        />
       </div>
 
-      {/* Footer */}
-      <div className="mt-auto p-4">
-        <button className="text-muted hover:bg-surface-1/60 hover:text-primary flex w-full items-center gap-3 rounded-md p-2 text-left text-sm transition-colors">
-          <div className="bg-surface-1 h-8 w-8 rounded-full"></div>
-          <div className="flex-1 truncate">Chat User</div>
-          <MoreHorizontal size={16} />
-        </button>
+      {/* Scrollable conversation list */}
+      <ScrollArea className="mt-4 flex-1 px-2">
+        <div className="px-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+          Chats
+        </div>
+        <div className="mt-2 space-y-2">
+          {filteredHistory.map((chat) => (
+            <Button
+              key={chat.id}
+              variant="ghost"
+              className={cn(
+                "w-full justify-start truncate text-zinc-300 hover:bg-zinc-800 hover:text-white",
+                currentChatId === chat.id &&
+                  "bg-zinc-800 text-white hover:bg-zinc-800",
+              )}
+              onClick={() => onSelectChat(chat.id)}
+            >
+              {chat.title}
+            </Button>
+          ))}
+        </div>
+      </ScrollArea>
+
+      {/* Bottom user/settings section */}
+      <div className="flex items-center justify-between gap-2 border-t border-zinc-800 p-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Avatar className="cursor-pointer">
+              <AvatarFallback>U</AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start">
+            <DropdownMenuItem onSelect={() => alert("Settings")}>
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => alert("Logout")}>
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <MoreHorizontal size={16} className="text-zinc-400" />
       </div>
     </motion.aside>
   );

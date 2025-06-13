@@ -6,11 +6,11 @@ import * as React from "react";
 import { cn } from "~/utils/cn";
 
 const sidebarNavItemVariants = cva(
-  "group w-full cursor-pointer rounded-md p-2 text-left transition-colors",
+  "group w-full cursor-pointer rounded-lg px-3 py-2 text-left transition-colors",
   {
     variants: {
       active: {
-        true: "bg-brand-primary/20 text-primary border-brand-primary border-l-2",
+        true: "bg-brand-primary/15 text-primary",
         false: "text-muted hover:bg-surface-1/60 hover:text-primary",
       },
     },
