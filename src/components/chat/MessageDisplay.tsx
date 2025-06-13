@@ -35,7 +35,7 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
     <div
       className={clsx(
         "group relative w-full transition-colors duration-200",
-        message.role === "user" ? "bg-surface-1/90" : "bg-surface-0/90",
+        message.role === "user" ? "bg-transparent" : "bg-transparent",
       )}
     >
       <div className="mx-auto max-w-3xl px-4 py-6">
@@ -60,8 +60,8 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                 className={clsx(
                   "p-4",
                   message.role === "user"
-                    ? "rounded-2xl bg-[#2a2a2a] text-white shadow-sm dark:bg-[#1a1a1a]"
-                    : "bg-surface-0/30 border-surface-1/10 rounded-lg border backdrop-blur-[2px]",
+                    ? "text-primary rounded-2xl bg-[color:var(--surface-user)] shadow-sm backdrop-blur-sm"
+                    : "bg-surface-1 rounded-2xl shadow-sm backdrop-blur-sm",
                 )}
               >
                 <div className="prose prose-sm dark:prose-invert max-w-none break-words">
@@ -80,26 +80,28 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                         </div>
                       ),
                       p: ({ children, ...props }) => {
+                        // Determine if the paragraph is short enough that we should prevent an early line-wrap.
                         let isShortMessage = false;
-                        if (message.role === "user") {
-                          if (typeof children === "string") {
-                            isShortMessage = children.length < 50;
-                          } else if (
-                            Array.isArray(children) &&
-                            children.every((c) => typeof c === "string")
-                          ) {
-                            isShortMessage = children.join("").length < 50;
-                          }
+
+                        if (typeof children === "string") {
+                          isShortMessage = children.length < 50;
+                        } else if (
+                          Array.isArray(children) &&
+                          children.every((c) => typeof c === "string")
+                        ) {
+                          isShortMessage = children.join("").length < 50;
                         }
+
                         return (
                           <p
                             className={clsx(
                               "mb-4 last:mb-0",
-                              message.role === "user"
-                                ? isShortMessage
-                                  ? "whitespace-nowrap"
-                                  : "whitespace-normal"
-                                : "whitespace-pre-wrap",
+                              isShortMessage
+                                ? "whitespace-nowrap"
+                                : // Longer messages fall back to role-specific whitespace handling.
+                                  message.role === "user"
+                                  ? "whitespace-normal"
+                                  : "whitespace-pre-wrap",
                             )}
                             {...props}
                           >
