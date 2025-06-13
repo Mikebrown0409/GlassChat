@@ -14,6 +14,7 @@ import { AttachmentPicker } from "~/components/ui/AttachmentPicker";
 import { Button } from "~/components/ui/Button";
 import { SpeechToTextButton } from "~/components/ui/SpeechToTextButton";
 import { TextToSpeechButton } from "~/components/ui/TextToSpeechButton";
+import { uploadFiles } from "~/lib/utils/upload";
 
 interface ModelOption {
   id: string;
@@ -41,6 +42,9 @@ interface ChatComposerProps {
   /** External ref for the dropdown element so parent can detect outside clicks */
   dropdownRef: RefObject<HTMLDivElement | null>;
 }
+
+// Utility regex once to test image extension
+const imageExtRegex = /\.(png|jpe?g|gif|webp|svg)$/i;
 
 export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   (
@@ -164,17 +168,23 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           )
         : null;
 
-    const handleSend = () => {
+    const handleSend = async () => {
       if (!input.trim() && attachments.length === 0) return;
 
-      // Generate markdown for attachments (images shown inline, others as links)
-      const attachmentMarkdown = attachments
-        .map((file) => {
-          const url = URL.createObjectURL(file);
-          if (file.type.startsWith("image/")) {
-            return `![${file.name}](${url})`;
+      // Upload files and obtain public URLs
+      let uploaded: { name: string; url: string }[] = [];
+      try {
+        uploaded = await uploadFiles(attachments);
+      } catch (err: unknown) {
+        console.error("Upload failed", err as Error);
+      }
+
+      const attachmentMarkdown = uploaded
+        .map(({ name, url }) => {
+          if (imageExtRegex.test(name)) {
+            return `![${name}](${url})`;
           }
-          return `[${file.name}](${url})`;
+          return `[${name}](${url})`;
         })
         .join("\n");
 
@@ -211,7 +221,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      handleSend();
+                      void handleSend();
                     }
                   }}
                   placeholder="Type a message..."
@@ -306,7 +316,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                       type="button"
                       variant="primary"
                       size="icon"
-                      onClick={handleSend}
+                      onClick={() => void handleSend()}
                       disabled={!input.trim() && attachments.length === 0}
                       className="h-5 w-5"
                     >
