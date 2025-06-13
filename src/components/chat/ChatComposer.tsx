@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, Paperclip, Square, Volume2 } from "lucide-react";
+import { ArrowUp, Paperclip, Square, Volume2, X } from "lucide-react";
 import {
   forwardRef,
   useEffect,
@@ -56,6 +56,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   ) => {
     // Internal textarea state & ref
     const [input, setInput] = useState("");
+    const [attachments, setAttachments] = useState<File[]>([]);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // File attachment handling (initial stub)
@@ -68,8 +69,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files || files.length === 0) return;
-      // TODO: integrate attachments into message payload
-      console.log("Selected files", files);
+      setAttachments((prev) => [...prev, ...Array.from(files)]);
     };
 
     const handleSpeak = () => {
@@ -182,6 +182,54 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           )
         : null;
 
+    const renderAttachmentChips = () => {
+      if (attachments.length === 0) return null;
+      return (
+        <div className="my-2 flex flex-wrap gap-1">
+          {attachments.map((file, idx) => (
+            <span
+              key={`${file.name}-${idx}`}
+              className="bg-surface-1 text-muted flex items-center gap-1 rounded px-2 py-0.5 text-[10px]"
+            >
+              {file.name}
+              <button
+                type="button"
+                onClick={() =>
+                  setAttachments((prev) => prev.filter((_, i) => i !== idx))
+                }
+                className="hover:text-primary"
+              >
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+      );
+    };
+
+    const handleSend = () => {
+      if (!input.trim() && attachments.length === 0) return;
+
+      // Generate markdown for attachments (images shown inline, others as links)
+      const attachmentMarkdown = attachments
+        .map((file) => {
+          const url = URL.createObjectURL(file);
+          if (file.type.startsWith("image/")) {
+            return `![${file.name}](${url})`;
+          }
+          return `[${file.name}](${url})`;
+        })
+        .join("\n");
+
+      const finalContent = [input.trim(), attachmentMarkdown]
+        .filter(Boolean)
+        .join("\n\n");
+
+      onSubmit(finalContent);
+      setInput("");
+      setAttachments([]);
+    };
+
     return (
       <footer
         data-fixed
@@ -206,14 +254,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      if (input.trim()) {
-                        onSubmit(input);
-                        setInput("");
-                      }
+                      handleSend();
                     }
                   }}
                   placeholder="Type a message..."
-                  className="text-surface-1 placeholder:text-surface-1/50 flex-1 resize-none border-none bg-transparent px-4 py-2 text-sm focus:ring-0 focus:outline-none"
+                  className="text-surface-1 placeholder:text-surface-1/50 flex-1 resize-none border-none bg-transparent px-4 py-2 text-sm focus:ring-0 focus:ring-offset-0 focus:outline-none focus-visible:outline-none"
                   style={{
                     height: `${Math.min(textareaRef.current?.scrollHeight ?? 0, 200)}px`,
                   }}
@@ -226,92 +271,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   className="hidden"
                   onChange={handleFilesSelected}
                 />
-                <div className="flex items-center gap-2">
-                  <div ref={dropdownRef}>
-                    {(() => {
-                      const info = models.find((m) => m.name === selectedModel);
-                      const tooltip = info?.description
-                        ? `${info.name} – ${info.description}`
-                        : (info?.name ?? "");
-                      return (
-                        <Button
-                          ref={triggerRef}
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() =>
-                            setModelDropdownOpen(!modelDropdownOpen)
-                          }
-                          title={tooltip}
-                        >
-                          <span>{selectedModel}</span>
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            className={`transition-transform duration-200 ${
-                              modelDropdownOpen ? "rotate-180" : ""
-                            }`}
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        </Button>
-                      );
-                    })()}
-                  </div>
-                  {/* Attachment icon */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleAttachClick}
-                    aria-label="Attach files"
-                    className="h-8 w-8"
-                  >
-                    <Paperclip size={16} />
-                  </Button>
-                  {/* Text to speech icon */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleSpeak}
-                    aria-label="Speak text"
-                    disabled={!input.trim()}
-                    className="h-8 w-8"
-                  >
-                    <Volume2 size={16} />
-                  </Button>
-                  {isTyping ? (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={onStop}
-                      aria-label="Stop response generation"
-                      className="bg-surface-0 text-primary ring-border-subtle flex h-8 w-8 animate-pulse items-center justify-center rounded-full ring-1"
-                      style={{ animationDuration: "2.5s" }}
-                    >
-                      <Square size={14} />
-                    </Button>
-                  ) : (
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="icon"
-                      disabled={!input.trim()}
-                      className="h-8 w-8"
-                    >
-                      <ArrowUp size={18} strokeWidth={2.5} />
-                    </Button>
-                  )}
-                </div>
+                {renderAttachmentChips()}
+                {/* No inline action buttons here anymore */}
               </div>
-              <div className="mt-2 flex items-center justify-between px-1 pb-1 text-xs">
+              {/* Hint row */}
+              <div className="mt-2 flex items-center justify-between px-1 text-xs">
                 <span className="text-muted">
                   Press <strong>Shift+Enter</strong> for a new line
                 </span>
@@ -324,6 +288,97 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                 >
                   {input.length} / 2000
                 </span>
+              </div>
+
+              {/* Actions row */}
+              <div className="mt-1 flex items-center gap-2 px-1 text-xs">
+                {/* Model selector */}
+                <div ref={dropdownRef}>
+                  {(() => {
+                    const info = models.find((m) => m.name === selectedModel);
+                    const tooltip = info?.description
+                      ? `${info.name} – ${info.description}`
+                      : (info?.name ?? "");
+                    return (
+                      <Button
+                        ref={triggerRef}
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                        title={tooltip}
+                        className="h-6"
+                      >
+                        <span className="text-[11px]">{selectedModel}</span>
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          className={`ml-1 transition-transform duration-200 ${
+                            modelDropdownOpen ? "rotate-180" : ""
+                          }`}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </Button>
+                    );
+                  })()}
+                </div>
+
+                {/* Attachment icon */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleAttachClick}
+                  aria-label="Attach files"
+                  className="h-6 w-6"
+                >
+                  <Paperclip size={14} />
+                </Button>
+
+                {/* Text to speech icon */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleSpeak}
+                  aria-label="Speak text"
+                  disabled={!input.trim()}
+                  className="h-6 w-6"
+                >
+                  <Volume2 size={14} />
+                </Button>
+
+                {/* Send / Stop */}
+                {isTyping ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onStop}
+                    aria-label="Stop response generation"
+                    className="bg-surface-0 text-primary ring-border-subtle flex h-6 w-6 animate-pulse items-center justify-center rounded-full ring-1"
+                    style={{ animationDuration: "2.5s" }}
+                  >
+                    <Square size={12} />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="icon"
+                    onClick={handleSend}
+                    disabled={!input.trim() && attachments.length === 0}
+                    className="h-6 w-6"
+                  >
+                    <ArrowUp size={14} strokeWidth={2.5} />
+                  </Button>
+                )}
               </div>
             </form>
             {dropdownElement}
