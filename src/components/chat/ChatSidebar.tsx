@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "~/components/ui/Button";
+import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { SidebarNavItem } from "~/components/ui/sidebar-nav-item";
 import { useLiveChats } from "~/lib/sync";
@@ -107,26 +108,26 @@ export function ChatSidebar({
       {/* New Chat Button, Search, and History Wrapper */}
       <div className="flex flex-1 flex-col overflow-y-hidden">
         {/* New Chat and Search */}
-        <div className="p-3">
+        <div className="p-4">
           <Button
-            variant="ghost"
-            size="md"
+            variant="secondary"
+            size="sm"
             onClick={() => void onNewChat()}
-            className="border-border-subtle hover:bg-surface-1/60 w-full rounded-full border transition-colors"
+            className="w-full justify-start gap-2"
           >
             <Plus size={16} />
             New Conversation
           </Button>
         </div>
-        <div className="px-3 pb-2">
+
+        <div className="px-4 pb-3">
           <div className="relative">
-            <Search className="text-muted pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-            <input
-              type="text"
+            <Search className="text-muted pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+            <Input
               placeholder="Search chats..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="text-surface-1 placeholder:text-surface-1/50 w-full bg-transparent py-2 pr-4 pl-10 text-sm focus:outline-none"
+              className="pl-8"
             />
           </div>
         </div>
