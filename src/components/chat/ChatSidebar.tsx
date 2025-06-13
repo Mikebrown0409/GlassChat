@@ -3,7 +3,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronLeft,
-  Edit3,
   MoreHorizontal,
   Plus,
   Search,
@@ -52,9 +51,6 @@ export function ChatSidebar({
 }: ChatSidebarProps) {
   // Local sidebar-specific state
   const [searchQuery, setSearchQuery] = useState("");
-  const [conversationMenus, setConversationMenus] = useState<
-    Record<string, boolean>
-  >({});
   const [renamingChat, setRenamingChat] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
@@ -62,13 +58,6 @@ export function ChatSidebar({
   const filteredHistory = (chats ?? []).filter((chat) =>
     chat.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-
-  const toggleConversationMenu = (chatId: string) => {
-    setConversationMenus((prev) => ({
-      ...prev,
-      [chatId]: !prev[chatId],
-    }));
-  };
 
   return (
     <motion.aside
@@ -213,57 +202,23 @@ export function ChatSidebar({
                                 size="icon"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  toggleConversationMenu(chat.id);
+                                  void onDeleteChat(chat.id);
                                 }}
                                 className="opacity-0 transition-opacity group-hover:opacity-100"
-                                data-conversation-menu
                               >
-                                <MoreHorizontal
+                                <Trash2
                                   size={14}
-                                  className="text-muted"
+                                  className="text-muted group-hover:text-brand-secondary"
                                 />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="right">More</TooltipContent>
+                            <TooltipContent side="right">Delete</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       )}
                     </div>
                   </div>
                 </SidebarNavItem>
-
-                {/* Conversation Menu */}
-                <AnimatePresence>
-                  {conversationMenus[chat.id] && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                      transition={{ duration: 0.15, ease: DYNAMIC_EASE }}
-                      className="border-border-subtle bg-surface-1/90 absolute top-full right-0 z-50 mt-1 w-40 rounded-lg border shadow-xl backdrop-blur-xl"
-                      data-conversation-menu
-                    >
-                      <button
-                        onClick={() => {
-                          setRenamingChat(chat.id);
-                          setRenameValue(chat.title);
-                          setConversationMenus({});
-                        }}
-                        className="text-muted hover:bg-surface-0 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg"
-                      >
-                        <Edit3 size={14} />
-                        Rename
-                      </button>
-                      <button
-                        onClick={() => void onDeleteChat(chat.id)}
-                        className="text-brand-secondary hover:bg-brand-secondary/10 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors last:rounded-b-lg"
-                      >
-                        <Trash2 size={14} />
-                        Delete
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             ))}
           </AnimatePresence>
