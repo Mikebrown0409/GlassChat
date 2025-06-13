@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, Paperclip, Square, Volume2, X } from "lucide-react";
+import { ArrowUp, Paperclip, Square, Volume1, X } from "lucide-react";
 import {
   forwardRef,
   useEffect,
@@ -272,113 +272,111 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   onChange={handleFilesSelected}
                 />
                 {renderAttachmentChips()}
-                {/* No inline action buttons here anymore */}
-              </div>
-              {/* Hint row */}
-              <div className="mt-2 flex items-center justify-between px-1 text-xs">
-                <span className="text-muted">
-                  Press <strong>Shift+Enter</strong> for a new line
-                </span>
-                <span
-                  className={
-                    input.length > 2000
-                      ? "text-brand-secondary font-medium"
-                      : "text-muted/70 font-medium"
-                  }
-                >
-                  {input.length} / 2000
-                </span>
-              </div>
-
-              {/* Actions row */}
-              <div className="mt-1 flex items-center gap-2 px-1 text-xs">
-                {/* Model selector */}
-                <div ref={dropdownRef}>
-                  {(() => {
-                    const info = models.find((m) => m.name === selectedModel);
-                    const tooltip = info?.description
-                      ? `${info.name} – ${info.description}`
-                      : (info?.name ?? "");
-                    return (
-                      <Button
-                        ref={triggerRef}
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                        title={tooltip}
-                        className="h-6"
-                      >
-                        <span className="text-[11px]">{selectedModel}</span>
-                        <svg
-                          width="10"
-                          height="10"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          className={`ml-1 transition-transform duration-200 ${
-                            modelDropdownOpen ? "rotate-180" : ""
-                          }`}
+                {/* Right side action cluster */}
+                <div className="flex items-center gap-1 self-stretch">
+                  {/* Model selector */}
+                  <div ref={dropdownRef} className="self-center">
+                    {(() => {
+                      const info = models.find((m) => m.name === selectedModel);
+                      const tooltip = info?.description
+                        ? `${info.name} – ${info.description}`
+                        : (info?.name ?? "");
+                      return (
+                        <Button
+                          ref={triggerRef}
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() =>
+                            setModelDropdownOpen(!modelDropdownOpen)
+                          }
+                          title={tooltip}
+                          className="h-6 px-1"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </Button>
-                    );
-                  })()}
-                </div>
+                          <span className="max-w-[70px] truncate text-[10px]">
+                            {selectedModel}
+                          </span>
+                          <svg
+                            width="8"
+                            height="8"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            className={`ml-0.5 transition-transform duration-200 ${
+                              modelDropdownOpen ? "rotate-180" : ""
+                            }`}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </Button>
+                      );
+                    })()}
+                  </div>
 
-                {/* Attachment icon */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleAttachClick}
-                  aria-label="Attach files"
-                  className="h-6 w-6"
-                >
-                  <Paperclip size={14} />
-                </Button>
-
-                {/* Text to speech icon */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleSpeak}
-                  aria-label="Speak text"
-                  disabled={!input.trim()}
-                  className="h-6 w-6"
-                >
-                  <Volume2 size={14} />
-                </Button>
-
-                {/* Send / Stop */}
-                {isTyping ? (
+                  {/* Attachment icon */}
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={onStop}
-                    aria-label="Stop response generation"
-                    className="bg-surface-0 text-primary ring-border-subtle flex h-6 w-6 animate-pulse items-center justify-center rounded-full ring-1"
-                    style={{ animationDuration: "2.5s" }}
-                  >
-                    <Square size={12} />
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="icon"
-                    onClick={handleSend}
-                    disabled={!input.trim() && attachments.length === 0}
+                    onClick={handleAttachClick}
+                    aria-label="Attach files"
                     className="h-6 w-6"
                   >
-                    <ArrowUp size={14} strokeWidth={2.5} />
+                    <Paperclip size={12} />
                   </Button>
-                )}
+
+                  {/* Text to speech icon */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleSpeak}
+                    aria-label="Speak text"
+                    disabled={!input.trim()}
+                    className="h-6 w-6"
+                  >
+                    <Volume1 size={12} />
+                  </Button>
+
+                  {/* Send / Stop */}
+                  {isTyping ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={onStop}
+                      aria-label="Stop response generation"
+                      className="bg-surface-0 text-primary ring-border-subtle flex h-6 w-6 animate-pulse items-center justify-center rounded-full ring-1"
+                      style={{ animationDuration: "2.5s" }}
+                    >
+                      <Square size={10} />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="icon"
+                      onClick={handleSend}
+                      disabled={!input.trim() && attachments.length === 0}
+                      className="h-6 w-6"
+                    >
+                      <ArrowUp size={12} strokeWidth={2.5} />
+                    </Button>
+                  )}
+
+                  {/* Char counter */}
+                  <span
+                    className={
+                      input.length > 2000
+                        ? "text-brand-secondary text-[10px] font-medium"
+                        : "text-muted/70 text-[10px] font-medium"
+                    }
+                  >
+                    {input.length}
+                  </span>
+                </div>
               </div>
             </form>
             {dropdownElement}
