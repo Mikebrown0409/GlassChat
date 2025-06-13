@@ -1,7 +1,7 @@
 "use client";
 
 import { clsx } from "clsx";
-import { Menu } from "lucide-react";
+import { Menu, Sidebar as SidebarIcon } from "lucide-react";
 import { Button } from "~/components/ui/Button";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import {
@@ -40,10 +40,11 @@ export function ChatHeader({
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
             onClick={onOpenSidebar}
+            aria-label="Open sidebar"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-5 w-5 md:hidden" />
+            <SidebarIcon className="hidden h-5 w-5 md:block" />
           </Button>
         )}
         <span className="text-sm font-medium md:text-base">GlassChat</span>
