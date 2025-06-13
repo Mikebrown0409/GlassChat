@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, Paperclip, Square, Volume1, X } from "lucide-react";
+import { ArrowUp, Square } from "lucide-react";
 import {
   forwardRef,
   useEffect,
@@ -10,7 +10,10 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { AttachmentPicker } from "~/components/ui/AttachmentPicker";
 import { Button } from "~/components/ui/Button";
+import { SpeechToTextButton } from "~/components/ui/SpeechToTextButton";
+import { TextToSpeechButton } from "~/components/ui/TextToSpeechButton";
 
 interface ModelOption {
   id: string;
@@ -58,27 +61,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const [input, setInput] = useState("");
     const [attachments, setAttachments] = useState<File[]>([]);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-    // File attachment handling (initial stub)
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleAttachClick = () => {
-      fileInputRef.current?.click();
-    };
-
-    const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (!files || files.length === 0) return;
-      setAttachments((prev) => [...prev, ...Array.from(files)]);
-    };
-
-    const handleSpeak = () => {
-      if (!input.trim()) return;
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        const utterance = new SpeechSynthesisUtterance(input);
-        window.speechSynthesis.speak(utterance);
-      }
-    };
 
     // Expose imperative methods to parent
     useImperativeHandle(ref, () => ({
@@ -182,31 +164,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           )
         : null;
 
-    const renderAttachmentChips = () => {
-      if (attachments.length === 0) return null;
-      return (
-        <div className="my-2 flex flex-wrap gap-1">
-          {attachments.map((file, idx) => (
-            <span
-              key={`${file.name}-${idx}`}
-              className="bg-surface-1 text-muted flex items-center gap-1 rounded px-2 py-0.5 text-[10px]"
-            >
-              {file.name}
-              <button
-                type="button"
-                onClick={() =>
-                  setAttachments((prev) => prev.filter((_, i) => i !== idx))
-                }
-                className="hover:text-primary"
-              >
-                <X size={10} />
-              </button>
-            </span>
-          ))}
-        </div>
-      );
-    };
-
     const handleSend = () => {
       if (!input.trim() && attachments.length === 0) return;
 
@@ -266,40 +223,24 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                     border: "none",
                   }}
                 />
-                {/* hidden file input */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFilesSelected}
-                />
-                {renderAttachmentChips()}
               </div>
 
               {/* Second row */}
               <div className="mt-1 flex items-center justify-between px-1 text-[11px]">
                 {/* Left icons */}
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleAttachClick}
-                    aria-label="Attach files"
-                    className="h-5 w-5"
-                  >
-                    <Paperclip size={11} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleSpeak}
-                    aria-label="Speak text"
-                    disabled={!input.trim()}
-                    className="h-5 w-5"
-                  >
-                    <Volume1 size={11} />
-                  </Button>
+                  <AttachmentPicker
+                    attachments={attachments}
+                    setAttachments={setAttachments}
+                    buttonSize={20}
+                  />
+                  <TextToSpeechButton text={input} buttonSize={20} />
+                  <SpeechToTextButton
+                    buttonSize={20}
+                    onResult={(transcript) =>
+                      setInput((prev) => `${prev} ${transcript}`.trim())
+                    }
+                  />
                 </div>
 
                 {/* Right cluster */}
