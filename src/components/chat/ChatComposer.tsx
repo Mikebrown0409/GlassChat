@@ -304,17 +304,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
 
                 {/* Right cluster */}
                 <div className="flex items-center gap-2">
-                  {/* Char counter */}
-                  <span
-                    className={
-                      input.length > 2000
-                        ? "text-brand-secondary font-medium"
-                        : "text-muted/70 font-medium"
-                    }
-                  >
-                    {input.length}
-                  </span>
-
                   {/* Model selector */}
                   <div ref={dropdownRef} className="self-center">
                     {(() => {
@@ -332,9 +321,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                             setModelDropdownOpen(!modelDropdownOpen)
                           }
                           title={tooltip}
-                          className="h-5 px-1"
+                          className="h-6 px-2"
                         >
-                          <span className="max-w-[60px] truncate text-[9px]">
+                          <span className="max-w-[80px] truncate text-[10px]">
                             {selectedModel}
                           </span>
                           <svg
