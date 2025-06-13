@@ -60,7 +60,10 @@ export function ChatSidebar({
       initial={{ x: "-100%" }}
       animate={{ x: sidebarOpen ? 0 : "-100%" }}
       transition={{ ease: DYNAMIC_EASE, duration: 0.3 }}
-      className="relative flex h-full w-64 flex-shrink-0 flex-col rounded-br-2xl border-r border-zinc-800/40 bg-zinc-900 text-zinc-200 shadow-inner"
+      className={cn(
+        "relative flex h-full flex-shrink-0 flex-col overflow-hidden rounded-br-2xl border-r border-zinc-800/40 bg-zinc-900 text-zinc-200 shadow-inner transition-[width] duration-300",
+        sidebarOpen ? "w-64" : "w-0",
+      )}
     >
       <div className="flex items-center gap-2 p-4 text-lg font-semibold">
         <MessageCircle size={20} />
