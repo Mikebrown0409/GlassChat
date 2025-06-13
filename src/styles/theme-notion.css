@@ -5,20 +5,21 @@
 html[data-theme="light"],
 body[data-theme="light"] {
   /* Accents */
-  --accent-primary: 215 85% 55%; /* Notion blue link */
+  --accent-primary: 215 85% 55%; /* Brand blue */
   --accent-secondary: 215 70% 45%; /* Darker variant */
   --accent-utility: 169 95% 38%; /* Success green */
 
   /* Derived accent tints */
-  --accent-100: rgba(41, 98, 255, 0.1); /* fallback static */
+  --accent-100: rgba(41, 98, 255, 0.1);
   --accent-200: rgba(41, 98, 255, 0.25);
   --accent-500: hsl(var(--accent-primary));
 
   /* Surfaces */
-  --surface-0: #f7f7f8; /* Page background */
+  --surface-0: #f6f6f8; /* Slightly cooler neutral */
   --surface-1: #ffffff; /* Raised cards/panels */
-  --surface-2: #fafafa; /* subtle inner card */
-  --surface-3: #ededf0; /* menus / popovers */
+  --surface-2: #f1f1f4; /* subtle inner card */
+  --surface-3: #e6e6ec; /* menus / popovers */
+  --surface-user: #fdfdfe; /* User message bubble */
 
   /* Text */
   --text-primary: #37352f; /* Almost-black text */
@@ -35,11 +36,12 @@ body[data-theme="light"] {
 html[data-theme="dark"],
 body[data-theme="dark"],
 .dark {
-  /* Surfaces */
-  --surface-0: #1a1b1e; /* Darker background for better contrast */
-  --surface-1: #2c2d30; /* Slightly elevated surfaces */
-  --surface-2: #36373a; /* More elevated surfaces */
-  --surface-3: #404244; /* Highest elevation */
+  /* Surfaces –  Dark Aesthetic match */
+  --surface-0: rgb(33, 33, 33); /* Chat canvas */
+  --surface-1: rgb(190, 192, 201); /* Bubbles / composer */
+  --surface-2: rgb(65, 65, 68); /* Elevated */
+  --surface-3: rgba(20, 20, 20, 0.76); /* Sidebar */
+  --surface-user: rgb(72, 71, 71);
 
   /* Text */
   --text-primary: #f3f4f5; /* Bright white for primary text */
@@ -48,12 +50,12 @@ body[data-theme="dark"],
   --text-placeholder: #8e8e99; /* Placeholder text */
 
   /* Accents */
-  --accent-primary: 215 85% 65%; /* Brighter accent for dark mode */
-  --accent-secondary: 215 70% 55%; /* Brighter secondary accent */
+  --accent-primary: 215 85% 65%; /* Brighter blue accent */
+  --accent-secondary: 215 70% 55%; /* Darker blue */
 
   /* Derived accent tints */
   --accent-100: rgba(83, 155, 255, 0.15);
-  --accent-200: rgba(83, 155, 255, 0.3);
+  --accent-200: rgba(248, 250, 254, 0.3);
   --accent-500: hsl(var(--accent-primary));
 
   /* Borders */
@@ -90,9 +92,9 @@ body[data-theme="dark"],
 
 /* Glass effect enhancements for dark mode */
 .dark .glass-effect {
-  background: rgba(26, 27, 30, 0.8);
+  /* Background now controlled per component via bg-surface-* classes */
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
 }
 
 /* Button hover states for dark mode */
@@ -112,4 +114,8 @@ body[data-theme="dark"],
 .dark textarea:focus {
   border-color: hsl(var(--accent-primary) / 0.5);
   box-shadow: 0 0 0 2px hsl(var(--accent-primary) / 0.2);
+}
+
+.dark .glass-effect.bg-surface-3 {
+  background-color: var(--surface-3) !important;
 }

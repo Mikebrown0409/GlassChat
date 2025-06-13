@@ -24,7 +24,7 @@ export function ChatHeader({
     <header
       data-fixed
       className={clsx(
-        "bg-surface-0/80 flex h-20 shrink-0 items-center justify-between px-6 backdrop-blur-sm transition-colors duration-200",
+        "bg-surface-0/80 border-border-subtle flex h-20 shrink-0 items-center justify-between border-b px-6 backdrop-blur-sm transition-colors duration-200",
         className,
       )}
     >
@@ -43,7 +43,7 @@ export function ChatHeader({
 
         <div className="flex items-center gap-3">
           <div className="bg-brand-utility h-2 w-2 animate-pulse rounded-full"></div>
-          <span className="text-primary text-sm">Voice AI Assistant</span>
+          <span className="text-primary text-sm font-medium">GlassChat</span>
         </div>
       </div>
 

@@ -280,14 +280,9 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     void handleSubmitFromHook(text, () => composerRef.current?.setInput(""));
   };
 
-  const handleToggleCollaboration = () => {
-    setInsightsTab("collaboration");
-    setInsightsOpen((prev) => (insightsTab === "collaboration" ? !prev : true));
-  };
-
   const handleToggleMemory = () => {
     setInsightsTab("memory");
-    setInsightsOpen((prev) => (insightsTab === "memory" ? !prev : true));
+    setInsightsOpen(true);
   };
 
   return (

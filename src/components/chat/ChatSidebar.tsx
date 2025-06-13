@@ -61,10 +61,10 @@ export function ChatSidebar({
       initial={{ x: "-100%" }}
       animate={{ x: sidebarOpen ? 0 : "-100%" }}
       transition={{ ease: DYNAMIC_EASE, duration: 0.3 }}
-      className="border-border-subtle bg-surface-0/70 glass-effect fixed top-0 bottom-0 left-0 z-20 flex w-72 flex-col border-r backdrop-blur-lg lg:w-80"
+      className="bg-surface-3 glass-effect fixed top-0 bottom-0 left-0 z-20 flex w-72 flex-col border-r backdrop-blur-lg lg:w-80"
     >
       {/* Header */}
-      <div className="border-border-subtle flex h-20 shrink-0 items-center justify-between border-b p-4">
+      <div className="flex h-20 shrink-0 items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <div className="border-border-subtle bg-surface-1 flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-200 hover:scale-105">
             <svg
@@ -108,10 +108,10 @@ export function ChatSidebar({
         {/* New Chat and Search */}
         <div className="p-3">
           <Button
-            variant="primary"
+            variant="ghost"
             size="md"
             onClick={() => void onNewChat()}
-            className="w-full"
+            className="border-border-subtle hover:bg-surface-1/60 w-full rounded-full border transition-colors"
           >
             <Plus size={16} />
             New Conversation

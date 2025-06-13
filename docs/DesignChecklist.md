@@ -6,20 +6,20 @@ Legend: `[ ]` To Do `[x]` Done `[-]` Not Planned
 
 ## 1. Visual Design & Theming
 
-- [ ] Density presets: add "Cozy / Compact" spacing toggle (like Slack & Gmail)
+- [x ] Density presets: add "Cozy / Compact" spacing toggle (like Slack & Gmail)
 - [ ] Performance theme: solid-surface fallback when blur is expensive
 - [ ] Clear typography ladder for panel headers vs. chat text
 
 ## 2. Information Architecture
 
-- [ ] Merge Collaboration & Memory drawers into a single **Insights** drawer with tabs
+- [ x] Merge Collaboration & Memory drawers into a single **Insights** drawer with tabs
 - [ ] Quick-Share: 1-click share link for current chat (temporary, read-only)
 - [ ] Prompt Templates: allow starring any message & reuse via pills under the input
 
 ## 3. Micro-Interactions
 
 - [x] Model picker tooltip with model description & cost (already live)
-- [ ] "Jump to latest ↓" pill when user scrolls away during AI response
+- [ x] "Jump to latest ↓" pill when user scrolls away during AI response
 - [x] Toast on LLM call failure with "Retry" (implemented via ChatInput error handling)
 
 ## 4. Feature Opportunities

@@ -117,40 +117,13 @@ main[data-chat-root] {
   max-width: 18rem;
 }
 
-/* Radial background + subtle grid texture */
+/* Neutral solid background */
 body {
   color: var(--text-primary);
-  background:
-    radial-gradient(
-      circle at 25% 15%,
-      var(--surface-1) 0%,
-      var(--surface-0) 100%
-    ),
-    var(--surface-0);
+  background: var(--surface-0);
   transition:
     background-color 0.3s ease,
     color 0.3s ease;
-}
-
-/* Grid overlay */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
-  background-size: 20px 20px;
-  z-index: -1;
-  transition: opacity 0.3s ease;
-}
-
-.dark body::before {
-  opacity: 0.5;
-  background-image:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 }
 
 @tailwind base;

@@ -166,7 +166,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
         className="pointer-events-none fixed right-0 bottom-4 left-0 flex justify-center"
       >
         <div className="pointer-events-auto w-full max-w-3xl px-4">
-          <div className="border-border-subtle bg-surface-0/90 glass-effect focus-within:ring-brand-primary rounded-xl border p-4 shadow-lg backdrop-blur-lg focus-within:ring-2">
+          <div className="bg-surface-2 dark:bg-surface-1/95 glass-effect rounded-xl p-4 shadow backdrop-blur-lg">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
