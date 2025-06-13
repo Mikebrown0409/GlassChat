@@ -198,7 +198,7 @@ export function ChatSidebar({
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
-                                variant="ghost"
+                                variant="destructive"
                                 size="icon"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -208,7 +208,7 @@ export function ChatSidebar({
                               >
                                 <Trash2
                                   size={14}
-                                  className="text-muted group-hover:text-brand-secondary"
+                                  className="text-muted group-hover:text-red-600"
                                 />
                               </Button>
                             </TooltipTrigger>
