@@ -72,7 +72,7 @@ export function ChatSidebar({
           variant="ghost"
           size="icon"
           onClick={() => setSidebarOpen(false)}
-          className="ml-auto"
+          className="ml-auto hover:bg-zinc-800 hover:text-white"
         >
           <ChevronLeft size={16} />
         </Button>
