@@ -67,8 +67,12 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
               >
                 <div className="prose prose-base dark:prose-invert max-w-none text-[15px] leading-relaxed break-words">
                   <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
+                    remarkPlugins={[
+                      remarkGfm,
+                      remarkBreaks as any,
+                      remarkMath as any,
+                    ]}
+                    rehypePlugins={[rehypeKatex as any]}
                     components={{
                       pre: ({ children }) => (
                         <div className="overflow-x-auto">{children}</div>

@@ -1,6 +1,5 @@
 "use client";
 
-import { clsx } from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronLeft,
@@ -12,6 +11,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "~/components/ui/Button";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { SidebarNavItem } from "~/components/ui/sidebar-nav-item";
 import { useLiveChats } from "~/lib/sync";
 
 // Professional easing curve for all animations (keep in sync with ChatInterface)
@@ -131,23 +132,18 @@ export function ChatSidebar({
         </div>
 
         {/* Conversation History */}
-        <div className="flex-1 overflow-y-auto px-3 pb-4">
+        <ScrollArea className="flex-1 px-3 pb-4">
           <AnimatePresence>
             {filteredHistory.map((chat) => (
               <div key={chat.id} className="relative">
-                <motion.div
-                  layout
+                <SidebarNavItem
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.2, ease: DYNAMIC_EASE }}
                   onClick={() => onSelectChat(chat.id)}
-                  className={clsx(
-                    "group w-full cursor-pointer rounded-md p-2 text-left transition-colors duration-200",
-                    currentChatId === chat.id
-                      ? "bg-brand-primary/20 text-primary border-brand-primary border-l-2"
-                      : "text-muted hover:bg-surface-1/60 hover:text-primary",
-                  )}
+                  active={currentChatId === chat.id}
+                  data-testid="chat-sidebar-item"
                 >
                   <div className="flex items-center justify-between">
                     {renamingChat === chat.id ? (
@@ -211,7 +207,7 @@ export function ChatSidebar({
                       )}
                     </div>
                   </div>
-                </motion.div>
+                </SidebarNavItem>
 
                 {/* Conversation Menu */}
                 <AnimatePresence>
@@ -248,7 +244,7 @@ export function ChatSidebar({
               </div>
             ))}
           </AnimatePresence>
-        </div>
+        </ScrollArea>
       </div>
 
       {/* Footer */}
