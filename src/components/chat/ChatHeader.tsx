@@ -30,7 +30,7 @@ export function ChatHeader({
   return (
     <header
       className={clsx(
-        "flex h-14 w-full items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 text-white",
+        "flex h-14 w-full items-center justify-between border-b border-zinc-800 bg-zinc-900 pr-4 text-white",
         className,
       )}
     >
