@@ -1,6 +1,5 @@
 "use client";
 
-import { clsx } from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChatGeneration } from "~/lib/ai/useChatGeneration";
 import { useMemory } from "~/lib/memory/hooks";
@@ -309,10 +308,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       {/* Main Content with dynamic margin for sidebar */}
       <main
         data-chat-root
-        className={clsx(
-          "relative flex h-full min-w-0 flex-1 flex-col transition-[margin] duration-300 ease-in-out",
-          sidebarOpen && isDesktop ? "ml-64" : "ml-0",
-        )}
+        className="relative flex h-full min-w-0 flex-1 flex-col"
       >
         {/* Top Bar */}
         <ChatHeader
