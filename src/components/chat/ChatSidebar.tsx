@@ -10,10 +10,22 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "~/components/ui/accordion";
 import { Button } from "~/components/ui/Button";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { SidebarNavItem } from "~/components/ui/sidebar-nav-item";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import { useLiveChats } from "~/lib/sync";
 
 // Professional easing curve for all animations (keep in sync with ChatInterface)
@@ -193,18 +205,28 @@ export function ChatSidebar({
                       </AnimatePresence>
 
                       {renamingChat !== chat.id && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleConversationMenu(chat.id);
-                          }}
-                          className="opacity-0 transition-opacity group-hover:opacity-100"
-                          data-conversation-menu
-                        >
-                          <MoreHorizontal size={14} className="text-muted" />
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleConversationMenu(chat.id);
+                                }}
+                                className="opacity-0 transition-opacity group-hover:opacity-100"
+                                data-conversation-menu
+                              >
+                                <MoreHorizontal
+                                  size={14}
+                                  className="text-muted"
+                                />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">More</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                   </div>
@@ -246,6 +268,31 @@ export function ChatSidebar({
             ))}
           </AnimatePresence>
         </ScrollArea>
+
+        {/* Bottom Accordion */}
+        <div className="mt-auto px-4 py-2">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="settings">
+              <AccordionTrigger>Settings</AccordionTrigger>
+              <AccordionContent>
+                {/* Placeholder settings */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start"
+                >
+                  <ChevronLeft size={14} className="mr-2" /> Back
+                </Button>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="trash">
+              <AccordionTrigger>Trash</AccordionTrigger>
+              <AccordionContent>
+                <p className="text-muted text-xs">No deleted chats.</p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
       </div>
 
       {/* Footer */}
