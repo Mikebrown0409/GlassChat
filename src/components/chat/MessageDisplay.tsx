@@ -8,6 +8,7 @@ import rehypeKatex from "rehype-katex";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { TextToSpeechButton } from "~/components/ui/TextToSpeechButton";
 import type { Message } from "~/types/index";
 import { CodeBlock } from "./CodeBlock";
 import { TextSelectionHandler } from "./TextSelectionHandler";
@@ -247,6 +248,13 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                 </div>
               </div>
             </TextSelectionHandler>
+
+            {/* TTS button for assistant messages */}
+            {message.role === "assistant" && (
+              <div className="mt-2">
+                <TextToSpeechButton text={message.content} buttonSize={20} />
+              </div>
+            )}
 
             <span
               className={clsx(

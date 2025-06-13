@@ -13,7 +13,6 @@ import { createPortal } from "react-dom";
 import { AttachmentPicker } from "~/components/ui/AttachmentPicker";
 import { Button } from "~/components/ui/Button";
 import { SpeechToTextButton } from "~/components/ui/SpeechToTextButton";
-import { TextToSpeechButton } from "~/components/ui/TextToSpeechButton";
 import { uploadFiles } from "~/lib/utils/upload";
 
 interface ModelOption {
@@ -244,7 +243,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                     setAttachments={setAttachments}
                     buttonSize={20}
                   />
-                  <TextToSpeechButton text={input} buttonSize={20} />
                   <SpeechToTextButton
                     buttonSize={20}
                     onResult={(transcript) =>
@@ -325,6 +323,31 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   )}
                 </div>
               </div>
+
+              {/* chips row */}
+              {attachments.length > 0 && (
+                <div className="my-1 flex flex-wrap gap-1 px-1">
+                  {attachments.map((file, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-surface-1 text-muted flex items-center gap-1 rounded px-2 py-0.5 text-[10px]"
+                    >
+                      {file.name}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAttachments((prev) =>
+                            prev.filter((_, i) => i !== idx),
+                          )
+                        }
+                        className="hover:text-primary"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </form>
             {dropdownElement}
           </div>

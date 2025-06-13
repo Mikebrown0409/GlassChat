@@ -6,6 +6,7 @@ interface AttachmentPickerProps {
   attachments: File[];
   setAttachments: (files: File[]) => void;
   buttonSize?: number; // e.g., 20
+  showChipsInline?: boolean; // if false, chips rendered separately
 }
 
 /**
@@ -17,6 +18,7 @@ export function AttachmentPicker({
   attachments,
   setAttachments,
   buttonSize = 20,
+  showChipsInline = false,
 }: AttachmentPickerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,7 +62,7 @@ export function AttachmentPicker({
       />
 
       {/* Chips */}
-      {attachments.length > 0 && (
+      {showChipsInline && attachments.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {attachments.map((file, idx) => (
             <span
