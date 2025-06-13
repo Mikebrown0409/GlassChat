@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronLeft,
+  MessageCircle,
   MoreHorizontal,
   Plus,
   Search,
@@ -64,10 +65,10 @@ export function ChatSidebar({
       initial={{ x: "-100%" }}
       animate={{ x: sidebarOpen ? 0 : "-100%" }}
       transition={{ ease: DYNAMIC_EASE, duration: 0.3 }}
-      className="bg-surface-3 glass-effect fixed top-0 bottom-0 left-0 z-20 flex w-72 flex-col border-r backdrop-blur-lg lg:w-80"
+      className="bg-surface-2/90 border-border-subtle fixed top-0 bottom-0 left-0 z-20 flex w-64 flex-col border-r"
     >
       {/* Header */}
-      <div className="flex h-20 shrink-0 items-center justify-between p-4">
+      <div className="flex h-16 shrink-0 items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <div className="border-border-subtle bg-surface-1 flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-200 hover:scale-105">
             <svg
@@ -109,12 +110,12 @@ export function ChatSidebar({
       {/* New Chat Button, Search, and History Wrapper */}
       <div className="flex flex-1 flex-col overflow-y-hidden">
         {/* New Chat and Search */}
-        <div className="p-4">
+        <div className="px-4 py-3">
           <Button
-            variant="secondary"
-            size="sm"
+            variant="default"
+            size="md"
             onClick={() => void onNewChat()}
-            className="w-full justify-start gap-2"
+            className="w-full gap-2"
           >
             <Plus size={16} />
             New Conversation
@@ -147,7 +148,8 @@ export function ChatSidebar({
                   active={currentChatId === chat.id}
                   data-testid="chat-sidebar-item"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
+                    <MessageCircle size={16} className="text-muted shrink-0" />
                     {renamingChat === chat.id ? (
                       <input
                         type="text"
@@ -174,9 +176,7 @@ export function ChatSidebar({
                         autoFocus
                       />
                     ) : (
-                      <span className="truncate text-sm font-normal">
-                        {chat.title}
-                      </span>
+                      <span className="truncate text-sm">{chat.title}</span>
                     )}
 
                     <div className="flex items-center gap-2">
