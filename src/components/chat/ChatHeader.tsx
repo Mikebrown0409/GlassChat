@@ -1,9 +1,16 @@
 "use client";
 
 import { clsx } from "clsx";
-import { Sidebar } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "~/components/ui/Button";
-import { DensityToggle } from "../ui/DensityToggle";
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { TooltipProvider } from "~/components/ui/tooltip";
 import { InsightsToggle } from "../ui/InsightsToggle";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 
@@ -22,36 +29,53 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   return (
     <header
-      data-fixed
       className={clsx(
-        "bg-surface-0/80 border-border-subtle flex h-20 shrink-0 items-center justify-between border-b px-6 backdrop-blur-sm transition-colors duration-200",
+        "flex h-14 w-full items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 text-white",
         className,
       )}
     >
-      <div className="flex items-center">
+      {/* Left: Mobile menu + title */}
+      <div className="flex items-center gap-2">
         {!sidebarOpen && (
           <Button
             variant="ghost"
             size="icon"
+            className="md:hidden"
             onClick={onOpenSidebar}
-            className="mr-4 -ml-2"
-            title="Expand Sidebar"
           >
-            <Sidebar size={20} />
+            <Menu className="h-5 w-5" />
           </Button>
         )}
+        <span className="text-sm font-medium md:text-base">GlassChat</span>
+      </div>
 
-        <div className="flex items-center gap-3">
-          <div className="bg-brand-utility h-2 w-2 animate-pulse rounded-full"></div>
-          <span className="text-primary text-sm font-medium">GlassChat</span>
+      {/* Center placeholder */}
+      <div className="hidden md:block"></div>
+
+      {/* Right: actions */}
+      <TooltipProvider delayDuration={200}>
+        <div className="flex items-center gap-2">
+          <InsightsToggle onClick={onToggleMemory} />
+          <ThemeSwitcher />
+
+          {/* User dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Avatar className="h-8 w-8 cursor-pointer">
+                <AvatarFallback>U</AvatarFallback>
+              </Avatar>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="bottom" align="end">
+              <DropdownMenuItem onSelect={() => alert("Settings")}>
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => alert("Logout")}>
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <DensityToggle />
-        <ThemeSwitcher />
-        <InsightsToggle onClick={() => onToggleMemory()} />
-      </div>
+      </TooltipProvider>
     </header>
   );
 }
