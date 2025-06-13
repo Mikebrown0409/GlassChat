@@ -323,7 +323,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                           title={tooltip}
                           className="h-6 px-2"
                         >
-                          <span className="max-w-[80px] truncate text-[10px]">
+                          <span className="max-w-[90px] truncate text-[11px] font-medium">
                             {selectedModel}
                           </span>
                           <svg
