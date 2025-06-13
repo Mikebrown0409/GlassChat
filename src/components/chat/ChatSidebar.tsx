@@ -65,12 +65,12 @@ export function ChatSidebar({
       initial={{ x: "-100%" }}
       animate={{ x: sidebarOpen ? 0 : "-100%" }}
       transition={{ ease: DYNAMIC_EASE, duration: 0.3 }}
-      className="bg-surface-2/90 border-border-subtle fixed top-0 bottom-0 left-0 z-20 flex w-64 flex-col border-r"
+      className="border-border-subtle fixed top-0 bottom-0 left-0 z-20 flex w-64 flex-col border-r bg-[#111] text-white"
     >
       {/* Header */}
       <div className="flex h-16 shrink-0 items-center justify-between px-4">
         <div className="flex items-center gap-3">
-          <div className="border-border-subtle bg-surface-1 flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-200 hover:scale-105">
+          <div className="border-border-subtle flex h-8 w-8 items-center justify-center rounded-lg border bg-[#1a1a1a] transition-all duration-200 hover:scale-105">
             <svg
               width="16"
               height="16"
@@ -149,7 +149,10 @@ export function ChatSidebar({
                   data-testid="chat-sidebar-item"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <MessageCircle size={16} className="text-muted shrink-0" />
+                    <MessageCircle
+                      size={16}
+                      className="text-muted/70 shrink-0"
+                    />
                     {renamingChat === chat.id ? (
                       <input
                         type="text"
