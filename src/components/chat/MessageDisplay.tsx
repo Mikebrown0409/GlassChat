@@ -160,6 +160,18 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                           </code>
                         );
                       },
+                      img: ({ src, alt, ...props }) => {
+                        if (!src || typeof src !== "string") return null;
+                        return (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={src}
+                            alt={typeof alt === "string" ? alt : "Image"}
+                            className="max-w-full rounded"
+                            {...props}
+                          />
+                        );
+                      },
                       h1: ({ children, ...props }) => (
                         <h1 className="mb-4 text-2xl font-bold" {...props}>
                           {children}
