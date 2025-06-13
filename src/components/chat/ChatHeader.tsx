@@ -1,14 +1,15 @@
 "use client";
 
 import { clsx } from "clsx";
-import { Brain, Sidebar, Users } from "lucide-react";
+import { Sidebar } from "lucide-react";
 import { Button } from "~/components/ui/Button";
+import { DensityToggle } from "../ui/DensityToggle";
+import { InsightsToggle } from "../ui/InsightsToggle";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 
 interface ChatHeaderProps {
   sidebarOpen: boolean;
   onOpenSidebar: () => void;
-  onToggleCollaboration: () => void;
   onToggleMemory: () => void;
   className?: string;
 }
@@ -16,7 +17,6 @@ interface ChatHeaderProps {
 export function ChatHeader({
   sidebarOpen,
   onOpenSidebar,
-  onToggleCollaboration,
   onToggleMemory,
   className,
 }: ChatHeaderProps) {
@@ -24,7 +24,7 @@ export function ChatHeader({
     <header
       data-fixed
       className={clsx(
-        "bg-surface-0/80 flex h-20 shrink-0 items-center justify-between px-6 backdrop-blur-sm transition-colors duration-200",
+        "bg-surface-0/80 border-border-subtle flex h-20 shrink-0 items-center justify-between border-b px-6 backdrop-blur-sm transition-colors duration-200",
         className,
       )}
     >
@@ -43,18 +43,14 @@ export function ChatHeader({
 
         <div className="flex items-center gap-3">
           <div className="bg-brand-utility h-2 w-2 animate-pulse rounded-full"></div>
-          <span className="text-primary text-sm">Voice AI Assistant</span>
+          <span className="text-primary text-sm font-medium">GlassChat</span>
         </div>
       </div>
 
       <div className="flex items-center gap-2">
+        <DensityToggle />
         <ThemeSwitcher />
-        <Button variant="ghost" size="icon" onClick={onToggleCollaboration}>
-          <Users size={20} />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={onToggleMemory}>
-          <Brain size={20} />
-        </Button>
+        <InsightsToggle onClick={() => onToggleMemory()} />
       </div>
     </header>
   );

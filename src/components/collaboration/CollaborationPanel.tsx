@@ -14,7 +14,7 @@ import {
   Wifi,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useDeferredValue, useEffect, useState } from "react";
 import { useCollaboration } from "~/lib/collaboration/hooks";
 import {
   CollaborationEventType,
@@ -30,6 +30,7 @@ interface CollaborationPanelProps {
   currentChatId: string | null;
   isOpen: boolean;
   onToggle: () => void;
+  embedded?: boolean;
 }
 
 const DYNAMIC_EASE = [0.22, 1, 0.36, 1];
@@ -38,6 +39,7 @@ export function CollaborationPanel({
   currentChatId,
   isOpen,
   onToggle,
+  embedded = false,
 }: CollaborationPanelProps) {
   const [activeTab, setActiveTab] = useState<
     "rooms" | "messages" | "live-coding" | "users"
@@ -202,60 +204,153 @@ export function CollaborationPanel({
     }
   };
 
-  if (showUserSetup) {
-    return (
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ x: "100%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "100%", opacity: 0 }}
-            transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
-            className="border-border-subtle bg-surface-0/70 glass-effect fixed top-0 right-0 z-40 h-full w-80 border-l backdrop-blur-lg"
-          >
-            <div className="flex h-full flex-col p-6">
-              <div className="mb-6">
-                <h2 className="text-primary text-xl font-semibold">
-                  Welcome to Collaboration
-                </h2>
-                <p className="text-muted mt-2 text-sm">
-                  Enter your name to start collaborating in real-time with
-                  others. You&apos;ll be able to share rooms, chat, and even
-                  code together!
-                </p>
-              </div>
+  const panelBody = (
+    <>
+      {/* Header */}
+      <div className="border-border-subtle bg-surface-1/70 border-b p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-primary text-lg font-semibold">Collaboration</h2>
+          {!embedded && (
+            <button
+              onClick={onToggle}
+              className="text-muted hover:bg-surface-1/60 hover:text-primary rounded-lg p-2 transition-colors"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="text-muted mb-2 block text-xs font-medium">
-                    Your Name
-                  </label>
-                  <input
-                    type="text"
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleCreateUser()}
-                    placeholder="Enter your display name"
-                    className="bg-surface-1/60 border-border-subtle text-primary placeholder:text-muted focus:ring-brand-primary w-full rounded-lg border px-3 py-2 focus:ring-1 focus:outline-none"
-                    autoFocus
-                  />
-                </div>
-
-                <button
-                  onClick={handleCreateUser}
-                  disabled={!userName.trim() || collaboration.user.isCreating}
-                  className="bg-brand-primary hover:bg-brand-primary/80 w-full rounded-lg px-4 py-2 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {collaboration.user.isCreating
-                    ? "Creating..."
-                    : "Join Collaboration"}
-                </button>
-              </div>
+        {/* User Info */}
+        {collaboration.user.user && (
+          <div className="mt-3 flex items-center gap-3">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium text-white"
+              style={{ backgroundColor: collaboration.user.user.color }}
+            >
+              {collaboration.user.user.name[0]?.toUpperCase()}
             </div>
-          </motion.div>
+            <span className="text-primary/80 text-sm">
+              {collaboration.user.user.name}
+            </span>
+          </div>
         )}
-      </AnimatePresence>
-    );
+      </div>
+
+      {/* Tabs */}
+      <div className="border-border-subtle border-b">
+        <div className="flex">
+          {[
+            { id: "rooms", label: "Rooms", icon: Users },
+            { id: "messages", label: "Chat", icon: MessageCircle },
+            { id: "live-coding", label: "Live Code", icon: Code },
+            { id: "users", label: "Users", icon: Users },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() =>
+                setActiveTab(
+                  id as "rooms" | "messages" | "live-coding" | "users",
+                )
+              }
+              className={clsx(
+                "flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+                activeTab === id
+                  ? "border-brand-primary text-primary bg-surface-1/60"
+                  : "text-muted hover:text-primary border-transparent",
+              )}
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {activeTab === "rooms" && (
+          <MemoRoomsTab
+            rooms={collaboration.rooms.rooms}
+            currentRoomId={currentRoomId}
+            onCreateRoom={handleCreateRoom}
+            onJoinRoom={handleJoinRoom}
+            onLeaveRoom={handleLeaveRoom}
+            onShareRoom={handleShareRoom}
+            isCreating={collaboration.rooms.isCreating}
+            isJoining={collaboration.rooms.isJoining}
+            copied={copied}
+          />
+        )}
+
+        {activeTab === "messages" && currentRoomId && (
+          <MemoChatTab
+            _roomId={currentRoomId}
+            messages={collaboration.messages.messages}
+            messageInput={messageInput}
+            onMessageInputChange={setMessageInput}
+            onSendMessage={handleSendMessage}
+            currentUser={collaboration.user.user}
+            typingUsers={collaboration.typing.typingUsers}
+          />
+        )}
+
+        {activeTab === "messages" && !currentRoomId && (
+          <div className="py-8 text-center">
+            <MessageCircle size={48} className="mx-auto mb-4 text-slate-600" />
+            <h3 className="mb-2 text-lg font-medium text-white">
+              No Room Connected
+            </h3>
+            <p className="mb-4 text-sm text-slate-400">
+              Join or create a room to start chatting with others
+            </p>
+            <button
+              onClick={() => setActiveTab("rooms")}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+            >
+              Go to Rooms
+            </button>
+          </div>
+        )}
+
+        {activeTab === "live-coding" && currentRoomId && (
+          <MemoLiveCodingTab
+            _roomId={currentRoomId}
+            liveCoding={collaboration.liveCoding}
+            currentUser={collaboration.user.user}
+          />
+        )}
+
+        {activeTab === "live-coding" && !currentRoomId && (
+          <div className="py-8 text-center">
+            <Code size={48} className="mx-auto mb-4 text-slate-600" />
+            <h3 className="mb-2 text-lg font-medium text-white">
+              No Room Connected
+            </h3>
+            <p className="mb-4 text-sm text-slate-400">
+              Join or create a room to start coding with others
+            </p>
+            <button
+              onClick={() => setActiveTab("rooms")}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+            >
+              Go to Rooms
+            </button>
+          </div>
+        )}
+
+        {activeTab === "users" && (
+          <MemoUsersTab
+            _roomId={currentRoomId ?? ""}
+            onlineUsers={collaboration.presence.onlineUsers}
+            typingUsers={collaboration.typing.typingUsers}
+          />
+        )}
+      </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="flex h-full flex-col">{panelBody}</div>;
   }
 
   return (
@@ -268,167 +363,7 @@ export function CollaborationPanel({
           transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
           className="border-border-subtle bg-surface-0/70 glass-effect fixed top-0 right-0 z-40 h-full w-80 border-l backdrop-blur-lg"
         >
-          {/* Header */}
-          <div className="border-border-subtle bg-surface-1/70 border-b p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-primary text-lg font-semibold">
-                Collaboration
-              </h2>
-              <button
-                onClick={onToggle}
-                className="text-muted hover:bg-surface-1/60 hover:text-primary rounded-lg p-2 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* User Info */}
-            {collaboration.user.user && (
-              <div className="mt-3 flex items-center gap-3">
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium text-white"
-                  style={{ backgroundColor: collaboration.user.user.color }}
-                >
-                  {collaboration.user.user.name[0]?.toUpperCase()}
-                </div>
-                <span className="text-primary/80 text-sm">
-                  {collaboration.user.user.name}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Tabs */}
-          <div className="border-border-subtle border-b">
-            <div className="flex">
-              {[
-                { id: "rooms", label: "Rooms", icon: Users },
-                { id: "messages", label: "Chat", icon: MessageCircle },
-                { id: "live-coding", label: "Live Code", icon: Code },
-                { id: "users", label: "Users", icon: Users },
-              ].map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() =>
-                    setActiveTab(
-                      id as "rooms" | "messages" | "live-coding" | "users",
-                    )
-                  }
-                  className={clsx(
-                    "flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
-                    activeTab === id
-                      ? "border-brand-primary text-primary bg-surface-1/60"
-                      : "text-muted hover:text-primary border-transparent",
-                  )}
-                >
-                  <Icon size={16} />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-4">
-            {activeTab === "rooms" && (
-              <RoomsTab
-                rooms={collaboration.rooms.rooms}
-                currentRoomId={currentRoomId}
-                onCreateRoom={handleCreateRoom}
-                onJoinRoom={handleJoinRoom}
-                onLeaveRoom={handleLeaveRoom}
-                onShareRoom={handleShareRoom}
-                isCreating={collaboration.rooms.isCreating}
-                isJoining={collaboration.rooms.isJoining}
-                copied={copied}
-              />
-            )}
-
-            {activeTab === "messages" && currentRoomId && (
-              <ChatTab
-                _roomId={currentRoomId}
-                messages={collaboration.messages.messages}
-                messageInput={messageInput}
-                onMessageInputChange={setMessageInput}
-                onSendMessage={handleSendMessage}
-                currentUser={collaboration.user.user}
-                typingUsers={collaboration.typing.typingUsers}
-              />
-            )}
-
-            {activeTab === "messages" && !currentRoomId && (
-              <div className="py-8 text-center">
-                <MessageCircle
-                  size={48}
-                  className="mx-auto mb-4 text-slate-600"
-                />
-                <h3 className="mb-2 text-lg font-medium text-white">
-                  No Room Connected
-                </h3>
-                <p className="mb-4 text-sm text-slate-400">
-                  Join or create a room to start chatting with others
-                </p>
-                <button
-                  onClick={() => setActiveTab("rooms")}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
-                >
-                  Go to Rooms
-                </button>
-              </div>
-            )}
-
-            {activeTab === "live-coding" && currentRoomId && (
-              <LiveCodingTab
-                _roomId={currentRoomId}
-                liveCoding={collaboration.liveCoding}
-                currentUser={collaboration.user.user}
-              />
-            )}
-
-            {activeTab === "live-coding" && !currentRoomId && (
-              <div className="py-8 text-center">
-                <Code size={48} className="mx-auto mb-4 text-slate-600" />
-                <h3 className="mb-2 text-lg font-medium text-white">
-                  No Room Connected
-                </h3>
-                <p className="mb-4 text-sm text-slate-400">
-                  Join or create a room to start live coding together
-                </p>
-                <button
-                  onClick={() => setActiveTab("rooms")}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
-                >
-                  Go to Rooms
-                </button>
-              </div>
-            )}
-
-            {activeTab === "users" && currentRoomId && (
-              <UsersTab
-                _roomId={currentRoomId}
-                onlineUsers={collaboration.presence.onlineUsers}
-                typingUsers={collaboration.typing.typingUsers}
-              />
-            )}
-
-            {activeTab === "users" && !currentRoomId && (
-              <div className="py-8 text-center">
-                <Users size={48} className="mx-auto mb-4 text-slate-600" />
-                <h3 className="mb-2 text-lg font-medium text-white">
-                  No Room Connected
-                </h3>
-                <p className="mb-4 text-sm text-slate-400">
-                  Join or create a room to see who&apos;s online
-                </p>
-                <button
-                  onClick={() => setActiveTab("rooms")}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
-                >
-                  Go to Rooms
-                </button>
-              </div>
-            )}
-          </div>
+          {panelBody}
         </motion.div>
       )}
     </AnimatePresence>
@@ -594,18 +529,23 @@ function ChatTab({
   currentUser: CollaborationUser | null;
   typingUsers: TypingIndicator[];
 }) {
-  return (
-    <div className="flex h-full max-h-[calc(100vh-280px)] flex-col">
-      {/* Messages Area */}
+  const deferredMessages = useDeferredValue(messages);
+
+  const MessagesList = memo(function MessagesListComponent({
+    msgs,
+  }: {
+    msgs: CollaborationMessage[];
+  }) {
+    return (
       <div className="mb-4 flex-1 space-y-3 overflow-y-auto">
-        {messages.length === 0 ? (
+        {msgs.length === 0 ? (
           <div className="py-8 text-center">
             <MessageCircle size={32} className="mx-auto mb-2 text-slate-600" />
             <p className="text-sm text-slate-400">No messages yet</p>
             <p className="text-xs text-slate-500">Start the conversation!</p>
           </div>
         ) : (
-          messages.map((message) => (
+          msgs.map((message) => (
             <div
               key={message.id}
               className={clsx(
@@ -630,6 +570,12 @@ function ChatTab({
           ))
         )}
       </div>
+    );
+  });
+
+  return (
+    <div className="flex h-full max-h-[calc(100vh-280px)] flex-col">
+      <MessagesList msgs={deferredMessages} />
 
       {/* Typing Indicators */}
       {typingUsers.length > 0 && (
@@ -853,3 +799,8 @@ function UsersTab({
     </div>
   );
 }
+
+const MemoRoomsTab = memo(RoomsTab);
+const MemoChatTab = memo(ChatTab);
+const MemoLiveCodingTab = memo(LiveCodingTab);
+const MemoUsersTab = memo(UsersTab);

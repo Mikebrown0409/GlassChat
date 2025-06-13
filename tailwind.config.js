@@ -17,6 +17,7 @@ export default {
           1: "var(--surface-1)",
           2: "var(--surface-2)",
           3: "var(--surface-3)",
+          user: "var(--surface-user)",
         },
         text: {
           primary: "var(--text-primary)",

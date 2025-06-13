@@ -55,6 +55,8 @@ node_modules
 
 ## Add Md files not needed to be committed
 prompts.md
+designaudit.md
+designchecklist.md
 
 # reports / analysis artifacts
 lighthouse-report*.json
@@ -63,4 +65,3 @@ lighthouse-report*.json
 node_modules/.cache/
 .cache/
 
-designaudit.md

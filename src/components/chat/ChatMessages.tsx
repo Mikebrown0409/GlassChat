@@ -3,7 +3,7 @@
 import BeamLoader from "@/components/ui/BeamLoader";
 import { clsx } from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
-import { type RefObject } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { MessageDisplay } from "./MessageDisplay";
 
 // Define ChatMessage type directly to avoid heavy imports if above fails
@@ -36,8 +36,28 @@ export function ChatMessages({
   onSuggestionClick,
   messagesEndRef,
 }: ChatMessagesProps) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [showJump, setShowJump] = useState(false);
+
+  // Detect scroll position
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200; // px
+      setShowJump(!atBottom);
+    };
+
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <div className="chat-viewport glass-scrollbar pb-28">
+    <div
+      ref={viewportRef}
+      className="chat-viewport glass-scrollbar relative pb-28"
+    >
       {messages.length === 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -107,7 +127,7 @@ export function ChatMessages({
           </div>
         </motion.div>
       ) : (
-        <div className="mx-auto max-w-4xl space-y-8 p-6">
+        <div className="mx-auto flex max-w-4xl flex-col gap-[var(--chat-gap)] p-6">
           <AnimatePresence mode="popLayout">
             {messages.map((message, idx) => (
               <motion.div
@@ -192,6 +212,17 @@ export function ChatMessages({
           </div>
 
           <div ref={messagesEndRef} />
+          {showJump && (
+            <button
+              type="button"
+              onClick={() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="bg-surface-1 text-primary hover:bg-surface-2 ring-border-subtle/50 focus:ring-brand-primary glass-effect fixed right-4 bottom-4 z-30 flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium shadow backdrop-blur-md"
+            >
+              Jump to latest ↓
+            </button>
+          )}
         </div>
       )}
     </div>
