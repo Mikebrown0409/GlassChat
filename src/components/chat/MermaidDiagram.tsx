@@ -190,13 +190,9 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
                 <MoreVertical size={16} className="rotate-45" />
               </Dialog.Close>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                className="border-input bg-surface-1 focus:ring-brand-primary h-[60vh] w-full resize-none rounded-md border p-2 text-sm shadow-sm focus:ring-2 focus:outline-none"
-              />
-              <div className="h-[60vh] overflow-auto rounded border p-2">
+            {/* Stack preview on top of the editor for better visibility */}
+            <div className="flex flex-col gap-4">
+              <div className="max-h-[70vh] overflow-auto rounded border p-2">
                 {previewError ? (
                   <pre className="text-sm whitespace-pre-wrap text-red-500">
                     {previewError}
@@ -215,6 +211,11 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
                   <span className="text-muted text-sm">Type to preview…</span>
                 )}
               </div>
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                className="border-input bg-surface-1 focus:ring-brand-primary h-40 w-full resize-none rounded-md border p-2 text-sm shadow-sm focus:ring-2 focus:outline-none"
+              />
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <button
