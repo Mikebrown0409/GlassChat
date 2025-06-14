@@ -26,12 +26,11 @@ interface MermaidDiagramProps {
  * during static/SSR execution – the library expects `window` to exist.
  */
 export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
+  const [localChart, setLocalChart] = useState(chart);
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState(chart);
-
-  // Re-render preview inside editor when draft changes
   const [draftSvg, setDraftSvg] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
@@ -108,6 +107,41 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
     });
   }, [draft, editorOpen]);
 
+  // Render diagram when localChart changes
+  useEffect(() => {
+    let isMounted = true;
+    void import("mermaid").then((mod) => {
+      const mermaid = mod.default ?? mod;
+      const prefersDark =
+        typeof window !== "undefined" &&
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ||
+          document.documentElement.classList.contains("dark"));
+
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: prefersDark ? "dark" : "default",
+        themeVariables: {
+          fontSize: "18px",
+        },
+      });
+
+      const uniqueId = `mermaid-${Math.random().toString(36).slice(2, 9)}`;
+
+      void mermaid
+        .render(uniqueId, localChart)
+        .then(({ svg }) => {
+          if (isMounted) setSvg(svg);
+        })
+        .catch((err: Error) => {
+          if (isMounted) setError(err);
+        });
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [localChart]);
+
   if (error) {
     return (
       <pre
@@ -144,7 +178,7 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
   };
 
   const openEditor = () => {
-    setDraft(chart);
+    setDraft(localChart);
     setEditorOpen(true);
   };
 
@@ -160,7 +194,9 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-36">
           <DropdownMenuItem
-            onSelect={() => void copyText(`\`\`\`mermaid\n${chart}\n\`\`\``)}
+            onSelect={() =>
+              void copyText(`\`\`\`mermaid\n${localChart}\n\`\`\``)
+            }
           >
             Copy Mermaid
           </DropdownMenuItem>
@@ -221,6 +257,7 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
               <button
                 onClick={() => {
                   void copyText(`\`\`\`mermaid\n${draft}\n\`\`\``);
+                  setLocalChart(draft);
                   setEditorOpen(false);
                 }}
                 className="bg-brand-primary hover:bg-brand-primary/90 rounded px-3 py-1 text-sm text-white shadow"
