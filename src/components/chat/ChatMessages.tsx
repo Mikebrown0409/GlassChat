@@ -170,6 +170,7 @@ export function ChatMessages({
                     _isTyping={idx === messages.length - 1 && isTyping}
                     onTranslate={onTranslate}
                     onExplain={onExplain}
+                    onSuggestionClick={onSuggestionClick}
                     _isNewMessage={idx === messages.length - 1}
                   />
                 </div>

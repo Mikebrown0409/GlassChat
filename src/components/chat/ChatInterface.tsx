@@ -285,6 +285,11 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     setInsightsOpen(true);
   };
 
+  const handleToggleCollab = () => {
+    setInsightsTab("collaboration");
+    setInsightsOpen(true);
+  };
+
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   // Ensure sidebar defaults to open on desktop and closed on mobile when viewport changes
@@ -315,6 +320,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           sidebarOpen={sidebarOpen}
           onOpenSidebar={() => setSidebarOpen(true)}
           onToggleMemory={handleToggleMemory}
+          onToggleCollab={handleToggleCollab}
         />
 
         {/* Messages Area */}

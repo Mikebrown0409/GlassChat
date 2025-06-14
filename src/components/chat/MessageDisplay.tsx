@@ -12,6 +12,8 @@ import type { Pluggable } from "unified";
 import { TextToSpeechButton } from "~/components/ui/TextToSpeechButton";
 import type { Message } from "~/types/index";
 import { CodeBlock } from "./CodeBlock";
+import { MermaidDiagram } from "./MermaidDiagram";
+import { QuickActionsMenu } from "./QuickActionsMenu";
 import { TextSelectionHandler } from "./TextSelectionHandler";
 
 interface MessageDisplayProps {
@@ -20,6 +22,7 @@ interface MessageDisplayProps {
   onTranslate?: (text: string) => void;
   onExplain?: (text: string) => void;
   _isNewMessage?: boolean;
+  onSuggestionClick?: (text: string) => void;
 }
 
 const remarkBreaksTyped = remarkBreaks as unknown as Pluggable;
@@ -32,6 +35,7 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
   onTranslate,
   onExplain,
   _isNewMessage,
+  onSuggestionClick,
 }: MessageDisplayProps) {
   const handleCopy = (_text: string) => {
     // Optional: Add any additional copy handling logic here
@@ -70,7 +74,7 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                     : "bg-surface-1 rounded-2xl shadow-sm backdrop-blur-sm",
                 )}
               >
-                <div className="prose prose-base dark:prose-invert max-w-none text-[15px] leading-relaxed break-words">
+                <div className="prose prose-base dark:prose-invert max-w-none text-[16px] leading-relaxed break-words">
                   <ReactMarkdown
                     remarkPlugins={[
                       remarkGfm,
@@ -123,6 +127,28 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                       code({ inline, className, children, ...props }) {
                         const match = /language-(\w+)/.exec(className ?? "");
                         if (!inline && match?.[1]) {
+                          // --- Mermaid diagrams ---
+                          if (match[1] === "mermaid") {
+                            let diagramSource = "";
+                            if (typeof children === "string") {
+                              diagramSource = children.replace(/\n$/, "");
+                            } else if (
+                              Array.isArray(children) &&
+                              children.every((c) => typeof c === "string")
+                            ) {
+                              diagramSource = children
+                                .join("")
+                                .replace(/\n$/, "");
+                            }
+
+                            return (
+                              <div className="my-4">
+                                <MermaidDiagram chart={diagramSource} />
+                              </div>
+                            );
+                          }
+
+                          // --- Regular highlighted code block ---
                           let codeString = "";
                           if (typeof children === "string") {
                             codeString = children.replace(/\n$/, "");
@@ -258,24 +284,35 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
               </div>
             </TextSelectionHandler>
 
-            {/* TTS button for assistant messages */}
+            {/* Meta controls inside bubble */}
             {message.role === "assistant" && (
-              <div className="mt-2">
-                <TextToSpeechButton text={message.content} buttonSize={20} />
+              <div className="mt-2 space-y-1">
+                <div className="text-muted flex items-center gap-0.5">
+                  {onSuggestionClick && (
+                    <QuickActionsMenu
+                      content={message.content}
+                      onSelect={onSuggestionClick}
+                    />
+                  )}
+                  <TextToSpeechButton text={message.content} buttonSize={14} />
+                </div>
+                <span className="text-muted/80 block text-[11px]">
+                  {new Date(message.createdAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
               </div>
             )}
 
-            <span
-              className={clsx(
-                "text-muted mt-1 text-xs",
-                message.role === "user" ? "self-end" : "self-start",
-              )}
-            >
-              {new Date(message.createdAt).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
+            {message.role === "user" && (
+              <span className="text-muted mt-1 self-end text-[11px]">
+                {new Date(message.createdAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
           </div>
         </div>
       </div>
