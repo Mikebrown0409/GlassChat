@@ -20,6 +20,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
+import { TooltipProvider } from "~/components/ui/tooltip";
 import { useLiveChats } from "~/lib/sync";
 import { cn } from "~/utils/cn";
 
@@ -100,27 +101,92 @@ export function ChatSidebar({
       </div>
 
       {/* Scrollable conversation list */}
-      <ScrollArea className="mt-4 flex-1 px-2">
-        <div className="px-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-          Chats
-        </div>
-        <div className="mt-2 space-y-2">
-          {filteredHistory.map((chat) => (
-            <Button
-              key={chat.id}
-              variant="ghost"
-              className={cn(
-                "w-full justify-start truncate text-zinc-300 hover:bg-zinc-800 hover:text-white",
-                currentChatId === chat.id &&
-                  "bg-zinc-800 text-white hover:bg-zinc-800",
-              )}
-              onClick={() => onSelectChat(chat.id)}
-            >
-              {chat.title}
-            </Button>
-          ))}
-        </div>
-      </ScrollArea>
+      <TooltipProvider delayDuration={200}>
+        <ScrollArea className="mt-4 flex-1 px-2">
+          <div className="px-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+            Chats
+          </div>
+          <div className="mt-2 space-y-2">
+            {filteredHistory.map((chat) => {
+              const isRenaming = renamingChat === chat.id;
+              return (
+                <div key={chat.id} className="group w-full">
+                  {isRenaming ? (
+                    <Input
+                      autoFocus
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onBlur={() => {
+                        if (renameValue.trim()) {
+                          void onRenameChat(chat.id, renameValue.trim());
+                        }
+                        setRenamingChat(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.currentTarget.blur();
+                        } else if (e.key === "Escape") {
+                          setRenamingChat(null);
+                        }
+                      }}
+                      className="focus:ring-brand-primary h-8 w-full rounded-md border-none bg-zinc-800/70 px-2 text-sm text-zinc-100 focus:ring-2"
+                    />
+                  ) : (
+                    <div className="group grid w-full grid-cols-[1fr_auto] items-center overflow-hidden rounded-md py-1 hover:bg-zinc-800">
+                      {/* Row click area */}
+                      <button
+                        type="button"
+                        className={cn(
+                          "min-w-0 cursor-pointer truncate text-left text-sm text-zinc-300 focus:outline-none",
+                          currentChatId === chat.id && "text-white",
+                        )}
+                        onClick={() => onSelectChat(chat.id)}
+                        title={chat.title}
+                      >
+                        <span className="truncate">{chat.title}</span>
+                      </button>
+
+                      {/* 3-dot menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Chat options"
+                            className="opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:ring-0 focus-visible:outline-none"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal
+                              size={14}
+                              className="text-zinc-400"
+                            />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="right" align="start">
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              setRenamingChat(chat.id);
+                              setRenameValue(chat.title);
+                            }}
+                          >
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => void onDeleteChat(chat.id)}
+                            className="text-red-500 focus:text-red-500"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </TooltipProvider>
 
       {/* Bottom user/settings section */}
       <div className="flex items-center justify-between gap-2 border-t border-zinc-800 p-4">
