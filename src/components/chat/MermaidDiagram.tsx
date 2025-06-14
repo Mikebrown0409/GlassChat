@@ -34,6 +34,13 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
   const [draftSvg, setDraftSvg] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
+  // Helper to inject responsive style into SVG
+  const makeResponsiveSvg = (rawSvg: string) =>
+    rawSvg.replace(
+      /<svg (.*?)>/,
+      '<svg $1 style="max-width:100%;height:auto;" viewBox="0 0 1000 1000">',
+    );
+
   useEffect(() => {
     let isMounted = true;
 
@@ -63,7 +70,7 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
         try {
           // New render signature in mermaid@10 returns an object
           const { svg } = await mermaid.render(uniqueId, chart);
-          if (isMounted) setSvg(svg);
+          if (isMounted) setSvg(makeResponsiveSvg(svg));
         } catch (err) {
           if (isMounted) setError(err as Error);
         }
@@ -130,7 +137,7 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
       void mermaid
         .render(uniqueId, localChart)
         .then(({ svg }) => {
-          if (isMounted) setSvg(svg);
+          if (isMounted) setSvg(makeResponsiveSvg(svg));
         })
         .catch((err: Error) => {
           if (isMounted) setError(err);
@@ -278,7 +285,10 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
 
       {/* Actual SVG */}
       {/* eslint-disable-next-line react/no-danger */}
-      <div dangerouslySetInnerHTML={{ __html: svg }} />
+      <div
+        className="max-w-full overflow-x-auto"
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
     </div>
   );
 }
