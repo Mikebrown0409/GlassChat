@@ -1,11 +1,11 @@
 "use client";
 
-import { clsx } from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChatGeneration } from "~/lib/ai/useChatGeneration";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 
+import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { InsightsDrawer } from "../insights/InsightsDrawer";
 import { ChatComposer, type ChatComposerHandle } from "./ChatComposer";
 import { ChatHeader } from "./ChatHeader";
@@ -17,7 +17,7 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ className: _className }: ChatInterfaceProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectionMenu, setSelectionMenu] = useState<{
     position: { top: number; left: number };
     text: string;
@@ -285,9 +285,16 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     setInsightsOpen(true);
   };
 
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+
+  // Ensure sidebar defaults to open on desktop and closed on mobile when viewport changes
+  useEffect(() => {
+    setSidebarOpen(isDesktop);
+  }, [isDesktop]);
+
   return (
     <div className="bg-surface-0 text-primary fixed inset-0 flex h-screen w-screen overflow-hidden font-sans">
-      {/* Sidebar extracted into dedicated component */}
+      {/* Sidebar (always rendered) */}
       <ChatSidebar
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
@@ -301,10 +308,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       {/* Main Content with dynamic margin for sidebar */}
       <main
         data-chat-root
-        className={clsx(
-          "relative flex h-full min-w-0 flex-1 flex-col transition-[margin] duration-300 ease-in-out",
-          sidebarOpen ? "ml-72 lg:ml-80" : "ml-0",
-        )}
+        className="relative flex h-full min-w-0 flex-1 flex-col"
       >
         {/* Top Bar */}
         <ChatHeader

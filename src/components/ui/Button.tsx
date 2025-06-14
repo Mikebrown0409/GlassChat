@@ -1,47 +1,48 @@
-import { clsx } from "clsx";
-import { motion, type HTMLMotionProps } from "framer-motion";
-import React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
+import { cn } from "~/utils/cn";
 
-interface ButtonProps extends HTMLMotionProps<"button"> {
-  variant?: "primary" | "secondary" | "ghost";
-  size?: "sm" | "md" | "lg" | "icon";
-}
-
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    { variant = "primary", size = "md", className, children, ...props },
-    ref,
-  ) => {
-    const base =
-      "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-utility/60 disabled:opacity-40";
-
-    const variants: Record<string, string> = {
-      primary:
-        "bg-gradient-brand text-white hover:brightness-110 active:scale-[.98]",
-      secondary:
-        "bg-surface-1 text-primary hover:bg-surface-0 active:scale-[.98]",
-      ghost: "hover:bg-surface-1/60 text-primary active:scale-[.98]",
-    };
-
-    const sizes: Record<string, string> = {
-      sm: "text-xs px-3 py-1.5",
-      md: "text-sm px-4 py-2",
-      lg: "text-base px-6 py-3",
-      icon: "p-2",
-    };
-
-    return (
-      <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        ref={ref}
-        className={clsx(base, variants[variant], sizes[size], className)}
-        {...props}
-      >
-        {children}
-      </motion.button>
-    );
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+  {
+    variants: {
+      variant: {
+        default: "bg-brand-primary text-white hover:bg-brand-primary/90",
+        secondary:
+          "border border-border-subtle bg-surface-0 hover:bg-surface-1 text-primary",
+        ghost: "hover:bg-surface-1/70 text-primary",
+        primary: "bg-brand-primary text-white hover:bg-brand-primary/90",
+        destructive: "text-red-600 hover:bg-red-600/10 focus:ring-red-600",
+      },
+      size: {
+        sm: "h-8 px-3",
+        md: "h-9 px-4",
+        lg: "h-10 px-6",
+        icon: "h-8 w-8",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "md",
+    },
   },
 );
 
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {}
+
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, ...props }, ref) => {
+    return (
+      <button
+        className={cn(buttonVariants({ variant, size }), className)}
+        ref={ref}
+        {...props}
+      />
+    );
+  },
+);
 Button.displayName = "Button";
+
+export * from "./Button";

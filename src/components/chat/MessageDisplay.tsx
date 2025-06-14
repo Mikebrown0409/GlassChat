@@ -8,6 +8,7 @@ import rehypeKatex from "rehype-katex";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import type { Pluggable } from "unified";
 import { TextToSpeechButton } from "~/components/ui/TextToSpeechButton";
 import type { Message } from "~/types/index";
 import { CodeBlock } from "./CodeBlock";
@@ -20,6 +21,10 @@ interface MessageDisplayProps {
   onExplain?: (text: string) => void;
   _isNewMessage?: boolean;
 }
+
+const remarkBreaksTyped = remarkBreaks as unknown as Pluggable;
+const remarkMathTyped = remarkMath as unknown as Pluggable;
+const rehypeKatexTyped = rehypeKatex as unknown as Pluggable;
 
 export const MessageDisplay = memo(function MessageDisplayComponent({
   message,
@@ -67,8 +72,12 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
               >
                 <div className="prose prose-base dark:prose-invert max-w-none text-[15px] leading-relaxed break-words">
                   <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
+                    remarkPlugins={[
+                      remarkGfm,
+                      remarkBreaksTyped,
+                      remarkMathTyped,
+                    ]}
+                    rehypePlugins={[rehypeKatexTyped]}
                     components={{
                       pre: ({ children }) => (
                         <div className="overflow-x-auto">{children}</div>

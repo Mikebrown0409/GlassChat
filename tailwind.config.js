@@ -1,3 +1,5 @@
+// @ts-ignore
+import animatePlugin from "tailwindcss-animate";
 import defaultTheme from "tailwindcss/defaultTheme";
 
 /** @type {import('tailwindcss').Config} */
@@ -54,5 +56,5 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [animatePlugin],
 };
