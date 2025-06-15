@@ -65,9 +65,9 @@ export function MermaidDiagram({
   // Ensure each brace is on its own line so Mermaid parser doesn't choke
   const normalizeBraces = (src: string) =>
     src
-      // newline after }
-      .replace(/}\s*/g, "}\n")
-      // newline before { if not start of line
+      // Ensure newline after closing brace before next token
+      .replace(/}\s*(?=\S)/g, "}\n")
+      // Ensure newline before an opening brace not already on its own line
       .replace(/\s*{\s*/g, " {\n");
 
   const preprocess = (src: string) =>
