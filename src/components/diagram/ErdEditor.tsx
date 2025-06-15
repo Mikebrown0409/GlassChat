@@ -2,7 +2,7 @@
 
 import { MoreVertical } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MermaidDiagram } from "~/components/chat/MermaidDiagram";
 import {
   DropdownMenu,
@@ -72,13 +72,6 @@ function filterByModules(src: string, hidden: Set<string>): string {
   return out.join("\n");
 }
 
-function useDebounce<T>(value:T, delay:number){
-  const [debounced,setDebounced]=useState(value);
-  const timer=useRef<NodeJS.Timeout>();
-  useEffect(()=>{clearTimeout(timer.current);timer.current=setTimeout(()=>setDebounced(value),delay);return ()=>clearTimeout(timer.current);},[value,delay]);
-  return debounced;
-}
-
 export function ErdEditor() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -110,8 +103,6 @@ export function ErdEditor() {
     [code, hiddenModules],
   );
 
-  const debouncedCode = useDebounce(code, 400);
-
   /* UI helpers */
   const toggleModule = (m: string) => {
     setHiddenModules((prev) => {
@@ -121,13 +112,6 @@ export function ErdEditor() {
       return next;
     });
   };
-
-  // Update URL when user selects template for shareability
-  useEffect(() => {
-    const query = `code=${encodeURIComponent(debouncedCode)}${messageIdParam ? `&msg=${messageIdParam}` : ""}`;
-    router.replace(`/erd-editor?${query}`, { scroll:false, shallow:true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedCode]);
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">
