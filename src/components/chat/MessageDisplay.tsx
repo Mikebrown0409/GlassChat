@@ -83,8 +83,8 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
 
             {/* Meta controls inside bubble */}
             {message.role === "assistant" && (
-              <div className="mt-2 space-y-1">
-                <div className="text-muted flex items-center gap-0.5">
+              <div className="mt-1.5 space-y-1">
+                <div className="text-muted flex items-center gap-2">
                   {onSuggestionClick && (
                     <QuickActionsMenu
                       content={message.content}
