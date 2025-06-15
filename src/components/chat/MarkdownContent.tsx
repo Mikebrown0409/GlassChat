@@ -24,39 +24,46 @@ interface Props {
 // Convert tab-delimited rows (common from some models) into pipe-delimited
 // markdown tables so they render properly. Runs only if we detect a tab.
 const normalizeToMarkdownTable = (src: string): string => {
-  const detect = /\t|\s{2,}/;
-  if (!detect.exec(src)) return src;
+  // Quick test: any tab OR ≥2 consecutive spaces OR pipe suggests a table.
+  const hint = /\t|\s{2,}|\|/;
+  if (!hint.exec(src)) return src;
+
+  const SEP = /\t+|\s{2,}|\s*\|\s*/; // tabs, big spaces, or pipes
 
   const lines = src.split(/\r?\n/);
-  const out: string[] = [];
-  let headerAdded = false;
+  const result: string[] = [];
 
-  const SEP = /\t+|\s{2,}/; // tabs or 2+ spaces
+  let collecting = false;
+  let headerEmitted = false;
 
   for (const raw of lines) {
-    const line = raw.trimEnd();
-    if (SEP.test(line)) {
-      const cells = line
-        .split(SEP)
-        .map((c) => c.trim())
-        .filter(Boolean);
-      if (cells.length < 2) {
-        // Not really a table row
-        headerAdded = false;
-        out.push(raw);
-        continue;
+    const trimmed = raw.trimEnd();
+    const parts = SEP.exec(trimmed) ? trimmed.split(SEP).filter(Boolean) : [];
+
+    if (parts.length >= 2) {
+      // Table-like row
+      if (!collecting) {
+        collecting = true;
+        headerEmitted = false;
       }
-      out.push(`| ${cells.join(" | ")} |`);
-      if (!headerAdded) {
-        out.push(`| ${cells.map(() => "---").join(" | ")} |`);
-        headerAdded = true;
+
+      if (!headerEmitted) {
+        // First row -> header + separator
+        result.push(`| ${parts.join(" | ")} |`);
+        result.push(`| ${parts.map(() => "---").join(" | ")} |`);
+        headerEmitted = true;
+      } else {
+        result.push(`| ${parts.join(" | ")} |`);
       }
     } else {
-      headerAdded = false;
-      out.push(raw);
+      // Non-table line, reset state
+      collecting = false;
+      headerEmitted = false;
+      result.push(raw);
     }
   }
-  return out.join("\n");
+
+  return result.join("\n");
 };
 
 export default function MarkdownContent({
@@ -83,8 +90,31 @@ export default function MarkdownContent({
         ),
         table: ({ children }) => (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left">{children}</table>
+            <table className="min-w-full border-collapse overflow-hidden rounded-md border border-zinc-700 text-left dark:border-zinc-600">
+              {children}
+            </table>
           </div>
+        ),
+        thead: ({ children }) => (
+          <thead className="bg-surface-2 text-primary dark:bg-zinc-800">
+            {children}
+          </thead>
+        ),
+        th: ({ children, ...props }) => (
+          <th
+            className="border-b border-zinc-700 px-3 py-2 text-sm font-semibold dark:border-zinc-600"
+            {...props}
+          >
+            {children}
+          </th>
+        ),
+        td: ({ children, ...props }) => (
+          <td
+            className="border-b border-zinc-700 px-3 py-2 text-sm dark:border-zinc-700"
+            {...props}
+          >
+            {children}
+          </td>
         ),
         p: ({ children, ...props }) => {
           const plainText = stringifyChildren(children);
