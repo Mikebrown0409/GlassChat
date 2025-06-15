@@ -39,7 +39,9 @@ export function QuickActionsMenu({ content, onSelect }: QuickActionsMenuProps) {
     {
       type: "prompt",
       label: "Schedule",
-      prompt: `Convert the following text into a Markdown table schedule. **Your entire response MUST be a single table** beginning with:\n\n| Phase | Milestone / Task | Start | End | Owner | Deliverables |\n|-------|------------------|-------|-----|-------|--------------|\n\nFollow this header with the rows. NO additional paragraphs, headings, or commentary before or after the table.\n\n${content}`,
+      prompt:
+        "Rewrite the following content as a valid GitHub-flavored **Markdown table**.\n\nRequirements:\n1. The ONLY output must be the table – no intro or outro sentences.\n2. Use the pipe character (|) to separate columns and include a header separator row of dashes.\n3. Columns: Phase, Milestone / Task, Start, End, Owner, Deliverables.\n4. Use the pipe character (|) between every cell; **do NOT use tabs**.\n5. Wrap nothing in backticks.\n\nExample format:\n| Phase | Milestone / Task | Start | End | Owner | Deliverables |\n| ----- | ---------------- | ----- | --- | ----- | ------------ |\n| 1 | Kickoff | 2024-11-02 | 2024-11-03 | PM | Charter |\n\nNow create the table based on this input:\n\n" +
+        content,
     },
     {
       type: "prompt",
