@@ -1,6 +1,6 @@
 "use client";
 
-import { ChatInterface } from "./ChatInterface";
+import ChatInterface from "../chat/ChatInterface";
 
 interface Message {
   id: string;

@@ -65,11 +65,13 @@ export function MermaidDiagram({
   // Simple debounce hook
   function useDebounce<T>(value: T, delay: number) {
     const [debounced, setDebounced] = useState(value);
-    const timeoutRef = useRef<NodeJS.Timeout>();
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     useEffect(() => {
-      clearTimeout(timeoutRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = setTimeout(() => setDebounced(value), delay);
-      return () => clearTimeout(timeoutRef.current);
+      return () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      };
     }, [value, delay]);
     return debounced;
   }
@@ -105,8 +107,10 @@ export function MermaidDiagram({
         },
       });
 
-      // disable global overlay on parse errors
-      (mermaid as unknown as { parseError?: () => void }).parseError = () => {};
+      // Override default parseError to prevent global overlay; leave implementation intentionally blank.
+      (mermaid as unknown as { parseError?: () => void }).parseError = () => {
+        /* no-op */
+      };
 
       const uniqueId = `mermaid-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -114,7 +118,7 @@ export function MermaidDiagram({
       void (async () => {
         const normalized = normalizeERModifiers(chart);
         try {
-          mermaid.parse(normalized); // validate first, throws if invalid
+          void mermaid.parse(normalized); // validate first, throws if invalid
           const { svg } = await mermaid.render(uniqueId, normalized);
           if (isMounted) {
             const rendered = makeResponsiveSvg(svg);

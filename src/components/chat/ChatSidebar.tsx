@@ -21,6 +21,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { TooltipProvider } from "~/components/ui/tooltip";
+import type { Chat } from "~/lib/db";
 import { useLiveChats } from "~/lib/sync";
 import { cn } from "~/utils/cn";
 
@@ -54,8 +55,8 @@ export function ChatSidebar({
   const chats = useLiveChats();
 
   // Memoize filtered chats to avoid re-computation on each render
-  const filteredHistory = useMemo(() => {
-    if (!chats) return [] as typeof chats;
+  const filteredHistory = useMemo<Chat[]>(() => {
+    if (!chats) return [];
     const q = searchQuery.toLowerCase();
     return q
       ? chats.filter((chat) => chat.title.toLowerCase().includes(q))
@@ -64,7 +65,7 @@ export function ChatSidebar({
 
   // Separate memoized row component to prevent re-renders of unchanged rows
   const ChatRow = useCallback(
-    ({ chat }: { chat: (typeof filteredHistory)[number] }) => {
+    ({ chat }: { chat: Chat }) => {
       const isRenaming = renamingChat === chat.id;
       return (
         <div key={chat.id} className="group w-full">

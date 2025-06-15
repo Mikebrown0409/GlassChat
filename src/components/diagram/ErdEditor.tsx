@@ -1,8 +1,8 @@
 "use client";
 
-import { MoreVertical, Plus, Minus } from "lucide-react";
+import { Minus, MoreVertical, Plus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MermaidDiagram } from "~/components/chat/MermaidDiagram";
 import {
   DropdownMenu,
@@ -10,8 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
 import { ScrollArea } from "~/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
 
 /** Simple templates for users to start from */
 const TEMPLATES: Record<string, string> = {
@@ -41,7 +41,7 @@ function extractModules(src: string): string[] {
   const modules: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = regex.exec(src))) {
-    modules.push(m[1].trim());
+    modules.push(m[1]!.trim());
   }
   return modules;
 }
@@ -53,10 +53,11 @@ function filterByModules(src: string, hidden: Set<string>): string {
   const out: string[] = [];
   let skip = false;
   let current: string | null = null;
+  const subgraphRegex = /^\s*subgraph\s+([^\n]+)$/;
   for (const line of lines) {
-    const subMatch = line.match(/^\s*subgraph\s+([^\n]+)$/);
+    const subMatch = subgraphRegex.exec(line);
     if (subMatch) {
-      current = subMatch[1].trim();
+      current = subMatch[1]!.trim();
       if (hidden.has(current)) {
         skip = true;
         continue; // skip subgraph declaration
@@ -80,11 +81,11 @@ export function ErdEditor() {
   const initialCodeParam = searchParams.get("code");
   const messageIdParam = searchParams.get("msg");
 
-  const [code, setCode] = useState(
-    initialCodeParam
-      ? decodeURIComponent(initialCodeParam)
-      : TEMPLATES["SaaS Platform"],
-  );
+  const initialCode: string = initialCodeParam
+    ? decodeURIComponent(initialCodeParam)
+    : (TEMPLATES["SaaS Platform"] ?? "");
+
+  const [code, setCode] = useState<string>(initialCode);
   const [hiddenModules, setHiddenModules] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<"split" | "visual" | "code">("split");
   const [zoom, setZoom] = useState(1);
@@ -119,17 +120,18 @@ export function ErdEditor() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const isPanningRef = useRef(false);
-  const startPos = useRef<{x:number;y:number}>();
+  const startPos = useRef<{ x: number; y: number } | null>(null);
 
   const onMouseDownDrag = (e: React.MouseEvent) => {
-    if(!scrollRef.current) return;
+    if (!scrollRef.current) return;
     isPanningRef.current = true;
     scrollRef.current.style.cursor = "grabbing";
     scrollRef.current.classList.add("select-none");
     startPos.current = { x: e.clientX, y: e.clientY };
   };
   const onMouseMoveDrag = (e: MouseEvent) => {
-    if(!isPanningRef.current || !scrollRef.current || !startPos.current) return;
+    if (!isPanningRef.current || !scrollRef.current || !startPos.current)
+      return;
     const dx = startPos.current.x - e.clientX;
     const dy = startPos.current.y - e.clientY;
     scrollRef.current.scrollLeft += dx;
@@ -137,19 +139,19 @@ export function ErdEditor() {
     startPos.current = { x: e.clientX, y: e.clientY };
   };
   const endPan = () => {
-    if(!isPanningRef.current || !scrollRef.current) return;
-    isPanningRef.current=false;
+    if (!isPanningRef.current || !scrollRef.current) return;
+    isPanningRef.current = false;
     scrollRef.current.style.cursor = "grab";
     scrollRef.current.classList.remove("select-none");
   };
-  useEffect(()=>{
+  useEffect(() => {
     window.addEventListener("mousemove", onMouseMoveDrag);
     window.addEventListener("mouseup", endPan);
-    return ()=>{
+    return () => {
       window.removeEventListener("mousemove", onMouseMoveDrag);
       window.removeEventListener("mouseup", endPan);
     };
-  },[]);
+  }, []);
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">
@@ -163,7 +165,10 @@ export function ErdEditor() {
               Object.entries(TEMPLATES).find(([_, v]) => v === code)?.[0] ??
               "Custom"
             }
-            onChange={(e) => setCode(TEMPLATES[e.target.value])}
+            onChange={(e) => {
+              const tpl = TEMPLATES[e.target.value] ?? "";
+              setCode(tpl);
+            }}
           >
             {Object.keys(TEMPLATES).map((k) => (
               <option key={k}>{k}</option>
@@ -264,17 +269,17 @@ export function ErdEditor() {
         {(mode === "split" || mode === "visual") && (
           <div className="relative flex-1 p-4">
             {/* Zoom controls */}
-            <div className="absolute right-6 top-6 z-20 flex flex-col gap-1">
+            <div className="absolute top-6 right-6 z-20 flex flex-col gap-1">
               <button
                 onClick={zoomIn}
-                className="cursor-pointer rounded border bg-surface-0 p-1 shadow hover:bg-surface-2"
+                className="bg-surface-0 hover:bg-surface-2 cursor-pointer rounded border p-1 shadow"
                 title="Zoom in"
               >
                 <Plus size={14} />
               </button>
               <button
                 onClick={zoomOut}
-                className="cursor-pointer rounded border bg-surface-0 p-1 shadow hover:bg-surface-2"
+                className="bg-surface-0 hover:bg-surface-2 cursor-pointer rounded border p-1 shadow"
                 title="Zoom out"
               >
                 <Minus size={14} />
@@ -286,7 +291,12 @@ export function ErdEditor() {
               style={{ cursor: "grab" }}
               onMouseDown={onMouseDownDrag as never}
             >
-              <div style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}>
+              <div
+                style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: "top left",
+                }}
+              >
                 <MermaidDiagram chart={previewCode} showControls={false} />
               </div>
             </ScrollArea>
@@ -363,19 +373,28 @@ function EditorPanel({
 
       {/* Cheat-sheet */}
       <details className="mb-4 rounded border p-2 text-xs leading-relaxed open:shadow">
-        <summary className="cursor-pointer select-none font-medium">Mermaid ERD syntax cheatsheet</summary>
-        <ul className="mt-2 list-disc pl-4 space-y-1">
+        <summary className="cursor-pointer font-medium select-none">
+          Mermaid ERD syntax cheatsheet
+        </summary>
+        <ul className="mt-2 list-disc space-y-1 pl-4">
           <li>
-            <code className="font-mono">{"Entity {{ field PK }}"}</code>
+            <code className="font-mono">
+              Entity &#123;&#123; field PK &#125;&#125;
+            </code>
           </li>
           <li>
-            Relationships use <code className="font-mono">||</code>=one, <code className="font-mono">{"o{"}</code>=many.
+            Relationships use <code className="font-mono">||</code>=one,{" "}
+            <code className="font-mono">o&#123;</code>=many.
           </li>
           <li>
-            Example many-to-one: <code className="font-mono">ORDER }o--|| CUSTOMER : placed_by</code>
+            Example many-to-one:{" "}
+            <code className="font-mono">
+              ORDER &#125;o--|| CUSTOMER : placed_by
+            </code>
           </li>
           <li>
-            Close every <code className="font-mono">subgraph ... end</code> pair.
+            Close every <code className="font-mono">subgraph ... end</code>{" "}
+            pair.
           </li>
         </ul>
       </details>
@@ -384,7 +403,7 @@ function EditorPanel({
       <textarea
         value={code}
         onChange={(e) => onCodeChange(e.target.value)}
-        className="border-input bg-surface-1 focus:ring-brand-primary h-full flex-1 resize-none rounded-md border p-2 text-sm font-mono shadow focus:outline-none focus:ring-2"
+        className="border-input bg-surface-1 focus:ring-brand-primary h-full flex-1 resize-none rounded-md border p-2 font-mono text-sm shadow focus:ring-2 focus:outline-none"
       />
     </div>
   );

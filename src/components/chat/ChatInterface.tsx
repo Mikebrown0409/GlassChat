@@ -304,10 +304,9 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     try {
       await db.updateSyncableEntity(db.messages, id, {
         content: newContent,
-        updatedAt: Date.now(),
       });
       // Debounce sync
-      syncManager.performSync();
+      await syncManager.performSync();
     } catch (err) {
       console.error("Failed to update message", err);
     }

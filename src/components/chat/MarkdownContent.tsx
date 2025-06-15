@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import "katex/dist/katex.min.css";
+import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkBreaks from "remark-breaks";
@@ -26,6 +27,14 @@ export default function MarkdownContent({
   messageId,
   onUpdateMessage,
 }: Props) {
+  const stringifyChildren = (node: ReactNode): string => {
+    if (typeof node === "string") return node;
+    if (Array.isArray(node)) {
+      return node.filter((c): c is string => typeof c === "string").join("");
+    }
+    return "";
+  };
+
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkBreaksTyped, remarkMathTyped]}
@@ -40,13 +49,8 @@ export default function MarkdownContent({
           </div>
         ),
         p: ({ children, ...props }) => {
-          let isShort = false;
-          if (typeof children === "string") isShort = children.length < 50;
-          else if (
-            Array.isArray(children) &&
-            children.every((c) => typeof c === "string")
-          )
-            isShort = children.join("").length < 50;
+          const plainText = stringifyChildren(children);
+          const isShort = plainText.length < 50;
           return (
             <p
               className={clsx(
@@ -68,9 +72,7 @@ export default function MarkdownContent({
           const match = /language-(\w+)/.exec(className ?? "");
           if (!inline && match?.[1]) {
             if (match[1] === "mermaid") {
-              const original = (
-                Array.isArray(children) ? children.join("") : String(children)
-              ).replace(/\n$/, "");
+              const original = stringifyChildren(children).replace(/\n$/, "");
               const handleSave = (newChart: string) => {
                 if (!onUpdateMessage || !messageId) return;
                 const newBlock = `\`\`\`mermaid\n${newChart}\n\`\`\``;
@@ -90,9 +92,7 @@ export default function MarkdownContent({
                 </div>
               );
             }
-            const codeString = (
-              Array.isArray(children) ? children.join("") : String(children)
-            ).replace(/\n$/, "");
+            const codeString = stringifyChildren(children).replace(/\n$/, "");
             return (
               <div className="my-4">
                 <CodeBlock language={match[1]} {...props}>
@@ -102,9 +102,7 @@ export default function MarkdownContent({
             );
           }
           if (match?.[1]) {
-            const codeString = Array.isArray(children)
-              ? children.join("")
-              : String(children);
+            const codeString = stringifyChildren(children);
             return (
               <CodeBlock language={match[1]} isInline {...props}>
                 {codeString}
