@@ -62,6 +62,17 @@ export function MermaidDiagram({
   const normalizeERModifiers = (src: string) =>
     src.replace(/\b(PK|FK)\s+(PK|FK)\b/g, (_m, a, b) => `${a}, ${b}`);
 
+  // Ensure each brace is on its own line so Mermaid parser doesn't choke
+  const normalizeBraces = (src: string) =>
+    src
+      // newline after }
+      .replace(/}\s*/g, "}\n")
+      // newline before { if not start of line
+      .replace(/\s*{\s*/g, " {\n");
+
+  const preprocess = (src: string) =>
+    normalizeERModifiers(normalizeBraces(src));
+
   // Simple debounce hook
   function useDebounce<T>(value: T, delay: number) {
     const [debounced, setDebounced] = useState(value);
@@ -116,7 +127,7 @@ export function MermaidDiagram({
 
       // Render normalized chart
       void (async () => {
-        const normalized = normalizeERModifiers(chart);
+        const normalized = preprocess(chart);
         try {
           void mermaid.parse(normalized); // validate first, throws if invalid
           const { svg } = await mermaid.render(uniqueId, normalized);
@@ -155,7 +166,7 @@ export function MermaidDiagram({
       });
       const id = `mermaid-${Math.random().toString(36).slice(2, 9)}`;
       void mermaid
-        .render(id, normalizeERModifiers(debouncedDraft))
+        .render(id, preprocess(debouncedDraft))
         .then(({ svg }) => {
           setDraftSvg(svg);
           setPreviewError(null);
@@ -190,7 +201,7 @@ export function MermaidDiagram({
       const uniqueId = `mermaid-${Math.random().toString(36).slice(2, 9)}`;
 
       void mermaid
-        .render(uniqueId, normalizeERModifiers(localChart))
+        .render(uniqueId, preprocess(localChart))
         .then(({ svg }) => {
           if (isMounted) {
             const rendered = makeResponsiveSvg(svg);
