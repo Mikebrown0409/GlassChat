@@ -171,28 +171,28 @@ export default function MarkdownContent({
           <div className="overflow-x-auto">{children}</div>
         ),
         table: ({ children }) => (
-          <div className="my-4 overflow-x-auto">
-            <table className="min-w-full table-auto border-collapse overflow-hidden rounded-lg border border-zinc-700 text-left dark:border-zinc-600">
+          <div className="relative my-4 max-h-96 overflow-auto rounded-lg border border-zinc-700 dark:border-zinc-600">
+            <table className="min-w-full table-auto border-collapse text-left">
               {children}
             </table>
           </div>
         ),
         tr: ({ children, ...props }) => (
           <tr
-            className="odd:bg-surface-1 even:bg-surface-0 dark:odd:bg-zinc-800/60 dark:even:bg-zinc-800/40"
+            className="odd:bg-surface-1 even:bg-surface-0 hover:bg-surface-2/60 dark:odd:bg-zinc-800/60 dark:even:bg-zinc-800/40 dark:hover:bg-zinc-700/60"
             {...props}
           >
             {children}
           </tr>
         ),
         thead: ({ children }) => (
-          <thead className="bg-surface-2 text-primary dark:bg-zinc-800">
+          <thead className="bg-surface-2/95 text-primary sticky top-0 z-10 backdrop-blur dark:bg-zinc-800/90">
             {children}
           </thead>
         ),
         th: ({ children, ...props }) => (
           <th
-            className="bg-surface-2/90 border-b border-zinc-700 px-3 py-2 text-sm font-semibold dark:border-zinc-600 dark:bg-zinc-800/90"
+            className="border-b border-zinc-700 px-3 py-2 text-sm font-semibold dark:border-zinc-600"
             {...props}
           >
             {children}
@@ -200,7 +200,7 @@ export default function MarkdownContent({
         ),
         td: ({ children, ...props }) => (
           <td
-            className="border-b border-zinc-700 px-3 py-2 text-sm dark:border-zinc-700"
+            className="border-b border-zinc-700 px-3 py-2 align-top text-sm break-words whitespace-pre-wrap dark:border-zinc-700"
             {...props}
           >
             {children}
