@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import "katex/dist/katex.min.css";
 import type { ReactNode } from "react";
+import React from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkBreaks from "remark-breaks";
@@ -148,6 +149,47 @@ const normalizeToMarkdownTable = (src: string): string => {
   return result.join("\n");
 };
 
+// Wrapper to render tables with copy-to-markdown capability
+function MarkdownTableWrapper({ children }: { children?: React.ReactNode }) {
+  const tableRef = React.useRef<HTMLTableElement>(null);
+
+  const handleCopy = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+    const tableEl = tableRef.current;
+    if (!tableEl || !sel.anchorNode || !tableEl.contains(sel.anchorNode))
+      return;
+
+    const rows = Array.from(tableEl.querySelectorAll("tr"));
+    if (rows.length === 0) return;
+
+    const mdRows: string[] = [];
+    rows.forEach((r, idx) => {
+      const cells = Array.from(r.children) as HTMLElement[];
+      const parts = cells.map((c) => c.innerText.trim().replace(/\n+/g, " "));
+      mdRows.push(`| ${parts.join(" | ")} |`);
+      if (idx === 0) mdRows.push(`| ${parts.map(() => "---").join(" | ")} |`);
+    });
+
+    e.preventDefault();
+    e.clipboardData.setData("text/plain", mdRows.join("\n"));
+  };
+
+  return (
+    <div
+      className="relative my-4 max-h-96 overflow-auto rounded-lg border border-zinc-700 dark:border-zinc-600"
+      onCopy={handleCopy}
+    >
+      <table
+        ref={tableRef}
+        className="min-w-full table-auto border-collapse text-left"
+      >
+        {children}
+      </table>
+    </div>
+  );
+}
+
 export default function MarkdownContent({
   content,
   role,
@@ -170,13 +212,7 @@ export default function MarkdownContent({
         pre: ({ children }) => (
           <div className="overflow-x-auto">{children}</div>
         ),
-        table: ({ children }) => (
-          <div className="relative my-4 max-h-96 overflow-auto rounded-lg border border-zinc-700 dark:border-zinc-600">
-            <table className="min-w-full table-auto border-collapse text-left">
-              {children}
-            </table>
-          </div>
-        ),
+        table: MarkdownTableWrapper,
         tr: ({ children, ...props }) => (
           <tr
             className="odd:bg-surface-1 even:bg-surface-0 hover:bg-surface-2/60 dark:odd:bg-zinc-800/60 dark:even:bg-zinc-800/40 dark:hover:bg-zinc-700/60"
