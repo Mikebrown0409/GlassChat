@@ -39,7 +39,7 @@ export function QuickActionsMenu({ content, onSelect }: QuickActionsMenuProps) {
     {
       type: "prompt",
       label: "Schedule",
-      prompt: `Convert the following into a project schedule with dates and owners:\n\n${content}`,
+      prompt: `Generate a concise project schedule as a Markdown table **only**. Use the columns | Phase | Milestone / Task | Start | End | Owner | Deliverables |. Derive dates starting today unless dates already exist. Do not include any narrative, notes, or extra text outside the table.\n\n${content}`,
     },
     {
       type: "prompt",
