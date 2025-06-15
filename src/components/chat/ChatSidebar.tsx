@@ -156,11 +156,15 @@ export function ChatSidebar({
 
   return (
     <motion.aside
-      initial={{ x: "-100%" }}
-      animate={{ x: sidebarOpen ? 0 : "-100%" }}
+      initial={{ x: "-100%", width: 0 }}
+      animate={{
+        x: sidebarOpen ? 0 : "-100%",
+        width: sidebarOpen ? "16rem" : 0,
+      }}
       transition={{ ease: DYNAMIC_EASE, duration: 0.3 }}
       className={cn(
-        "relative flex h-full w-64 flex-shrink-0 flex-col overflow-hidden rounded-br-2xl border-r border-zinc-800/40 bg-zinc-900 text-zinc-200 shadow-inner",
+        "relative flex h-full flex-shrink-0 flex-col overflow-hidden rounded-br-2xl bg-zinc-900 text-zinc-200 shadow-inner",
+        sidebarOpen ? "w-64 border-r border-zinc-800/40" : "w-0 border-none",
       )}
     >
       <div className="flex items-center gap-2 p-4 text-lg font-semibold">
