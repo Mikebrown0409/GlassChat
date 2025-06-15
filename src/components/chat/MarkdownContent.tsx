@@ -25,7 +25,7 @@ interface Props {
 // markdown tables so they render properly. Runs only if we detect a tab.
 const normalizeToMarkdownTable = (src: string): string => {
   // Quick test: any tab OR ≥2 consecutive spaces OR pipe suggests a table.
-  const hint = /\t|\s{2,}|\|/;
+  const hint = /\t|\s{2,}|\||^\s*[-*]\s+[^:]+:/m;
   if (!hint.exec(src)) return src;
 
   const SEP = /\t+|\s{2,}|\s*\|\s*/; // tabs, big spaces, or pipes
@@ -37,7 +37,56 @@ const normalizeToMarkdownTable = (src: string): string => {
   let headerEmitted = false;
   let columnCount = 0;
 
+  // Helper to flush collected bullet rows into table rows
+  const flushBulletTable = () => {
+    if (bulletRows.length === 0) return;
+    const headers = Object.keys(bulletRows[0]!);
+    if (headers.length < 2) {
+      bulletRows.length = 0;
+      return;
+    }
+
+    // Emit header row
+    result.push(`| ${headers.join(" | ")} |`);
+    result.push(`| ${headers.map(() => "---").join(" | ")} |`);
+    for (const row of bulletRows) {
+      const cells = headers.map((h) => row[h] ?? "");
+      result.push(`| ${cells.join(" | ")} |`);
+    }
+    bulletRows.length = 0;
+  };
+
+  // Bullet row collection
+  type RowObj = Record<string, string>;
+  const bulletRows: RowObj[] = [];
+  let currentRow: RowObj | null = null;
+
   for (const raw of lines) {
+    const bulletMatch = /^\s*[-*]\s+([^:]+):\s*(.+)$/.exec(raw);
+    if (bulletMatch) {
+      const [, keyRawMaybe, valueMaybe] = bulletMatch;
+      const key = (keyRawMaybe ?? "").trim();
+      const value = (valueMaybe ?? "").trim();
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      if (!currentRow) currentRow = {};
+      // If key already exists, assume new row starts
+      if (currentRow[key] !== undefined) {
+        bulletRows.push(currentRow);
+        currentRow = { [key]: value };
+      } else {
+        currentRow[key] = value;
+      }
+      continue; // Skip normal processing for bullet line
+    } else if (currentRow) {
+      // End of current bullet group
+      bulletRows.push(currentRow);
+      currentRow = null;
+      // fallthrough to normal processing of this line
+    }
+
+    // Before processing non-bullet line, flush if we have collected rows
+    flushBulletTable();
+
     const trimmed = raw.trimEnd();
     const partsArr = SEP.exec(trimmed)
       ? trimmed
@@ -47,6 +96,13 @@ const normalizeToMarkdownTable = (src: string): string => {
       : [];
 
     if (partsArr.length >= 2) {
+      // Detect pure alignment row like :--- or ---:
+      const isAlignmentRow = partsArr.every((cell) => /^:?-{2,}:?$/.test(cell));
+      if (isAlignmentRow) {
+        // Skip adding this row; we'll generate our own separator if needed
+        continue;
+      }
+
       // Table-like row
       if (!collecting) {
         collecting = true;
@@ -85,6 +141,10 @@ const normalizeToMarkdownTable = (src: string): string => {
     }
   }
 
+  // Flush trailing bullet rows if any
+  if (currentRow) bulletRows.push(currentRow);
+  flushBulletTable();
+
   return result.join("\n");
 };
 
@@ -111,11 +171,19 @@ export default function MarkdownContent({
           <div className="overflow-x-auto">{children}</div>
         ),
         table: ({ children }) => (
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse overflow-hidden rounded-md border border-zinc-700 text-left dark:border-zinc-600">
+          <div className="my-4 overflow-x-auto">
+            <table className="min-w-full table-auto border-collapse overflow-hidden rounded-lg border border-zinc-700 text-left dark:border-zinc-600">
               {children}
             </table>
           </div>
+        ),
+        tr: ({ children, ...props }) => (
+          <tr
+            className="odd:bg-surface-1 even:bg-surface-0 dark:odd:bg-zinc-800/60 dark:even:bg-zinc-800/40"
+            {...props}
+          >
+            {children}
+          </tr>
         ),
         thead: ({ children }) => (
           <thead className="bg-surface-2 text-primary dark:bg-zinc-800">
@@ -124,7 +192,7 @@ export default function MarkdownContent({
         ),
         th: ({ children, ...props }) => (
           <th
-            className="border-b border-zinc-700 px-3 py-2 text-sm font-semibold dark:border-zinc-600"
+            className="bg-surface-2/90 border-b border-zinc-700 px-3 py-2 text-sm font-semibold dark:border-zinc-600 dark:bg-zinc-800/90"
             {...props}
           >
             {children}

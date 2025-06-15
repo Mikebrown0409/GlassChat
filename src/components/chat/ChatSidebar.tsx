@@ -21,6 +21,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { TooltipProvider } from "~/components/ui/tooltip";
+import { useCollaborationStore } from "~/lib/collaboration/store";
 import type { Chat } from "~/lib/db";
 import { useLiveChats } from "~/lib/sync";
 import { cn } from "~/utils/cn";
@@ -53,6 +54,10 @@ export function ChatSidebar({
   const [renameValue, setRenameValue] = useState("");
 
   const chats = useLiveChats();
+  // Collaboration store — determine if we are in a room and who is online
+  const { currentRoomId: collabRoomId, onlineUsers } = useCollaborationStore(
+    (s) => ({ currentRoomId: s.currentRoomId, onlineUsers: s.onlineUsers }),
+  );
 
   // Memoize filtered chats to avoid re-computation on each render
   const filteredHistory = useMemo<Chat[]>(() => {
@@ -203,6 +208,28 @@ export function ChatSidebar({
               <MemoChatRow key={chat.id} chat={chat} />
             ))}
           </div>
+
+          {/* Online collaborators */}
+          {collabRoomId && onlineUsers.length > 0 && (
+            <div className="mt-6">
+              <div className="px-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+                Team
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 px-2">
+                {onlineUsers.map((u) => (
+                  <Avatar
+                    key={u.userId}
+                    className="border-surface-0 h-7 w-7 border-2 bg-zinc-700"
+                    title={u.userId}
+                  >
+                    <AvatarFallback className="text-[10px]">
+                      {u.userId.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
+            </div>
+          )}
         </ScrollArea>
       </TooltipProvider>
 

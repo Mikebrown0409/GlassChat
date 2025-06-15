@@ -50,8 +50,13 @@ export function QuickActionsMenu({ content, onSelect }: QuickActionsMenuProps) {
     },
     {
       type: "prompt",
-      label: "Project Roadmap",
-      prompt: `You are an expert AI project planner. The user will describe a business idea, project, or concept. Return a structured and editable project roadmap following these rules:\n\n• Modular – organize into 4–5 high-level phases (Initiation, Planning, Execution, etc.).\n• Compact & Editable – output each phase as collapsible Markdown using \"<details>\" tags, OR a clean Markdown table if preferred.\n• Schedule-aware – include estimated durations (e.g., Week 1–2) and suggest dependencies.\n• Actionable – list roles, deliverables, suggested tools.\n• Visual-ready – after the list, append a Mermaid Gantt chart of the timeline.\n• Provide a downloadable Markdown block at the end (fenced with ~~~markdown).\n• If user later requests, be ready to convert to Trello JSON or CSV (but do NOT include now).\n\nUse this nested bullet format inside each phase:\n- 🗂️ Phase Name\n    - 📌 Task: ...\n        - ⏱ Timeline: ...\n        - 📦 Deliverables: ...\n        - 👤 Owner: ...\n        - 🔗 Dependencies: ...\n\nUser input to transform:\n\n${content}`,
+      label: "Strategic Roadmap",
+      prompt: `You are an expert AI project planner. Using the user's idea or requirements, generate a strategic, stakeholder-ready roadmap with these specifications:\n\n1. Structure by 4–5 key phases (e.g., Discovery, Implementation, Rollout, Optimization).\n2. For EACH phase, create a **Markdown table** with the following columns (in order): #, Milestone, Owner, Duration/Timeframe, Dependencies (optional), Success Indicator.\n   • Use bold header cells.\n   • Do NOT wrap tables in <details>; plain tables render best in GlassChat.\n3. Group milestones logically; if needed, precede each phase table with a short bullet list of work-stream labels (Technical, Data, Change Mgmt, Training).\n4. After all phase tables, add:\n   • A timeline-summary table mapping work-streams against week/month headers.\n   • A Mermaid Gantt chart with swimlanes, milestone blocks, and diamond flags for UAT Complete and Go-Live.\n5. Keep paragraphs ≤ 4 lines, use bold headings (e.g., **Phase 1 – Discovery**), bullets where helpful, and finish with a ✅ Summary.\n6. Respond ONLY with the roadmap content – no additional commentary.\n\nUser input to transform:\n\n${content}`,
+    },
+    {
+      type: "prompt",
+      label: "Format as Table",
+      prompt: `Rewrite the following content as a GitHub-flavored **Markdown table**.\n\nGuidelines:\n• If the text contains bullet lists, merge related bullets into a single row where possible.\n• Bold the header row.\n• Preserve all information — add extra columns when you need to keep data.\n• Respond **only** with the table (no intro or outro).\n\nInput:\n\n${content}`,
     },
     { type: "prompt", label: "New prompt from this", prompt: content },
   ];
