@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
+import { ScrollArea } from "~/components/ui/scroll-area";
 
 /** Simple templates for users to start from */
 const TEMPLATES: Record<string, string> = {
@@ -124,6 +125,7 @@ export function ErdEditor() {
     if(!scrollRef.current) return;
     isPanningRef.current = true;
     scrollRef.current.style.cursor = "grabbing";
+    scrollRef.current.classList.add("select-none");
     startPos.current = { x: e.clientX, y: e.clientY };
   };
   const onMouseMoveDrag = (e: MouseEvent) => {
@@ -138,6 +140,7 @@ export function ErdEditor() {
     if(!isPanningRef.current || !scrollRef.current) return;
     isPanningRef.current=false;
     scrollRef.current.style.cursor = "grab";
+    scrollRef.current.classList.remove("select-none");
   };
   useEffect(()=>{
     window.addEventListener("mousemove", onMouseMoveDrag);
@@ -277,16 +280,16 @@ export function ErdEditor() {
                 <Minus size={14} />
               </button>
             </div>
-            <div
-              ref={scrollRef}
-              className="h-full w-full overflow-auto rounded border"
+            <ScrollArea
+              ref={scrollRef as never}
+              className="h-full w-full rounded border"
               style={{ cursor: "grab" }}
-              onMouseDown={onMouseDownDrag}
+              onMouseDown={onMouseDownDrag as never}
             >
               <div style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}>
                 <MermaidDiagram chart={previewCode} showControls={false} />
               </div>
-            </div>
+            </ScrollArea>
           </div>
         )}
 
