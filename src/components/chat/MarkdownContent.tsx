@@ -21,6 +21,44 @@ interface Props {
   onUpdateMessage?: (newContent: string) => void;
 }
 
+// Convert tab-delimited rows (common from some models) into pipe-delimited
+// markdown tables so they render properly. Runs only if we detect a tab.
+const normalizeToMarkdownTable = (src: string): string => {
+  const detect = /\t|\s{2,}/;
+  if (!detect.exec(src)) return src;
+
+  const lines = src.split(/\r?\n/);
+  const out: string[] = [];
+  let headerAdded = false;
+
+  const SEP = /\t+|\s{2,}/; // tabs or 2+ spaces
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (SEP.test(line)) {
+      const cells = line
+        .split(SEP)
+        .map((c) => c.trim())
+        .filter(Boolean);
+      if (cells.length < 2) {
+        // Not really a table row
+        headerAdded = false;
+        out.push(raw);
+        continue;
+      }
+      out.push(`| ${cells.join(" | ")} |`);
+      if (!headerAdded) {
+        out.push(`| ${cells.map(() => "---").join(" | ")} |`);
+        headerAdded = true;
+      }
+    } else {
+      headerAdded = false;
+      out.push(raw);
+    }
+  }
+  return out.join("\n");
+};
+
 export default function MarkdownContent({
   content,
   role,
@@ -123,7 +161,7 @@ export default function MarkdownContent({
         },
       }}
     >
-      {content}
+      {normalizeToMarkdownTable(content)}
     </ReactMarkdown>
   );
 }
