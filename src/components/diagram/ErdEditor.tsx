@@ -1,8 +1,8 @@
 "use client";
 
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Plus, Minus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { MermaidDiagram } from "~/components/chat/MermaidDiagram";
 import {
   DropdownMenu,
@@ -86,6 +86,9 @@ export function ErdEditor() {
   );
   const [hiddenModules, setHiddenModules] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<"split" | "visual" | "code">("split");
+  const [zoom, setZoom] = useState(1);
+  const zoomIn = () => setZoom((z) => Math.min(z + 0.1, 3));
+  const zoomOut = () => setZoom((z) => Math.max(z - 0.1, 0.3));
 
   const modules = useMemo(() => extractModules(code), [code]);
 
@@ -112,6 +115,38 @@ export function ErdEditor() {
       return next;
     });
   };
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isPanningRef = useRef(false);
+  const startPos = useRef<{x:number;y:number}>();
+
+  const onMouseDownDrag = (e: React.MouseEvent) => {
+    if(!scrollRef.current) return;
+    isPanningRef.current = true;
+    scrollRef.current.style.cursor = "grabbing";
+    startPos.current = { x: e.clientX, y: e.clientY };
+  };
+  const onMouseMoveDrag = (e: MouseEvent) => {
+    if(!isPanningRef.current || !scrollRef.current || !startPos.current) return;
+    const dx = startPos.current.x - e.clientX;
+    const dy = startPos.current.y - e.clientY;
+    scrollRef.current.scrollLeft += dx;
+    scrollRef.current.scrollTop += dy;
+    startPos.current = { x: e.clientX, y: e.clientY };
+  };
+  const endPan = () => {
+    if(!isPanningRef.current || !scrollRef.current) return;
+    isPanningRef.current=false;
+    scrollRef.current.style.cursor = "grab";
+  };
+  useEffect(()=>{
+    window.addEventListener("mousemove", onMouseMoveDrag);
+    window.addEventListener("mouseup", endPan);
+    return ()=>{
+      window.removeEventListener("mousemove", onMouseMoveDrag);
+      window.removeEventListener("mouseup", endPan);
+    };
+  },[]);
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">
@@ -166,25 +201,28 @@ export function ErdEditor() {
         </div>
 
         {/* Copy menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="hover:bg-surface-2 focus:ring-brand-primary rounded p-1 focus:ring-2 focus:outline-none">
-              <MoreVertical size={18} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem
-              onSelect={() => navigator.clipboard.writeText(code)}
-            >
-              Copy Mermaid
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => navigator.clipboard.writeText(previewCode)}
-            >
-              Copy Filtered Mermaid
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          {/* Copy dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="hover:bg-surface-2 focus:ring-brand-primary cursor-pointer rounded p-1 focus:ring-2 focus:outline-none">
+                <MoreVertical size={18} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 cursor-pointer">
+              <DropdownMenuItem
+                onSelect={() => navigator.clipboard.writeText(code)}
+              >
+                Copy Mermaid
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => navigator.clipboard.writeText(previewCode)}
+              >
+                Copy Filtered Mermaid
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <button
           onClick={() => {
             if (messageIdParam) {
@@ -221,8 +259,34 @@ export function ErdEditor() {
       {/* Main area */}
       <div className="flex flex-1 overflow-hidden">
         {(mode === "split" || mode === "visual") && (
-          <div className="flex-1 overflow-auto p-4">
-            <MermaidDiagram chart={previewCode} showControls={false} />
+          <div className="relative flex-1 p-4">
+            {/* Zoom controls */}
+            <div className="absolute right-6 top-6 z-20 flex flex-col gap-1">
+              <button
+                onClick={zoomIn}
+                className="cursor-pointer rounded border bg-surface-0 p-1 shadow hover:bg-surface-2"
+                title="Zoom in"
+              >
+                <Plus size={14} />
+              </button>
+              <button
+                onClick={zoomOut}
+                className="cursor-pointer rounded border bg-surface-0 p-1 shadow hover:bg-surface-2"
+                title="Zoom out"
+              >
+                <Minus size={14} />
+              </button>
+            </div>
+            <div
+              ref={scrollRef}
+              className="h-full w-full overflow-auto rounded border"
+              style={{ cursor: "grab" }}
+              onMouseDown={onMouseDownDrag}
+            >
+              <div style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}>
+                <MermaidDiagram chart={previewCode} showControls={false} />
+              </div>
+            </div>
           </div>
         )}
 
