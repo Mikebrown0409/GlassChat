@@ -24,6 +24,9 @@ interface MermaidDiagramProps {
   messageId?: string;
 }
 
+// Simple in-memory cache of rendered SVG keyed by diagram string
+const svgCache = new Map<string, string>();
+
 /**
  * Lightweight wrapper around the `mermaid` library that converts a mermaid
  * definition string to an inline SVG at runtime.
@@ -76,6 +79,13 @@ export function MermaidDiagram({
   useEffect(() => {
     let isMounted = true;
 
+    const cached = svgCache.get(chart);
+    if (cached) {
+      setSvg(cached);
+      setLocalChart(chart);
+      return; // skip heavy render
+    }
+
     // Dynamically import to keep bundle size lean and avoid SSR issues
     void import("mermaid").then((mod) => {
       if (!isMounted) return;
@@ -107,7 +117,9 @@ export function MermaidDiagram({
           mermaid.parse(normalized); // validate first, throws if invalid
           const { svg } = await mermaid.render(uniqueId, normalized);
           if (isMounted) {
-            setSvg(makeResponsiveSvg(svg));
+            const rendered = makeResponsiveSvg(svg);
+            setSvg(rendered);
+            svgCache.set(chart, rendered);
             setLocalChart(normalized);
           }
         } catch (err) {
@@ -176,7 +188,11 @@ export function MermaidDiagram({
       void mermaid
         .render(uniqueId, normalizeERModifiers(localChart))
         .then(({ svg }) => {
-          if (isMounted) setSvg(makeResponsiveSvg(svg));
+          if (isMounted) {
+            const rendered = makeResponsiveSvg(svg);
+            setSvg(rendered);
+            svgCache.set(localChart, rendered);
+          }
         })
         .catch((err: Error) => {
           if (isMounted) setError(err);
