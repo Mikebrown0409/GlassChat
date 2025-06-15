@@ -39,7 +39,7 @@ export function QuickActionsMenu({ content, onSelect }: QuickActionsMenuProps) {
     {
       type: "prompt",
       label: "Schedule",
-      prompt: `Generate a concise project schedule as a Markdown table **only**. Use the columns | Phase | Milestone / Task | Start | End | Owner | Deliverables |. Derive dates starting today unless dates already exist. Do not include any narrative, notes, or extra text outside the table.\n\n${content}`,
+      prompt: `Convert the following text into a Markdown table schedule. **Your entire response MUST be a single table** beginning with:\n\n| Phase | Milestone / Task | Start | End | Owner | Deliverables |\n|-------|------------------|-------|-----|-------|--------------|\n\nFollow this header with the rows. NO additional paragraphs, headings, or commentary before or after the table.\n\n${content}`,
     },
     {
       type: "prompt",
