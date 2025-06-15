@@ -35,12 +35,18 @@ const normalizeToMarkdownTable = (src: string): string => {
 
   let collecting = false;
   let headerEmitted = false;
+  let columnCount = 0;
 
   for (const raw of lines) {
     const trimmed = raw.trimEnd();
-    const parts = SEP.exec(trimmed) ? trimmed.split(SEP).filter(Boolean) : [];
+    const partsArr = SEP.exec(trimmed)
+      ? trimmed
+          .split(SEP)
+          .map((c) => c.trim())
+          .filter<string>((c): c is string => c.length > 0)
+      : [];
 
-    if (parts.length >= 2) {
+    if (partsArr.length >= 2) {
       // Table-like row
       if (!collecting) {
         collecting = true;
@@ -49,11 +55,27 @@ const normalizeToMarkdownTable = (src: string): string => {
 
       if (!headerEmitted) {
         // First row -> header + separator
-        result.push(`| ${parts.join(" | ")} |`);
-        result.push(`| ${parts.map(() => "---").join(" | ")} |`);
+        columnCount = partsArr.length;
+        result.push(`| ${partsArr.join(" | ")} |`);
+        result.push(`| ${partsArr.map(() => "---").join(" | ")} |`);
         headerEmitted = true;
       } else {
-        result.push(`| ${parts.join(" | ")} |`);
+        // create mutable copy of parts
+        let cells: string[] = partsArr.slice();
+        if (cells.length > columnCount) {
+          // merge extras into last cell
+          cells = [
+            ...cells.slice(0, columnCount - 1),
+            cells.slice(columnCount - 1).join(" "),
+          ];
+        }
+        if (cells.length < columnCount) {
+          cells = [
+            ...cells,
+            ...Array<string>(columnCount - cells.length).fill(""),
+          ];
+        }
+        result.push(`| ${cells.join(" | ")} |`);
       }
     } else {
       // Non-table line, reset state

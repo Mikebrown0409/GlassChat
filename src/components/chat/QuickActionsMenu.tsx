@@ -48,6 +48,11 @@ export function QuickActionsMenu({ content, onSelect }: QuickActionsMenuProps) {
       label: "Summary",
       prompt: `Provide a concise summary of the following:\n\n${content}`,
     },
+    {
+      type: "prompt",
+      label: "Project Roadmap",
+      prompt: `You are an expert AI project planner. The user will describe a business idea, project, or concept. Return a structured and editable project roadmap following these rules:\n\n• Modular – organize into 4–5 high-level phases (Initiation, Planning, Execution, etc.).\n• Compact & Editable – output each phase as collapsible Markdown using \"<details>\" tags, OR a clean Markdown table if preferred.\n• Schedule-aware – include estimated durations (e.g., Week 1–2) and suggest dependencies.\n• Actionable – list roles, deliverables, suggested tools.\n• Visual-ready – after the list, append a Mermaid Gantt chart of the timeline.\n• Provide a downloadable Markdown block at the end (fenced with ~~~markdown).\n• If user later requests, be ready to convert to Trello JSON or CSV (but do NOT include now).\n\nUse this nested bullet format inside each phase:\n- 🗂️ Phase Name\n    - 📌 Task: ...\n        - ⏱ Timeline: ...\n        - 📦 Deliverables: ...\n        - 👤 Owner: ...\n        - 🔗 Dependencies: ...\n\nUser input to transform:\n\n${content}`,
+    },
     { type: "prompt", label: "New prompt from this", prompt: content },
   ];
 
