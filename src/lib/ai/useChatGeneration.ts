@@ -23,6 +23,7 @@ export function useChatGeneration(
   const memory = useMemory(currentChatId ?? null, messages);
 
   const generateResponse = api.ai.generateResponse.useMutation();
+  const generateTitle = api.ai.generateResponse.useMutation();
 
   const handleSubmit = async (userInput: string, clearInput: () => void) => {
     if (!userInput.trim() || !currentChatId || isTyping) return;
@@ -57,14 +58,92 @@ export function useChatGeneration(
       });
 
       if (response.success && response.response?.content) {
+        const assistantContent = response.response.content;
         await syncManager.createMessage(
           currentChatId,
           "assistant",
-          response.response.content,
+          assistantContent,
         );
-        await memory.addMemory(response.response.content, {
+        await memory.addMemory(assistantContent, {
           role: "assistant",
         });
+
+        // --- Smart Chat Title Generation ---------------------------------
+        try {
+          // Dynamically import db only when needed to minimise bundle size
+          const { db } = await import("~/lib/db");
+          const chat = await db.chats.get(currentChatId);
+
+          if (chat && chat.title === "New Conversation") {
+            // Construct a prompt that asks the AI to create a short title
+            const titlePrompt =
+              "You are an advanced AI that names chat conversations succinctly. " +
+              "Given the following conversation, generate an engaging title in 3-6 words, in Title Case, without any quotation marks or trailing punctuation. Respond with ONLY the title.";
+
+            // Use the latest few messages to give context
+            const contextMessages = [
+              ...messagesRef.current.slice(-6).map((m) => ({
+                role: m.role,
+                content: m.content,
+              })),
+              { role: "user" as const, content: userMessage },
+              { role: "assistant" as const, content: assistantContent },
+            ];
+
+            const titleResponse = await generateTitle.mutateAsync({
+              model: aiModel,
+              messages: [
+                { role: "system" as const, content: titlePrompt },
+                ...contextMessages,
+              ],
+            });
+
+            const rawTitle =
+              titleResponse.success && titleResponse.response?.content
+                ? titleResponse.response.content.trim()
+                : "";
+
+            // Sanitise the returned title
+            const cleanedTitle = rawTitle
+              .replace(/^['"\s]+|['"\s]+$/g, "") // remove quotes & surrounding whitespace
+              .replace(/\.$/, "") // remove trailing period
+              .slice(0, 100); // safety limit
+
+            let finalTitle = cleanedTitle;
+
+            // Fallback: derive a title from the user message if AI failed
+            if (
+              !finalTitle ||
+              finalTitle.toLowerCase() === "new conversation"
+            ) {
+              const deriveFromText = (text: string) => {
+                // Take first 6 significant words, strip punctuation, Title Case
+                const words = text
+                  .replace(/[^\w\s]/g, " ")
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 6);
+                const titleCased = words
+                  .map(
+                    (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
+                  )
+                  .join(" ");
+                return titleCased || "Conversation";
+              };
+
+              finalTitle = deriveFromText(userMessage);
+            }
+
+            // Only update if different from current title
+            if (finalTitle && finalTitle !== chat.title) {
+              await syncManager.updateChat(currentChatId, {
+                title: finalTitle,
+              });
+            }
+          }
+        } catch (titleErr) {
+          console.error("Failed to generate chat title", titleErr);
+        }
       } else {
         await syncManager.createMessage(
           currentChatId,

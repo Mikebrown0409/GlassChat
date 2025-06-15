@@ -21,6 +21,7 @@ interface ChatMessagesProps {
   onTranslate: (text?: string) => void;
   onExplain: (text?: string) => void;
   onSuggestionClick: (text: string) => void;
+  onUpdateMessage: (id: string, newContent: string) => void;
   messagesEndRef: RefObject<HTMLDivElement | null>;
 }
 
@@ -34,6 +35,7 @@ export function ChatMessages({
   onTranslate,
   onExplain,
   onSuggestionClick,
+  onUpdateMessage,
   messagesEndRef,
 }: ChatMessagesProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -152,11 +154,7 @@ export function ChatMessages({
                         : "bg-surface-1 text-secondary",
                   )}
                 >
-                  {message.role === "user"
-                    ? "You"
-                    : message.role === "system"
-                      ? "!"
-                      : "AI"}
+                  {message.role === "system" ? "!" : null}
                 </div>
                 <div
                   className={clsx(
@@ -171,6 +169,7 @@ export function ChatMessages({
                     onTranslate={onTranslate}
                     onExplain={onExplain}
                     onSuggestionClick={onSuggestionClick}
+                    onUpdateMessage={onUpdateMessage}
                     _isNewMessage={idx === messages.length - 1}
                   />
                 </div>

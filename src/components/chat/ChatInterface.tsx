@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useChatGeneration } from "~/lib/ai/useChatGeneration";
+import { db } from "~/lib/db";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 
@@ -189,7 +190,9 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   };
 
   const handleChatSelect = (chatId: string) => {
-    setCurrentChatId(chatId);
+    startTransition(() => {
+      setCurrentChatId(chatId);
+    });
   };
 
   const handleRenameChat = async (chatId: string, newTitle: string) => {
@@ -297,6 +300,33 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     setSidebarOpen(isDesktop);
   }, [isDesktop]);
 
+  const handleUpdateMessage = async (id: string, newContent: string) => {
+    try {
+      await db.updateSyncableEntity(db.messages, id, {
+        content: newContent,
+        updatedAt: Date.now(),
+      });
+      // Debounce sync
+      syncManager.performSync();
+    } catch (err) {
+      console.error("Failed to update message", err);
+    }
+  };
+
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const detail = (event as CustomEvent).detail as {
+        id: string;
+        content: string;
+      };
+      if (detail?.id && detail.content) {
+        void handleUpdateMessage(detail.id, detail.content);
+      }
+    };
+    window.addEventListener("diagram-update", listener);
+    return () => window.removeEventListener("diagram-update", listener);
+  }, []);
+
   return (
     <div className="bg-surface-0 text-primary fixed inset-0 flex h-screen w-screen overflow-hidden font-sans">
       {/* Sidebar (always rendered) */}
@@ -331,6 +361,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           onTranslate={handleTranslateSelection}
           onExplain={handleExplainSelection}
           onSuggestionClick={handleSuggestionClick}
+          onUpdateMessage={handleUpdateMessage}
           messagesEndRef={messagesEndRef}
         />
 

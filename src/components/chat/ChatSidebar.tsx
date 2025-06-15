@@ -9,7 +9,7 @@ import {
   Plus,
   Settings as SettingsIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/Button";
 import {
@@ -52,9 +52,101 @@ export function ChatSidebar({
   const [renameValue, setRenameValue] = useState("");
 
   const chats = useLiveChats();
-  const filteredHistory = (chats ?? []).filter((chat) =>
-    chat.title.toLowerCase().includes(searchQuery.toLowerCase()),
+
+  // Memoize filtered chats to avoid re-computation on each render
+  const filteredHistory = useMemo(() => {
+    if (!chats) return [] as typeof chats;
+    const q = searchQuery.toLowerCase();
+    return q
+      ? chats.filter((chat) => chat.title.toLowerCase().includes(q))
+      : chats;
+  }, [chats, searchQuery]);
+
+  // Separate memoized row component to prevent re-renders of unchanged rows
+  const ChatRow = useCallback(
+    ({ chat }: { chat: (typeof filteredHistory)[number] }) => {
+      const isRenaming = renamingChat === chat.id;
+      return (
+        <div key={chat.id} className="group w-full">
+          {isRenaming ? (
+            <Input
+              autoFocus
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onBlur={() => {
+                if (renameValue.trim()) {
+                  void onRenameChat(chat.id, renameValue.trim());
+                }
+                setRenamingChat(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                } else if (e.key === "Escape") {
+                  setRenamingChat(null);
+                }
+              }}
+              className="focus:ring-brand-primary h-8 w-full rounded-md border-none bg-zinc-800/70 px-2 text-sm text-zinc-100 focus:ring-2"
+            />
+          ) : (
+            <div className="group grid w-full grid-cols-[1fr_auto] items-center overflow-hidden rounded-md py-1 hover:bg-zinc-800">
+              <button
+                type="button"
+                className={cn(
+                  "min-w-0 cursor-pointer truncate text-left text-sm text-zinc-300 focus:outline-none",
+                  currentChatId === chat.id && "text-white",
+                )}
+                onClick={() => onSelectChat(chat.id)}
+                title={chat.title}
+              >
+                <span className="truncate">{chat.title}</span>
+              </button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Chat options"
+                    className="opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:ring-0 focus-visible:outline-none"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreHorizontal size={14} className="text-zinc-400" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setRenamingChat(chat.id);
+                      setRenameValue(chat.title);
+                    }}
+                  >
+                    Rename
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => void onDeleteChat(chat.id)}
+                    className="text-red-500 focus:text-red-500"
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+        </div>
+      );
+    },
+    [
+      currentChatId,
+      onDeleteChat,
+      onRenameChat,
+      onSelectChat,
+      renameValue,
+      renamingChat,
+    ],
   );
+
+  const MemoChatRow = memo(ChatRow);
 
   return (
     <motion.aside
@@ -62,8 +154,7 @@ export function ChatSidebar({
       animate={{ x: sidebarOpen ? 0 : "-100%" }}
       transition={{ ease: DYNAMIC_EASE, duration: 0.3 }}
       className={cn(
-        "relative flex h-full flex-shrink-0 flex-col overflow-hidden rounded-br-2xl border-r border-zinc-800/40 bg-zinc-900 text-zinc-200 shadow-inner transition-[width] duration-300",
-        sidebarOpen ? "w-64" : "w-0",
+        "relative flex h-full w-64 flex-shrink-0 flex-col overflow-hidden rounded-br-2xl border-r border-zinc-800/40 bg-zinc-900 text-zinc-200 shadow-inner",
       )}
     >
       <div className="flex items-center gap-2 p-4 text-lg font-semibold">
@@ -107,83 +198,9 @@ export function ChatSidebar({
             Chats
           </div>
           <div className="mt-2 space-y-2">
-            {filteredHistory.map((chat) => {
-              const isRenaming = renamingChat === chat.id;
-              return (
-                <div key={chat.id} className="group w-full">
-                  {isRenaming ? (
-                    <Input
-                      autoFocus
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onBlur={() => {
-                        if (renameValue.trim()) {
-                          void onRenameChat(chat.id, renameValue.trim());
-                        }
-                        setRenamingChat(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.currentTarget.blur();
-                        } else if (e.key === "Escape") {
-                          setRenamingChat(null);
-                        }
-                      }}
-                      className="focus:ring-brand-primary h-8 w-full rounded-md border-none bg-zinc-800/70 px-2 text-sm text-zinc-100 focus:ring-2"
-                    />
-                  ) : (
-                    <div className="group grid w-full grid-cols-[1fr_auto] items-center overflow-hidden rounded-md py-1 hover:bg-zinc-800">
-                      {/* Row click area */}
-                      <button
-                        type="button"
-                        className={cn(
-                          "min-w-0 cursor-pointer truncate text-left text-sm text-zinc-300 focus:outline-none",
-                          currentChatId === chat.id && "text-white",
-                        )}
-                        onClick={() => onSelectChat(chat.id)}
-                        title={chat.title}
-                      >
-                        <span className="truncate">{chat.title}</span>
-                      </button>
-
-                      {/* 3-dot menu */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Chat options"
-                            className="opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:ring-0 focus-visible:outline-none"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreHorizontal
-                              size={14}
-                              className="text-zinc-400"
-                            />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="right" align="start">
-                          <DropdownMenuItem
-                            onSelect={() => {
-                              setRenamingChat(chat.id);
-                              setRenameValue(chat.title);
-                            }}
-                          >
-                            Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => void onDeleteChat(chat.id)}
-                            className="text-red-500 focus:text-red-500"
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {filteredHistory.map((chat) => (
+              <MemoChatRow key={chat.id} chat={chat} />
+            ))}
           </div>
         </ScrollArea>
       </TooltipProvider>

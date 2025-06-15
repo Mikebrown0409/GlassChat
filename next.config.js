@@ -49,7 +49,12 @@ const config = {
     NEXT_PUBLIC_APP_NAME: "GlassChat",
   },
 
-  // modularizeImports removed due to incompatibility with lucide-react export maps
+  // modularizeImports for Radix
+  modularizeImports: {
+    "@radix-ui/react-*": {
+      transform: "@radix-ui/react-{{member}}",
+    },
+  },
 };
 
 export default config;
