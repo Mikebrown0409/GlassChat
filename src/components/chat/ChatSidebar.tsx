@@ -90,7 +90,7 @@ export function ChatSidebar({
               className="focus:ring-brand-primary h-8 w-full rounded-md border-none bg-zinc-800/70 px-2 text-sm text-zinc-100 focus:ring-2"
             />
           ) : (
-            <div className="group grid w-full grid-cols-[1fr_auto] items-center overflow-hidden rounded-md py-1 hover:bg-zinc-800">
+            <div className="group grid w-full grid-cols-[1fr_auto] items-center overflow-hidden rounded-md px-3 py-1 hover:bg-zinc-800">
               <button
                 type="button"
                 className={cn(
