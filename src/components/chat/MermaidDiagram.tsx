@@ -120,7 +120,7 @@ export function MermaidDiagram({
             const rendered = makeResponsiveSvg(svg);
             setSvg(rendered);
             svgCache.set(chart, rendered);
-            setLocalChart(normalized);
+            if (normalized !== chart) setLocalChart(normalized);
           }
         } catch (err) {
           if (isMounted) setError(err as Error);
