@@ -177,39 +177,35 @@ export function useUnifiedCollaboration(roomId: string | null) {
     (content: string, cursorPosition?: { line: number; column: number }) => {
       if (!roomId) return Promise.reject(new Error("No room selected"));
 
-      // Update local state immediately for responsive UI
+      // If WebSocket client active, update Yjs text directly (no debounce)
+      if (wsClient) {
+        const yText = wsClient.getText();
+        yText.delete(0, yText.length);
+        yText.insert(0, content);
+        return Promise.resolve();
+      }
+
+      // ---- Legacy HTTP fallback ----
       setLocalContent(content);
 
-      // Clear existing timeouts
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+      if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
-      // Mark user as typing immediately
       setIsUserTyping(true);
 
-      // Set timeout to actually send the update (longer debounce)
       updateTimeoutRef.current = setTimeout(() => {
         updateCodeMutation
           .mutateAsync({ roomId, content, cursorPosition })
-          .then(() => {
-            // Stop typing indicator after successful update
+          .finally(() => {
             typingTimeoutRef.current = setTimeout(() => {
               setIsUserTyping(false);
             }, 1000);
-          })
-          .catch(() => {
-            // Stop typing on error too
-            setIsUserTyping(false);
           });
-      }, 2000); // 2 second debounce - much longer to reduce calls
+      }, 2000);
 
       return Promise.resolve();
     },
-    [roomId, updateCodeMutation],
+    [roomId, updateCodeMutation, wsClient],
   );
 
   const sendMessage = useCallback(
@@ -297,6 +293,8 @@ export function useUnifiedCollaboration(roomId: string | null) {
       const txt = client.getText();
       setLocalContent(txt.toString());
     });
+    // set initial value
+    setLocalContent(client.getText().toString());
     return () => {
       setWsClient(null);
     };
