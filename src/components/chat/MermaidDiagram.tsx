@@ -74,8 +74,17 @@ export function MermaidDiagram({
   const normalizeDirective = (src: string) =>
     src.replace(/erDiagram\s*(?=\S)/i, "erDiagram\n");
 
+  // Remove leading pipe char which breaks parser when users provide tables
+  const stripLinePipes = (src: string) => src.replace(/^\s*\|\s*/gm, "");
+
+  // Ensure erDiagram directive ends with newline (even after pipes removed)
+  const forceDirectiveNewline = (src: string) =>
+    src.replace(/erDiagram(?!\s*\n)/i, "erDiagram\n");
+
   const preprocess = (src: string) =>
-    normalizeDirective(normalizeBraces(normalizeERModifiers(src)));
+    forceDirectiveNewline(
+      normalizeBraces(normalizeERModifiers(stripLinePipes(src))),
+    );
 
   // Simple debounce hook
   function useDebounce<T>(value: T, delay: number) {
