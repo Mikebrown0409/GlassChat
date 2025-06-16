@@ -1,6 +1,12 @@
 // Real-time collaboration types for GlassChat
 // Supports room management, user presence, and live coding mode
 
+export enum Role {
+  VIEWER = "viewer",
+  PARTICIPANT = "participant",
+  MODERATOR = "moderator",
+}
+
 export interface CollaborationUser {
   id: string;
   name: string;
@@ -8,6 +14,7 @@ export interface CollaborationUser {
   color: string; // For cursor/selection highlighting
   isTyping?: boolean;
   lastSeen: number;
+  role: Role;
 }
 
 export interface CollaborationRoom {
@@ -61,6 +68,8 @@ export enum CollaborationEventType {
   USER_TYPING = "user_typing",
   USER_STOPPED_TYPING = "user_stopped_typing",
   MESSAGE_SENT = "message_sent",
+  MESSAGE_EDITED = "message_edited",
+  MESSAGE_DELETED = "message_deleted",
   CURSOR_MOVED = "cursor_moved",
   TEXT_SELECTED = "text_selected",
   LIVE_CODE_UPDATED = "live_code_updated",
@@ -82,6 +91,7 @@ export interface CollaborationMessage {
   content: string;
   timestamp: number;
   type: "text" | "system" | "code";
+  updatedAt?: number;
 }
 
 export interface UserPresence {

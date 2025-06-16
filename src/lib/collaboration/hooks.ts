@@ -1,17 +1,17 @@
 // React hooks for real-time collaboration features
 // Uses tRPC for server communication and local state management
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import type {
-  CollaborationRoom,
-  CollaborationUser,
-  CollaborationMessage,
-  TypingIndicator,
-  LiveCodingSession,
-  UserPresence,
   CollaborationEvent,
   CollaborationEventType,
+  CollaborationMessage,
+  CollaborationRoom,
+  CollaborationUser,
+  LiveCodingSession,
+  TypingIndicator,
+  UserPresence,
 } from "./types";
 
 // *** NEW UNIFIED COLLABORATION HOOK - Replaces all individual hooks ***
@@ -35,6 +35,7 @@ export function useUnifiedCollaboration(roomId: string | null) {
   const [lastSyncTime, setLastSyncTime] = useState(0);
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [hasLoadedCache, setHasLoadedCache] = useState(false);
 
   // Single API call that fetches ALL collaboration data
   const { data: roomData, refetch } = api.collaboration.getRoomData.useQuery(
@@ -46,18 +47,67 @@ export function useUnifiedCollaboration(roomId: string | null) {
     },
   );
 
+  // Load cached messages on first run for this room
+  useEffect(() => {
+    if (!roomId || hasLoadedCache) return;
+    try {
+      const cached = localStorage.getItem(`lc_msgs_${roomId}`);
+      if (cached) {
+        const msgs = JSON.parse(cached) as CollaborationMessage[];
+        if (msgs.length) {
+          setAllData((prev) => ({ ...prev, messages: msgs }));
+        }
+      }
+    } catch {
+      /* ignore parse errors */
+    } finally {
+      setHasLoadedCache(true);
+    }
+  }, [roomId, hasLoadedCache]);
+
+  // Persist messages to cache whenever they change
+  useEffect(() => {
+    if (!roomId) return;
+    try {
+      localStorage.setItem(
+        `lc_msgs_${roomId}`,
+        JSON.stringify(allData.messages),
+      );
+    } catch {
+      /* quota exceeded etc. */
+    }
+  }, [roomId, allData.messages]);
+
   // Update local state when data arrives (but not while user is typing)
   useEffect(() => {
     if (roomData?.data && !isUserTyping) {
       const newData = roomData.data;
 
-      setAllData({
-        room: newData.room,
-        messages: newData.messages || [],
-        typingUsers: newData.typingUsers || [],
-        onlineUsers: newData.onlineUsers || [],
-        liveCodingSession: newData.liveCodingSession,
-        events: newData.events || [],
+      setAllData((prev) => {
+        const tempMsgs = prev.messages.filter((m) => m.id.startsWith("temp-"));
+        const sourceMessages =
+          newData.messages && newData.messages.length > 0
+            ? newData.messages
+            : prev.messages;
+
+        // Deduplicate by id: keep first occurrence (sourceMessages wins over temp)
+        const ids = new Set<string>();
+        const mergedMessages: typeof sourceMessages = [];
+        [...sourceMessages, ...tempMsgs].forEach((m) => {
+          if (!ids.has(m.id)) {
+            ids.add(m.id);
+            mergedMessages.push(m);
+          }
+        });
+
+        return {
+          room: newData.room,
+          messages: mergedMessages,
+          typingUsers: newData.typingUsers || [],
+          onlineUsers: newData.onlineUsers || [],
+          liveCodingSession: newData.liveCodingSession,
+          events: newData.events || [],
+        };
       });
 
       // Update local content only if different and not typing
@@ -90,6 +140,35 @@ export function useUnifiedCollaboration(roomId: string | null) {
 
   const startTypingMutation = api.collaboration.startTyping.useMutation();
   const stopTypingMutation = api.collaboration.stopTyping.useMutation();
+
+  const editMessageMutation = api.collaboration.editMessage.useMutation({
+    onSuccess: () => void refetch(),
+  });
+  const deleteMessageMutation = api.collaboration.deleteMessage.useMutation({
+    onSuccess: () => void refetch(),
+  });
+
+  const optimisticRemove = (id: string) => {
+    setAllData((prev) => ({
+      ...prev,
+      messages: prev.messages.filter((m) => m.id !== id),
+    }));
+  };
+  const optimisticEdit = (id: string, content: string) => {
+    setAllData((prev) => ({
+      ...prev,
+      messages: prev.messages.map((m) =>
+        m.id === id ? { ...m, content, updatedAt: Date.now() } : m,
+      ),
+    }));
+  };
+
+  const optimisticAdd = (msg: CollaborationMessage) => {
+    setAllData((prev) => ({
+      ...prev,
+      messages: [...prev.messages, msg],
+    }));
+  };
 
   // Debounced code update with conflict prevention
   const updateCode = useCallback(
@@ -134,9 +213,51 @@ export function useUnifiedCollaboration(roomId: string | null) {
   const sendMessage = useCallback(
     (content: string, type: "text" | "system" | "code" = "text") => {
       if (!roomId) return Promise.reject(new Error("No room selected"));
-      return sendMessageMutation.mutateAsync({ roomId, content, type });
+      const currentUserId = "";
+      const tempId = "temp-" + Math.random().toString(36).slice(2, 9);
+      const tempMsg: CollaborationMessage = {
+        id: tempId,
+        roomId,
+        userId: currentUserId,
+        content,
+        timestamp: Date.now(),
+        type,
+      } as CollaborationMessage;
+      optimisticAdd(tempMsg);
+      return sendMessageMutation
+        .mutateAsync({ roomId, content, type })
+        .then((res) => {
+          if (res.success && res.message) {
+            // replace temp message or push if not found
+            setAllData((prev) => ({
+              ...prev,
+              messages: [
+                ...prev.messages.filter((m) => m.id !== tempId),
+                res.message!,
+              ],
+            }));
+          }
+        });
     },
     [roomId, sendMessageMutation],
+  );
+
+  const editMessage = useCallback(
+    (messageId: string, newContent: string) => {
+      if (!roomId) return Promise.reject(new Error("No room selected"));
+      optimisticEdit(messageId, newContent);
+      return editMessageMutation.mutateAsync({ roomId, messageId, newContent });
+    },
+    [roomId, editMessageMutation],
+  );
+
+  const deleteMessage = useCallback(
+    (messageId: string) => {
+      if (!roomId) return Promise.reject(new Error("No room selected"));
+      optimisticRemove(messageId);
+      return deleteMessageMutation.mutateAsync({ roomId, messageId });
+    },
+    [roomId, deleteMessageMutation],
   );
 
   const toggleLiveCodingMode = useCallback(() => {
@@ -173,6 +294,8 @@ export function useUnifiedCollaboration(roomId: string | null) {
     // Actions
     updateCode,
     sendMessage,
+    editMessage,
+    deleteMessage,
     toggleLiveCodingMode,
     startTyping,
     stopTyping,
@@ -180,6 +303,8 @@ export function useUnifiedCollaboration(roomId: string | null) {
     // Status
     isUpdating: updateCodeMutation.isPending,
     isSending: sendMessageMutation.isPending,
+    isEditing: editMessageMutation.isPending,
+    isDeleting: deleteMessageMutation.isPending,
     isToggling: toggleLiveCodingMutation.isPending,
     lastSyncTime,
 
@@ -287,7 +412,11 @@ export function useCollaborationMessages(roomId: string | null) {
   return {
     messages: unified.messages,
     sendMessage: unified.sendMessage,
+    editMessage: unified.editMessage,
+    deleteMessage: unified.deleteMessage,
     isSending: unified.isSending,
+    isEditing: unified.isEditing,
+    isDeleting: unified.isDeleting,
     refetch: unified.refetch,
   };
 }
@@ -407,7 +536,11 @@ export function useCollaboration(roomId: string | null) {
     messages: {
       messages: unified.messages,
       sendMessage: unified.sendMessage,
+      editMessage: unified.editMessage,
+      deleteMessage: unified.deleteMessage,
       isSending: unified.isSending,
+      isEditing: unified.isEditing,
+      isDeleting: unified.isDeleting,
       refetch: unified.refetch,
     },
     typing: {

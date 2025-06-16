@@ -17,8 +17,8 @@
 
     /* Bundled projects */
     "lib": [
-      "dom", 
-      "dom.iterable", 
+      "dom",
+      "dom.iterable",
       "ES2022",
       "webworker",
       "webworker.importscripts"
@@ -65,7 +65,8 @@
     ".next",
     "dist",
     "build",
-    "scripts/**/*"
+    "scripts/**/*",
+    "src/icebox/**/*"
   ],
   "ts-node": {
     "esm": true

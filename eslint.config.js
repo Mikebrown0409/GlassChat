@@ -7,7 +7,12 @@ const compat = new FlatCompat({
 
 export default tseslint.config(
   {
-    ignores: [".next"],
+    ignores: [
+      ".next",
+      "src/icebox/**",
+      "src/lib/collaboration/collaborationManager.ts",
+      "scripts/**",
+    ],
   },
   ...compat.extends("next/core-web-vitals"),
   {

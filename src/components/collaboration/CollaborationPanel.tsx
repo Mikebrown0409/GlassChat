@@ -6,19 +6,29 @@ import {
   Check,
   Code,
   MessageCircle,
+  MoreVertical,
+  Pencil,
   Play,
   Send,
   Share2,
+  Trash2,
   UserPlus,
   Users,
   Wifi,
   X,
 } from "lucide-react";
 import { memo, useDeferredValue, useEffect, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { useCollaboration } from "~/lib/collaboration/hooks";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import {
   CollaborationEventType,
+  Role,
   type CollaborationEvent,
   type CollaborationMessage,
   type CollaborationRoom,
@@ -45,7 +55,10 @@ export function CollaborationPanel({
   const [activeTab, setActiveTab] = useState<
     "rooms" | "messages" | "live-coding" | "users"
   >("rooms");
-  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("collabRoomId");
+  });
   const [showUserSetup, setShowUserSetup] = useState(false);
   const [userName, setUserName] = useState("");
   const [messageInput, setMessageInput] = useState("");
@@ -62,6 +75,10 @@ export function CollaborationPanel({
   // Update global room id when local changes
   useEffect(() => {
     setCurrentRoomIdGlobal(currentRoomId);
+    if (typeof window !== "undefined") {
+      if (currentRoomId) localStorage.setItem("collabRoomId", currentRoomId);
+      else localStorage.removeItem("collabRoomId");
+    }
   }, [currentRoomId, setCurrentRoomIdGlobal]);
 
   // Update global online users when data changes
@@ -144,6 +161,26 @@ export function CollaborationPanel({
     }
   }, [currentRoomId, collaboration.events]);
 
+  // Auto rejoin room if state says we have currentRoomId but collaboration hook hasn't joined yet
+  useEffect(() => {
+    if (
+      currentRoomId &&
+      !collaboration.rooms.rooms.find((r) => r.id === currentRoomId)
+    ) {
+      void collaboration.rooms
+        .joinRoom(currentRoomId)
+        .then(() => {
+          // After successful join fetch latest messages
+          void collaboration.messages.refetch();
+        })
+        .catch((err) => {
+          console.error("Auto-join failed", err);
+          setCurrentRoomId(null);
+          localStorage.removeItem("collabRoomId");
+        });
+    }
+  }, [currentRoomId, collaboration.rooms.rooms]);
+
   const handleCreateUser = async () => {
     if (!userName.trim()) return;
 
@@ -161,18 +198,19 @@ export function CollaborationPanel({
   };
 
   const handleCreateRoom = async () => {
-    if (!currentChatId || !collaboration.user.user) return;
+    if (!currentChatId) return;
 
-    try {
-      const room = await collaboration.rooms.createRoom(
-        currentChatId,
-        `Chat Room`,
-      );
-      if (room.success && room.room) {
-        setCurrentRoomId(room.room.id);
-      }
-    } catch (error: unknown) {
-      console.error("Failed to create room:", error);
+    if (!collaboration.user.user) {
+      // create ephemeral user
+      await collaboration.user.createUser("Guest");
+    }
+
+    const room = await collaboration.rooms.createRoom(
+      currentChatId,
+      `Chat Room`,
+    );
+    if (room.success && room.room) {
+      setCurrentRoomId(room.room.id);
     }
   };
 
@@ -218,6 +256,24 @@ export function CollaborationPanel({
       setTimeout(() => setCopied(false), 2000);
     } catch (error: unknown) {
       console.error("Failed to copy to clipboard:", error);
+    }
+  };
+
+  const handleEditMessage = async (messageId: string, newContent: string) => {
+    if (!currentRoomId) return;
+    try {
+      await collaboration.messages.editMessage(messageId, newContent);
+    } catch (err) {
+      console.error("Edit failed", err);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!currentRoomId) return;
+    try {
+      await collaboration.messages.deleteMessage(messageId);
+    } catch (err) {
+      console.error("Delete failed", err);
     }
   };
 
@@ -307,6 +363,8 @@ export function CollaborationPanel({
             messageInput={messageInput}
             onMessageInputChange={setMessageInput}
             onSendMessage={handleSendMessage}
+            onEditMessage={handleEditMessage}
+            onDeleteMessage={handleDeleteMessage}
             currentUser={collaboration.user.user}
             typingUsers={collaboration.typing.typingUsers}
           />
@@ -441,7 +499,7 @@ function RoomsTab({
       </button>
 
       {currentRoomId && (
-        <div className="rounded-lg border border-green-600/30 bg-green-600/10 p-3">
+        <div className="relative rounded-lg border border-green-600/30 bg-green-600/10 p-3">
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-green-400"></div>
@@ -449,29 +507,32 @@ function RoomsTab({
                 Connected to room
               </span>
             </div>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={onShareRoom}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded bg-blue-600/20 px-3 py-2 text-xs text-blue-400 transition-colors hover:bg-blue-600/30"
+            >
+              {copied ? (
+                <>
+                  <Check size={12} />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Share2 size={12} />
+                  Share Room Link
+                </>
+              )}
+            </button>
             <button
               onClick={onLeaveRoom}
-              className="rounded bg-red-600/20 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-600/30"
+              className="absolute top-1 right-2 text-[11px] font-medium text-red-400 hover:text-red-300"
+              title="Leave room"
             >
               Leave
             </button>
           </div>
-          <button
-            onClick={onShareRoom}
-            className="flex w-full items-center justify-center gap-2 rounded bg-blue-600/20 px-3 py-2 text-xs text-blue-400 transition-colors hover:bg-blue-600/30"
-          >
-            {copied ? (
-              <>
-                <Check size={12} />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Share2 size={12} />
-                Share Room Link
-              </>
-            )}
-          </button>
         </div>
       )}
 
@@ -537,6 +598,8 @@ function ChatTab({
   messageInput,
   onMessageInputChange,
   onSendMessage,
+  onEditMessage,
+  onDeleteMessage,
   currentUser,
   typingUsers,
 }: {
@@ -546,6 +609,8 @@ function ChatTab({
   messageInput: string;
   onMessageInputChange: (value: string) => void;
   onSendMessage: () => void;
+  onEditMessage: (id: string, content: string) => void;
+  onDeleteMessage: (id: string) => void;
   currentUser: CollaborationUser | null;
   typingUsers: TypingIndicator[];
 }) {
@@ -575,7 +640,7 @@ function ChatTab({
               <div
                 key={message.id}
                 className={clsx(
-                  "max-w-[85%] rounded-lg p-3",
+                  "group relative max-w-[85%] rounded-lg p-3",
                   isMe ? "ml-auto" : "",
                 )}
                 style={
@@ -585,11 +650,49 @@ function ChatTab({
                         color: "#bae6fd",
                       }
                     : {
-                        backgroundColor: userColor + "1A" /* 10% alpha */,
+                        backgroundColor: userColor + "1A",
                         color: "#e2e8f0",
                       }
                 }
               >
+                {(isMe || currentUser?.role === Role.MODERATOR) && (
+                  <div className="absolute top-1 right-1 opacity-75 transition-opacity focus-within:opacity-100 hover:opacity-100">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="text-muted hover:text-primary focus:outline-none">
+                          <MoreVertical size={14} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-28">
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            const newContent = window.prompt(
+                              "Edit message",
+                              message.content,
+                            );
+                            if (
+                              newContent &&
+                              newContent.trim() !== message.content
+                            ) {
+                              onEditMessage(message.id, newContent.trim());
+                            }
+                          }}
+                        >
+                          <Pencil size={12} className="mr-2" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            if (window.confirm("Delete this message?")) {
+                              onDeleteMessage(message.id);
+                            }
+                          }}
+                        >
+                          <Trash2 size={12} className="mr-2" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
                 <div className="mb-1 flex items-center gap-2">
                   <span
                     className="h-2 w-2 rounded-full"
@@ -603,6 +706,11 @@ function ChatTab({
                   <span className="text-xs opacity-60">
                     {new Date(message.timestamp).toLocaleTimeString()}
                   </span>
+                  {message.updatedAt && (
+                    <span className="ml-1 text-[10px] italic opacity-50">
+                      (edited)
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
               </div>
