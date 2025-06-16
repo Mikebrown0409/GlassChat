@@ -70,8 +70,12 @@ export function MermaidDiagram({
       // Ensure newline before an opening brace not already on its own line
       .replace(/\s*{\s*/g, " {\n");
 
+  // Ensure directive like "erDiagram" is followed by newline
+  const normalizeDirective = (src: string) =>
+    src.replace(/erDiagram\s*(?=\S)/i, "erDiagram\n");
+
   const preprocess = (src: string) =>
-    normalizeERModifiers(normalizeBraces(src));
+    normalizeDirective(normalizeBraces(normalizeERModifiers(src)));
 
   // Simple debounce hook
   function useDebounce<T>(value: T, delay: number) {
