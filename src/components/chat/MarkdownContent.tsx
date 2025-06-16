@@ -9,7 +9,6 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import type { Pluggable } from "unified";
 import { CodeBlock } from "./CodeBlock";
-import { MermaidDiagram } from "./MermaidDiagram";
 
 const remarkBreaksTyped = remarkBreaks as unknown as Pluggable;
 const remarkMathTyped = remarkMath as unknown as Pluggable;
@@ -22,132 +21,10 @@ interface Props {
   onUpdateMessage?: (newContent: string) => void;
 }
 
-// Convert tab-delimited rows (common from some models) into pipe-delimited
-// markdown tables so they render properly. Runs only if we detect a tab.
-const normalizeToMarkdownTable = (src: string): string => {
-  // Quick test: any tab OR ≥2 consecutive spaces OR pipe suggests a table.
-  const hint = /\t|\s{2,}|\||^\s*[-*]\s+[^:]+:/m;
-  if (!hint.exec(src)) return src;
-
-  const SEP = /\t+|\s{2,}|\s*\|\s*/; // tabs, big spaces, or pipes
-
-  const lines = src.split(/\r?\n/);
-  const result: string[] = [];
-
-  let collecting = false;
-  let headerEmitted = false;
-  let columnCount = 0;
-
-  // Helper to flush collected bullet rows into table rows
-  const flushBulletTable = () => {
-    if (bulletRows.length === 0) return;
-    const headers = Object.keys(bulletRows[0]!);
-    if (headers.length < 2) {
-      bulletRows.length = 0;
-      return;
-    }
-
-    // Emit header row
-    result.push(`| ${headers.join(" | ")} |`);
-    result.push(`| ${headers.map(() => "---").join(" | ")} |`);
-    for (const row of bulletRows) {
-      const cells = headers.map((h) => row[h] ?? "");
-      result.push(`| ${cells.join(" | ")} |`);
-    }
-    bulletRows.length = 0;
-  };
-
-  // Bullet row collection
-  type RowObj = Record<string, string>;
-  const bulletRows: RowObj[] = [];
-  let currentRow: RowObj | null = null;
-
-  for (const raw of lines) {
-    const bulletMatch = /^\s*[-*]\s+([^:]+):\s*(.+)$/.exec(raw);
-    if (bulletMatch) {
-      const [, keyRawMaybe, valueMaybe] = bulletMatch;
-      const key = (keyRawMaybe ?? "").trim();
-      const value = (valueMaybe ?? "").trim();
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      if (!currentRow) currentRow = {};
-      // If key already exists, assume new row starts
-      if (currentRow[key] !== undefined) {
-        bulletRows.push(currentRow);
-        currentRow = { [key]: value };
-      } else {
-        currentRow[key] = value;
-      }
-      continue; // Skip normal processing for bullet line
-    } else if (currentRow) {
-      // End of current bullet group
-      bulletRows.push(currentRow);
-      currentRow = null;
-      // fallthrough to normal processing of this line
-    }
-
-    // Before processing non-bullet line, flush if we have collected rows
-    flushBulletTable();
-
-    const trimmed = raw.trimEnd();
-    const partsArr = SEP.exec(trimmed)
-      ? trimmed
-          .split(SEP)
-          .map((c) => c.trim())
-          .filter<string>((c): c is string => c.length > 0)
-      : [];
-
-    if (partsArr.length >= 2) {
-      // Detect pure alignment row like :--- or ---:
-      const isAlignmentRow = partsArr.every((cell) => /^:?-{2,}:?$/.test(cell));
-      if (isAlignmentRow) {
-        // Skip adding this row; we'll generate our own separator if needed
-        continue;
-      }
-
-      // Table-like row
-      if (!collecting) {
-        collecting = true;
-        headerEmitted = false;
-      }
-
-      if (!headerEmitted) {
-        // First row -> header + separator
-        columnCount = partsArr.length;
-        result.push(`| ${partsArr.join(" | ")} |`);
-        result.push(`| ${partsArr.map(() => "---").join(" | ")} |`);
-        headerEmitted = true;
-      } else {
-        // create mutable copy of parts
-        let cells: string[] = partsArr.slice();
-        if (cells.length > columnCount) {
-          // merge extras into last cell
-          cells = [
-            ...cells.slice(0, columnCount - 1),
-            cells.slice(columnCount - 1).join(" "),
-          ];
-        }
-        if (cells.length < columnCount) {
-          cells = [
-            ...cells,
-            ...Array<string>(columnCount - cells.length).fill(""),
-          ];
-        }
-        result.push(`| ${cells.join(" | ")} |`);
-      }
-    } else {
-      // Non-table line, reset state
-      collecting = false;
-      headerEmitted = false;
-      result.push(raw);
-    }
-  }
-
-  // Flush trailing bullet rows if any
-  if (currentRow) bulletRows.push(currentRow);
-  flushBulletTable();
-
-  return result.join("\n");
-};
+// Previously attempted to auto-convert tabular-looking text into markdown tables.
+// This heuristic proved too aggressive (e.g. turning simple bullet lists into tables).
+// We now disable it and leave author content untouched.
+const normalizeToMarkdownTable = (src: string): string => src;
 
 // Wrapper to render tables with copy-to-markdown capability
 function MarkdownTableWrapper({ children }: { children?: React.ReactNode }) {
@@ -266,23 +143,12 @@ export default function MarkdownContent({
           const match = /language-(\w+)/.exec(className ?? "");
           if (!inline && match?.[1]) {
             if (match[1] === "mermaid") {
-              const original = stringifyChildren(children).replace(/\n$/, "");
-              const handleSave = (newChart: string) => {
-                if (!onUpdateMessage || !messageId) return;
-                const newBlock = `\`\`\`mermaid\n${newChart}\n\`\`\``;
-                const updatedContent = content.replace(
-                  /```mermaid[\s\S]*?```/,
-                  newBlock,
-                );
-                onUpdateMessage(updatedContent);
-              };
+              const codeString = stringifyChildren(children).replace(/\n$/, "");
               return (
                 <div className="my-4">
-                  <MermaidDiagram
-                    chart={original}
-                    onSave={handleSave}
-                    messageId={messageId}
-                  />
+                  <CodeBlock language="mermaid" {...props}>
+                    {codeString}
+                  </CodeBlock>
                 </div>
               );
             }
@@ -317,7 +183,7 @@ export default function MarkdownContent({
         },
       }}
     >
-      {normalizeToMarkdownTable(content)}
+      {content}
     </ReactMarkdown>
   );
 }

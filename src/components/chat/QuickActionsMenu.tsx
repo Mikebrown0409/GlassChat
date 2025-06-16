@@ -22,19 +22,8 @@ export function QuickActionsMenu({ content, onSelect }: QuickActionsMenuProps) {
     { type: "copy", label: "Copy block" },
     {
       type: "prompt",
-      label: "Explain code",
-      prompt: `Explain the following code:\n\n${content}`,
-    },
-    {
-      type: "prompt",
       label: "Task List",
       prompt: `Turn the following into a task list:\n\n${content}`,
-    },
-    {
-      type: "prompt",
-      label: "Diagram",
-      prompt: `Using the following text, generate a visual diagram in Mermaid syntax. Respond ONLY with a single \
-\`\`\`mermaid code-block containing the diagram (no explanation text).\n\n${content}`,
     },
     {
       type: "prompt",
@@ -58,7 +47,6 @@ export function QuickActionsMenu({ content, onSelect }: QuickActionsMenuProps) {
       label: "Format as Table",
       prompt: `Rewrite the following content as a GitHub-flavored **Markdown table**.\n\nGuidelines:\n• If the text contains bullet lists, merge related bullets into a single row where possible.\n• Bold the header row.\n• Preserve all information — add extra columns when you need to keep data.\n• Respond **only** with the table (no intro or outro).\n\nInput:\n\n${content}`,
     },
-    { type: "prompt", label: "New prompt from this", prompt: content },
   ];
 
   return (

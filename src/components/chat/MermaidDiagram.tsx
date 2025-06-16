@@ -27,6 +27,9 @@ interface MermaidDiagramProps {
 // Simple in-memory cache of rendered SVG keyed by diagram string
 const svgCache = new Map<string, string>();
 
+// Singleton flag to ensure we only call mermaid.initialize() once
+let isMermaidInitialized = false;
+
 /**
  * Lightweight wrapper around the `mermaid` library that converts a mermaid
  * definition string to an inline SVG at runtime.
@@ -51,40 +54,63 @@ export function MermaidDiagram({
 
   const router = useRouter();
 
-  // Helper to inject responsive style into SVG
-  const makeResponsiveSvg = (rawSvg: string) =>
-    rawSvg.replace(
-      /<svg (.*?)>/,
-      '<svg $1 style="max-width:100%;height:auto;" viewBox="0 0 1000 1000">',
+  // Ensure SVGs are intrinsically responsive without hard-coding the viewBox.
+  //  1. If the SVG already has a viewBox we simply inject a responsive style.
+  //  2. Otherwise derive the viewBox from explicit width/height attributes.
+  //  3. Fallback to injecting the responsive style only.
+  const makeResponsiveSvg = (rawSvg: string) => {
+    if (rawSvg.includes("viewBox=")) {
+      return rawSvg.replace(
+        /<svg([^>]*)>/,
+        '<svg$1 style="max-width:100%;height:auto;">',
+      );
+    }
+
+    const sizeMatch = /width="(\d+\.?\d*)[^"]*"[^>]*height="(\d+\.?\d*)/.exec(
+      rawSvg,
     );
+    if (sizeMatch) {
+      const [, width, height] = sizeMatch;
+      return rawSvg.replace(
+        /<svg([^>]*)>/,
+        `<svg$1 style="max-width:100%;height:auto;" viewBox="0 0 ${width} ${height}">`,
+      );
+    }
+
+    return rawSvg.replace(
+      /<svg([^>]*)>/,
+      '<svg$1 style="max-width:100%;height:auto;">',
+    );
+  };
 
   // Helper to normalise ER modifiers like "PK FK" -> "PK, FK" for Mermaid parser compatibility
   const normalizeERModifiers = (src: string) =>
     src.replace(/\b(PK|FK)\s+(PK|FK)\b/g, (_m, a, b) => `${a}, ${b}`);
 
-  // Ensure each brace is on its own line so Mermaid parser doesn't choke
-  const normalizeBraces = (src: string) =>
+  /**
+   * Clean up common spacing mistakes around ER relationship cardinality tokens
+   * without modifying valid sequences like "o{", "}|", "||" etc.
+   * Example fixes:
+   *   "| --o {"  ->  "||--o{"
+   *   "o {"      ->  "o{"
+   */
+  const tidyCardinalitySpacing = (src: string) =>
     src
-      // Ensure newline after closing brace before next token
-      .replace(/}\s*(?=\S)/g, "}\n")
-      // Ensure newline before an opening brace not already on its own line
-      .replace(/\s*{\s*/g, " {\n");
+      // Collapse any whitespace between pipe characters
+      .replace(/\|\s*\|/g, "||")
+      // Remove stray spaces between a pipe and the connection dashes
+      .replace(/\|\s*(?=-)/g, "|")
+      // Convert single '|' to '||' when used alone before an edge (common typo)
+      .replace(/(^|[^|])\|(?=-)/g, "$1||")
+      // Reduce sequences of 3+ dashes after a cardinality token down to the required 2
+      .replace(/([|o}])-{3,}/g, "$1--")
+      // Remove spaces between 'o' and '{'
+      .replace(/o\s*\{/g, "o{")
+      // Remove spaces between '}' and '|'
+      .replace(/}\s*\|/g, "}|");
 
-  // Ensure directive like "erDiagram" is followed by newline
-  const normalizeDirective = (src: string) =>
-    src.replace(/erDiagram\s*(?=\S)/i, "erDiagram\n");
-
-  // Remove leading pipe char which breaks parser when users provide tables
-  const stripLinePipes = (src: string) => src.replace(/^\s*\|\s*/gm, "");
-
-  // Ensure erDiagram directive ends with newline (even after pipes removed)
-  const forceDirectiveNewline = (src: string) =>
-    src.replace(/erDiagram(?=[^\s\n\r])/i, "erDiagram\n");
-
-  const preprocess = (src: string) =>
-    forceDirectiveNewline(
-      normalizeBraces(normalizeERModifiers(stripLinePipes(src))),
-    );
+  // No preprocessing – feed Mermaid exactly what the user typed.
+  const preprocess = (src: string) => src;
 
   // Simple debounce hook
   function useDebounce<T>(value: T, delay: number) {
@@ -123,32 +149,34 @@ export function MermaidDiagram({
         (window.matchMedia("(prefers-color-scheme: dark)").matches ||
           document.documentElement.classList.contains("dark"));
 
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: prefersDark ? "dark" : "default",
-        themeVariables: {
-          fontSize: "18px",
-        },
-      });
+      if (!isMermaidInitialized) {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: prefersDark ? "dark" : "default",
+          themeVariables: {
+            fontSize: "18px",
+          },
+        });
 
-      // Override default parseError to prevent global overlay; leave implementation intentionally blank.
-      (mermaid as unknown as { parseError?: () => void }).parseError = () => {
-        /* no-op */
-      };
+        // Override default parseError to prevent global overlay; leave implementation intentionally blank.
+        (mermaid as unknown as { parseError?: () => void }).parseError = () => {
+          /* no-op */
+        };
+
+        isMermaidInitialized = true;
+      }
 
       const uniqueId = `mermaid-${Math.random().toString(36).slice(2, 9)}`;
 
       // Render normalized chart
       void (async () => {
-        const normalized = preprocess(chart);
         try {
-          void mermaid.parse(normalized); // validate first, throws if invalid
-          const { svg } = await mermaid.render(uniqueId, normalized);
+          void mermaid.parse(chart); // validate first, throws if invalid
+          const { svg } = await mermaid.render(uniqueId, chart);
           if (isMounted) {
             const rendered = makeResponsiveSvg(svg);
             setSvg(rendered);
             svgCache.set(chart, rendered);
-            if (normalized !== chart) setLocalChart(normalized);
           }
         } catch (err) {
           if (isMounted) setError(err as Error);
@@ -170,16 +198,22 @@ export function MermaidDiagram({
         (window.matchMedia("(prefers-color-scheme: dark)").matches ||
           document.documentElement.classList.contains("dark"));
 
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: prefersDark ? "dark" : "default",
-        themeVariables: {
-          fontSize: "18px",
-        },
-      });
+      if (!isMermaidInitialized) {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: prefersDark ? "dark" : "default",
+          themeVariables: {
+            fontSize: "18px",
+          },
+        });
+        (mermaid as unknown as { parseError?: () => void }).parseError = () => {
+          /* no-op */
+        };
+        isMermaidInitialized = true;
+      }
       const id = `mermaid-${Math.random().toString(36).slice(2, 9)}`;
       void mermaid
-        .render(id, preprocess(debouncedDraft))
+        .render(id, debouncedDraft)
         .then(({ svg }) => {
           setDraftSvg(svg);
           setPreviewError(null);
@@ -203,18 +237,24 @@ export function MermaidDiagram({
         (window.matchMedia("(prefers-color-scheme: dark)").matches ||
           document.documentElement.classList.contains("dark"));
 
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: prefersDark ? "dark" : "default",
-        themeVariables: {
-          fontSize: "18px",
-        },
-      });
+      if (!isMermaidInitialized) {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: prefersDark ? "dark" : "default",
+          themeVariables: {
+            fontSize: "18px",
+          },
+        });
+        (mermaid as unknown as { parseError?: () => void }).parseError = () => {
+          /* no-op */
+        };
+        isMermaidInitialized = true;
+      }
 
       const uniqueId = `mermaid-${Math.random().toString(36).slice(2, 9)}`;
 
       void mermaid
-        .render(uniqueId, preprocess(localChart))
+        .render(uniqueId, localChart)
         .then(({ svg }) => {
           if (isMounted) {
             const rendered = makeResponsiveSvg(svg);
