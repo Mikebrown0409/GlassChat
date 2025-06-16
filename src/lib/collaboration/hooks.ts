@@ -2,7 +2,7 @@
 // Uses tRPC for server communication and local state management
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "~/trpc/react";
+import { api } from "@/trpc/react";
 import type {
   CollaborationEvent,
   CollaborationEventType,

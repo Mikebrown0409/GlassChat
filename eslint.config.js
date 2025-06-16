@@ -12,6 +12,7 @@ export default tseslint.config(
       "src/icebox/**",
       "src/lib/collaboration/collaborationManager.ts",
       "scripts/**",
+      "src/server/ws/**",
     ],
   },
   ...compat.extends("next/core-web-vitals"),
