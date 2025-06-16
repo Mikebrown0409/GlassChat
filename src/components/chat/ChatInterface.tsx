@@ -6,6 +6,7 @@ import { db } from "~/lib/db";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 
+import { useSession } from "next-auth/react";
 import { useCollabMode } from "~/context/CollabModeContext";
 import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { collaborationManager } from "~/lib/collaboration/collaborationManager";
@@ -293,6 +294,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   const { toggle, mode } = useCollabMode();
   const currentRoomIdStore = useCollaborationStore((s) => s.currentRoomId);
+  const { data: session } = useSession();
 
   const handleToggleCollab = () => {
     toggle();
@@ -301,6 +303,12 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       void (async () => {
         try {
           if (!currentRoomIdStore) {
+            if (!collaborationManager.getCurrentUser()) {
+              await collaborationManager.createUser(
+                session?.user?.name ?? "Guest",
+                session?.user?.image ?? undefined,
+              );
+            }
             const room = await collaborationManager.createRoom(
               currentChatId ?? "global",
               "Shared Session",
