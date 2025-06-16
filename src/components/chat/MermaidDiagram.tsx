@@ -79,7 +79,7 @@ export function MermaidDiagram({
 
   // Ensure erDiagram directive ends with newline (even after pipes removed)
   const forceDirectiveNewline = (src: string) =>
-    src.replace(/erDiagram(?!\s*\n)/i, "erDiagram\n");
+    src.replace(/erDiagram(?=[^\s\n\r])/i, "erDiagram\n");
 
   const preprocess = (src: string) =>
     forceDirectiveNewline(
