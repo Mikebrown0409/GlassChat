@@ -129,11 +129,7 @@ const MessageBubble = React.memo(function MessageBubble({
                     : "text-gray-500 dark:text-gray-400",
               )}
             >
-              {message.role === "user"
-                ? "You"
-                : message.role === "system"
-                  ? "System"
-                  : "Assistant"}
+              {message.role === "system" ? "System" : ""}
             </span>
             <span
               className={clsx(

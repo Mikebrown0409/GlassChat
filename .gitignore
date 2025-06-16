@@ -57,6 +57,10 @@ node_modules
 prompts.md
 designaudit.md
 designchecklist.md
+collab.md
+docs/collaboration_rethink.md
+docs/AI_onboarding.md
+
 
 # reports / analysis artifacts
 lighthouse-report*.json

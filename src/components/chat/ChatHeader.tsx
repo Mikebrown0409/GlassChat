@@ -16,6 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { TooltipProvider } from "~/components/ui/tooltip";
+import { useCollaborationStore } from "~/lib/collaboration/store";
+import { CollabToggle } from "../ui/CollabToggle";
 import { InsightsToggle } from "../ui/InsightsToggle";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 
@@ -23,6 +25,7 @@ interface ChatHeaderProps {
   sidebarOpen: boolean;
   onOpenSidebar: () => void;
   onToggleMemory: () => void;
+  onToggleCollab: () => void;
   className?: string;
 }
 
@@ -30,8 +33,15 @@ export function ChatHeader({
   sidebarOpen,
   onOpenSidebar,
   onToggleMemory,
+  onToggleCollab,
   className,
 }: ChatHeaderProps) {
+  // Global collaboration state
+  const { currentRoomId, onlineUsers } = useCollaborationStore((s) => ({
+    currentRoomId: s.currentRoomId,
+    onlineUsers: s.onlineUsers,
+  }));
+
   return (
     <header
       className={clsx(
@@ -61,7 +71,24 @@ export function ChatHeader({
       {/* Right: actions */}
       <TooltipProvider delayDuration={200}>
         <div className="flex items-center gap-2">
+          {/* Participant Avatars (visible only in collab) */}
+          {currentRoomId && (
+            <div className="flex -space-x-2">
+              {onlineUsers.slice(0, 3).map((u) => (
+                <Avatar
+                  key={u.userId}
+                  className="border-surface-0 h-6 w-6 border-2"
+                  style={{ backgroundColor: "#444" }}
+                >
+                  <AvatarFallback className="text-[10px]">
+                    {u.userId.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+            </div>
+          )}
           <InsightsToggle onClick={onToggleMemory} />
+          <CollabToggle onClick={onToggleCollab} />
           <ThemeSwitcher />
 
           {/* User dropdown */}

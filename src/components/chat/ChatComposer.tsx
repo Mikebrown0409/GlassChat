@@ -224,7 +224,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                     }
                   }}
                   placeholder="Type a message..."
-                  className="text-surface-1 placeholder:text-surface-1/50 flex-1 resize-none border-none bg-transparent px-4 py-2 text-sm focus:ring-0 focus:ring-offset-0 focus:outline-none focus-visible:outline-none"
+                  className="text-surface-1 placeholder:text-surface-1/50 flex-1 resize-none border-none bg-transparent px-4 py-2 text-base focus:ring-0 focus:ring-offset-0 focus:outline-none focus-visible:outline-none"
                   style={{
                     height: `${Math.min(textareaRef.current?.scrollHeight ?? 0, 200)}px`,
                     outline: "none",

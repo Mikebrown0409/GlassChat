@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { memo, useDeferredValue, useEffect, useState } from "react";
 import { useCollaboration } from "~/lib/collaboration/hooks";
+import { useCollaborationStore } from "~/lib/collaboration/store";
 import {
   CollaborationEventType,
   type CollaborationEvent,
@@ -51,6 +52,22 @@ export function CollaborationPanel({
   const [copied, setCopied] = useState(false);
 
   const collaboration = useCollaboration(currentRoomId);
+
+  // Sync state to global collaboration store for cross-component awareness
+  const setCurrentRoomIdGlobal = useCollaborationStore(
+    (s) => s.setCurrentRoomId,
+  );
+  const setOnlineUsersGlobal = useCollaborationStore((s) => s.setOnlineUsers);
+
+  // Update global room id when local changes
+  useEffect(() => {
+    setCurrentRoomIdGlobal(currentRoomId);
+  }, [currentRoomId, setCurrentRoomIdGlobal]);
+
+  // Update global online users when data changes
+  useEffect(() => {
+    setOnlineUsersGlobal(collaboration.presence?.onlineUsers ?? []);
+  }, [collaboration.presence?.onlineUsers, setOnlineUsersGlobal]);
 
   // Auto-create user if not exists
   useEffect(() => {
@@ -138,7 +155,7 @@ export function CollaborationPanel({
       if (currentChatId && collaboration.rooms.rooms.length === 0) {
         void handleCreateRoom();
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to create user:", error);
     }
   };
@@ -154,7 +171,7 @@ export function CollaborationPanel({
       if (room.success && room.room) {
         setCurrentRoomId(room.room.id);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to create room:", error);
     }
   };
@@ -163,7 +180,7 @@ export function CollaborationPanel({
     try {
       await collaboration.rooms.joinRoom(roomId);
       setCurrentRoomId(roomId);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to join room:", error);
     }
   };
@@ -174,7 +191,7 @@ export function CollaborationPanel({
     try {
       await collaboration.rooms.leaveRoom(currentRoomId);
       setCurrentRoomId(null);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to leave room:", error);
     }
   };
@@ -185,7 +202,7 @@ export function CollaborationPanel({
     try {
       await collaboration.messages.sendMessage(messageInput.trim(), "text");
       setMessageInput("");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to send message:", error);
     }
   };
@@ -199,7 +216,7 @@ export function CollaborationPanel({
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to copy to clipboard:", error);
     }
   };
@@ -285,6 +302,7 @@ export function CollaborationPanel({
         {activeTab === "messages" && currentRoomId && (
           <MemoChatTab
             _roomId={currentRoomId}
+            room={collaboration.rooms.rooms.find((r) => r.id === currentRoomId)}
             messages={collaboration.messages.messages}
             messageInput={messageInput}
             onMessageInputChange={setMessageInput}
@@ -514,6 +532,7 @@ function RoomsTab({
 // Chat Tab Component
 function ChatTab({
   _roomId,
+  room,
   messages,
   messageInput,
   onMessageInputChange,
@@ -522,6 +541,7 @@ function ChatTab({
   typingUsers,
 }: {
   _roomId: string;
+  room?: CollaborationRoom;
   messages: CollaborationMessage[];
   messageInput: string;
   onMessageInputChange: (value: string) => void;
@@ -545,29 +565,49 @@ function ChatTab({
             <p className="text-xs text-slate-500">Start the conversation!</p>
           </div>
         ) : (
-          msgs.map((message) => (
-            <div
-              key={message.id}
-              className={clsx(
-                "max-w-[85%] rounded-lg p-3",
-                message.userId === currentUser?.id
-                  ? "ml-auto bg-blue-600/20 text-blue-100"
-                  : "bg-slate-800/50 text-slate-200",
-              )}
-            >
-              <div className="mb-1 flex items-center gap-2">
-                <span className="text-xs font-medium text-slate-400">
-                  {message.userId === currentUser?.id
-                    ? "You"
-                    : `User ${message.userId.slice(0, 8)}`}
-                </span>
-                <span className="text-xs text-slate-500">
-                  {new Date(message.timestamp).toLocaleTimeString()}
-                </span>
+          msgs.map((message) => {
+            const sender = room?.users.find((u) => u.id === message.userId);
+            const userColor = sender?.color ?? "#64748b"; // slate-500 fallback
+
+            const isMe = message.userId === currentUser?.id;
+
+            return (
+              <div
+                key={message.id}
+                className={clsx(
+                  "max-w-[85%] rounded-lg p-3",
+                  isMe ? "ml-auto" : "",
+                )}
+                style={
+                  isMe
+                    ? {
+                        backgroundColor: "rgba(56, 189, 248, 0.15)",
+                        color: "#bae6fd",
+                      }
+                    : {
+                        backgroundColor: userColor + "1A" /* 10% alpha */,
+                        color: "#e2e8f0",
+                      }
+                }
+              >
+                <div className="mb-1 flex items-center gap-2">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: userColor }}
+                  />
+                  <span className="text-xs font-medium opacity-80">
+                    {isMe
+                      ? "You"
+                      : (sender?.name ?? `User ${message.userId.slice(0, 8)}`)}
+                  </span>
+                  <span className="text-xs opacity-60">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
               </div>
-              <p className="text-sm">{message.content}</p>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     );
