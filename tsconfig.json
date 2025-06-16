@@ -38,7 +38,8 @@
       "@/lib/*": ["./src/lib/*"],
       "@/utils/*": ["./src/utils/*"],
       "@/types/*": ["./src/types/*"],
-      "@/styles/*": ["./src/styles/*"]
+      "@/styles/*": ["./src/styles/*"],
+      "@/trpc/*": ["./src/trpc/*"]
     },
 
     /* Additional options for GlassChat */
