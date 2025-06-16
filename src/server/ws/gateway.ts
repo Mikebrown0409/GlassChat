@@ -1,3 +1,4 @@
+import { IncomingMessage } from "http";
 import WebSocket, { WebSocketServer } from "ws";
 import * as Y from "yjs";
 
@@ -9,8 +10,11 @@ interface ClientInfo {
   roomId: string | null;
 }
 
+let wss: WebSocketServer | null = null;
+
 export function startCollaborationGateway(port = 4001) {
-  const wss = new WebSocketServer({ port });
+  if (wss) return wss;
+  wss = new WebSocketServer({ port });
   console.log(`[CollabWS] WebSocket gateway listening on :${port}`);
 
   wss.on("connection", (socket: WebSocket) => {
@@ -46,13 +50,15 @@ export function startCollaborationGateway(port = 4001) {
       const doc = getDoc(client.roomId);
       // Apply and broadcast
       Y.applyUpdate(doc, update);
-      broadcastUpdate(wss, client.roomId, socket, update);
+      broadcastUpdate(client.roomId, socket, update);
     });
 
     socket.on("close", () => {
       // No special cleanup yet (docs persist in-memory)
     });
   });
+
+  return wss;
 }
 
 function getDoc(roomId: string): Y.Doc {
@@ -65,17 +71,32 @@ function getDoc(roomId: string): Y.Doc {
 }
 
 function broadcastUpdate(
-  wss: WebSocketServer,
   roomId: string,
   origin: WebSocket,
   update: Uint8Array,
 ) {
-  wss.clients.forEach((client: WebSocket) => {
+  getWSS().clients.forEach((client: WebSocket) => {
     if (client === origin || client.readyState !== WebSocket.OPEN) return;
     // Simple room filter via stored property
     // @ts-ignore
     if (client._roomId === roomId) {
       client.send(update);
     }
+  });
+}
+
+function getWSS(): WebSocketServer {
+  if (!wss) wss = new WebSocketServer({ noServer: true });
+  return wss;
+}
+
+export function handleWebSocketUpgrade(
+  req: IncomingMessage,
+  socket: any,
+  head: Buffer,
+) {
+  const server = getWSS();
+  server.handleUpgrade(req, socket, head, (ws) => {
+    server.emit("connection", ws, req);
   });
 }
