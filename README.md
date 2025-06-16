@@ -40,34 +40,39 @@ Built with the modern T3 Stack plus glassmorphism enhancements:
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/yourusername/glasschat.git
    cd glasschat
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env
    # Fill in your API keys and configuration
    ```
 
 4. **Initialize the database**
+
    ```bash
    npm run db:push
    ```
 
 5. **Start the development server**
+
    ```bash
    npm run dev
    ```
 
 6. **Open in browser**
-   
+
    Navigate to [http://localhost:3000](http://localhost:3000)
 
 ## 🏗️ Development
@@ -139,6 +144,16 @@ Comprehensive project documentation is available in the [`docs/`](docs/) directo
 - Built for the [T3 Chat Cloneathon](https://example.com) competition
 - Inspired by the amazing [T3 Chat](https://github.com/example) project
 - Design influenced by glassmorphism trends and modern UI patterns
+
+## Real-time Collaboration WebSocket Gateway
+
+During development, run the standalone gateway in a second terminal:
+
+```bash
+npm run ws:dev  # starts ws server on :4001
+```
+
+Set `NEXT_PUBLIC_ENABLE_WS=true` in `.env.local` so the client switches from polling to WebSocket transport.
 
 ---
 
