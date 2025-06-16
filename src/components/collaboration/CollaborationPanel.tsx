@@ -656,7 +656,7 @@ function ChatTab({
                 }
               >
                 {(isMe || currentUser?.role === Role.MODERATOR) && (
-                  <div className="absolute top-1 right-1 opacity-50 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                  <div className="absolute top-1 right-1 opacity-75 transition-opacity focus-within:opacity-100 hover:opacity-100">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button className="text-muted hover:text-primary focus:outline-none">
