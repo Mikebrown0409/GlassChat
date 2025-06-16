@@ -15,6 +15,7 @@ export default tseslint.config(
       "src/server/ws/**",
       "src/lib/collaboration/hooks.ts",
       "src/app/api/ws/**",
+      "src/pages/api/ws.ts",
     ],
   },
   ...compat.extends("next/core-web-vitals"),
