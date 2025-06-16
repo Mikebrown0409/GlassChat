@@ -1,3 +1,5 @@
+"use client";
+
 import "~/styles/globals.css";
 
 import { GeistSans } from "geist/font/sans";
@@ -5,6 +7,7 @@ import { type Metadata } from "next";
 
 import { ThemeProvider } from "~/components/ui/ThemeProvider";
 import { ThemeSwitcher } from "~/components/ui/ThemeSwitcher";
+import { CollabModeProvider } from "~/context/CollabModeContext";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
@@ -51,7 +54,9 @@ export default function RootLayout({
           <div className="absolute top-4 right-4">
             <ThemeSwitcher />
           </div>
-          <TRPCReactProvider>{children}</TRPCReactProvider>
+          <CollabModeProvider>
+            <TRPCReactProvider>{children}</TRPCReactProvider>
+          </CollabModeProvider>
         </ThemeProvider>
       </body>
     </html>

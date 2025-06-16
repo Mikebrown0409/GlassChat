@@ -1,6 +1,5 @@
 "use client";
 
-import { CollabModeProvider } from "~/context/CollabModeContext";
 import ChatInterface from "../chat/ChatInterface";
 
 interface Message {
@@ -54,9 +53,5 @@ const QUICK_REPLIES = [
 
 // Temporary compatibility wrapper: forward to the modern ChatInterface component
 export function ChatContainer({ className }: ChatContainerProps) {
-  return (
-    <CollabModeProvider>
-      <ChatInterface className={className} />
-    </CollabModeProvider>
-  );
+  return <ChatInterface className={className} />;
 }
