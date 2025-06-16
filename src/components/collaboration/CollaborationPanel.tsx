@@ -161,18 +161,19 @@ export function CollaborationPanel({
   };
 
   const handleCreateRoom = async () => {
-    if (!currentChatId || !collaboration.user.user) return;
+    if (!currentChatId) return;
 
-    try {
-      const room = await collaboration.rooms.createRoom(
-        currentChatId,
-        `Chat Room`,
-      );
-      if (room.success && room.room) {
-        setCurrentRoomId(room.room.id);
-      }
-    } catch (error: unknown) {
-      console.error("Failed to create room:", error);
+    if (!collaboration.user.user) {
+      // create ephemeral user
+      await collaboration.user.createUser("Guest");
+    }
+
+    const room = await collaboration.rooms.createRoom(
+      currentChatId,
+      `Chat Room`,
+    );
+    if (room.success && room.room) {
+      setCurrentRoomId(room.room.id);
     }
   };
 
@@ -449,12 +450,6 @@ function RoomsTab({
                 Connected to room
               </span>
             </div>
-            <button
-              onClick={onLeaveRoom}
-              className="rounded bg-red-600/20 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-600/30"
-            >
-              Leave
-            </button>
           </div>
           <button
             onClick={onShareRoom}
