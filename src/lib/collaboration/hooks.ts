@@ -334,11 +334,28 @@ export function useUnifiedCollaboration(roomId: string | null) {
 export function useCollaborationUser() {
   const [user, setUser] = useState<CollaborationUser | null>(null);
 
-  const { data: userData } = api.collaboration.getCurrentUser.useQuery();
+  // Try load from localStorage first
+  const stored =
+    typeof window !== "undefined" ? localStorage.getItem("collab_user") : null;
+  if (stored && !user) {
+    try {
+      const parsed = JSON.parse(stored) as CollaborationUser;
+      setUser(parsed);
+    } catch {}
+  }
+
+  const { data: userData } = api.collaboration.getCurrentUser.useQuery(
+    undefined,
+    { enabled: !stored },
+  );
+
   const createUserMutation = api.collaboration.createUser.useMutation({
     onSuccess: (data) => {
       if (data.success && data.user) {
         setUser(data.user);
+        try {
+          localStorage.setItem("collab_user", JSON.stringify(data.user));
+        } catch {}
       }
     },
   });
