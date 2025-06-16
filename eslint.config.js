@@ -13,6 +13,7 @@ export default tseslint.config(
       "src/lib/collaboration/collaborationManager.ts",
       "scripts/**",
       "src/server/ws/**",
+      "src/lib/collaboration/hooks.ts",
     ],
   },
   ...compat.extends("next/core-web-vitals"),

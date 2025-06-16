@@ -33,4 +33,12 @@ export class CollaborationWSClient {
   getDocument() {
     return this.doc;
   }
+
+  onUpdate(cb: (doc: Y.Doc) => void) {
+    this.doc.on("update", () => cb(this.doc));
+  }
+
+  getText(name = "content") {
+    return this.doc.getText(name);
+  }
 }

@@ -2,7 +2,7 @@
 // Uses tRPC for server communication and local state management
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/trpc/react";
+import { api } from "../../trpc/react";
 import type {
   CollaborationEvent,
   CollaborationEventType,
@@ -13,6 +13,7 @@ import type {
   TypingIndicator,
   UserPresence,
 } from "./types";
+import { CollaborationWSClient } from "./wsClient";
 
 // *** NEW UNIFIED COLLABORATION HOOK - Replaces all individual hooks ***
 export function useUnifiedCollaboration(roomId: string | null) {
@@ -36,6 +37,7 @@ export function useUnifiedCollaboration(roomId: string | null) {
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [hasLoadedCache, setHasLoadedCache] = useState(false);
+  const [wsClient, setWsClient] = useState<CollaborationWSClient | null>(null);
 
   // Single API call that fetches ALL collaboration data
   const { data: roomData, refetch } = api.collaboration.getRoomData.useQuery(
@@ -282,6 +284,23 @@ export function useUnifiedCollaboration(roomId: string | null) {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, []);
+
+  // after roomId change, setup ws if enabled
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_ENABLE_WS !== "true") return;
+    if (!roomId) return;
+    const client = new CollaborationWSClient(roomId);
+    client.connect();
+    setWsClient(client);
+    client.onUpdate(() => {
+      // For now, sync live coding content
+      const txt = client.getText();
+      setLocalContent(txt.toString());
+    });
+    return () => {
+      setWsClient(null);
+    };
+  }, [roomId]);
 
   return {
     // All data in one object
