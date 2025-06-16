@@ -2,17 +2,17 @@
 // Provides room management, live coding, and messaging features
 
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { collaborationManager } from "~/lib/collaboration/collaborationManager";
 import {
+  type CollaborationEvent,
+  type CollaborationMessage,
   type CollaborationRoom,
   type CollaborationUser,
-  type CollaborationMessage,
   type LiveCodingSession,
   type TypingIndicator,
   type UserPresence,
-  type CollaborationEvent,
 } from "~/lib/collaboration/types";
+import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 
 // Input validation schemas
 const CreateUserSchema = z.object({
@@ -49,6 +49,17 @@ const UpdateLiveCodeSchema = z.object({
 const PollEventsSchema = z.object({
   roomId: z.string().min(1),
   since: z.number().min(0).default(0),
+});
+
+const EditMessageSchema = z.object({
+  roomId: z.string().min(1),
+  messageId: z.string().min(1),
+  newContent: z.string().min(1).max(5000),
+});
+
+const DeleteMessageSchema = z.object({
+  roomId: z.string().min(1),
+  messageId: z.string().min(1),
 });
 
 export const collaborationRouter = createTRPCRouter({
@@ -544,4 +555,52 @@ export const collaborationRouter = createTRPCRouter({
       }
     },
   ),
+
+  // Message editing
+  editMessage: publicProcedure.input(EditMessageSchema).mutation(
+    async ({
+      input,
+    }): Promise<{
+      success: boolean;
+      message?: CollaborationMessage;
+      error?: string;
+    }> => {
+      try {
+        const msg = await collaborationManager.editMessage(
+          input.roomId,
+          input.messageId,
+          input.newContent,
+        );
+        return { success: true, message: msg };
+      } catch (error) {
+        return {
+          success: false,
+          error:
+            error instanceof Error ? error.message : "Failed to edit message",
+        };
+      }
+    },
+  ),
+
+  deleteMessage: publicProcedure
+    .input(DeleteMessageSchema)
+    .mutation(
+      async ({ input }): Promise<{ success: boolean; error?: string }> => {
+        try {
+          await collaborationManager.deleteMessage(
+            input.roomId,
+            input.messageId,
+          );
+          return { success: true };
+        } catch (error) {
+          return {
+            success: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to delete message",
+          };
+        }
+      },
+    ),
 });

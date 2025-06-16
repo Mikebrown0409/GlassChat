@@ -147,6 +147,35 @@ class MockRedis {
     this.sets.clear();
     this.subscribers.clear();
   }
+
+  async rpush(key: string, ...values: string[]): Promise<number> {
+    if (!this.lists.has(key)) {
+      this.lists.set(key, []);
+    }
+    const list = this.lists.get(key)!;
+    list.push(...values);
+    return list.length;
+  }
+
+  async lset(key: string, index: number, value: string): Promise<string> {
+    const list = this.lists.get(key) ?? [];
+    if (index < 0 || index >= list.length) {
+      throw new Error("Index out of bounds");
+    }
+    list[index] = value;
+    this.lists.set(key, list);
+    return "OK";
+  }
+
+  async ttl(_key: string): Promise<number> {
+    // TTL management isn't fully simulated; return -1 to indicate no expiration
+    return -1;
+  }
+
+  async persist(_key: string): Promise<number> {
+    // Persistence is always guaranteed in the mock; return 1 to indicate success
+    return 1;
+  }
 }
 
 // Initialize Redis client (use mock in development if no UPSTASH_REDIS_REST_URL)

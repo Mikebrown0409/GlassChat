@@ -4,18 +4,19 @@
 import { nanoid } from "nanoid";
 import { redis } from "../sync/redis";
 import {
+  type CollaborationConfig,
+  type CollaborationEvent,
+  CollaborationEventType,
+  type CollaborationMessage,
   type CollaborationRoom,
   type CollaborationUser,
-  type CollaborationEvent,
-  type CollaborationMessage,
-  type TypingIndicator,
-  type LiveCodingSession,
   type CursorPosition,
-  type UserPresence,
-  type CollaborationConfig,
-  CollaborationEventType,
   DEFAULT_COLLABORATION_CONFIG,
+  type LiveCodingSession,
+  Role,
+  type TypingIndicator,
   USER_COLORS,
+  type UserPresence,
 } from "./types";
 
 class CollaborationManager {
@@ -48,6 +49,7 @@ class CollaborationManager {
   async createUser(
     name: string,
     avatarUrl?: string,
+    role: Role = Role.PARTICIPANT,
   ): Promise<CollaborationUser> {
     const user: CollaborationUser = {
       id: nanoid(),
@@ -57,6 +59,7 @@ class CollaborationManager {
         Math.floor(Math.random() * USER_COLORS.length)
       ] as string,
       lastSeen: Date.now(),
+      role,
     };
 
     this.currentUser = user;
@@ -402,13 +405,18 @@ class CollaborationManager {
       type,
     };
 
-    // Store message in Redis (with expiration for performance)
-    await redis.lpush(
-      `collaboration:messages:${roomId}`,
-      JSON.stringify(message),
-    );
-    await redis.ltrim(`collaboration:messages:${roomId}`, 0, 99); // Keep last 100 messages
-    await redis.expire(`collaboration:messages:${roomId}`, 86400); // 24 hour expiration
+    const key = `collaboration:messages:${roomId}`;
+
+    await redis.rpush(key, JSON.stringify(message));
+    // Keep only last 100 messages (trim from left if over)
+    await redis.ltrim(key, -100, -1);
+
+    // If this key still has an old TTL from earlier versions, clear it so
+    // messages aren't wiped automatically after timeout.
+    const ttlSeconds = await redis.ttl(key);
+    if (ttlSeconds !== null && ttlSeconds > 0) {
+      await redis.persist(key);
+    }
 
     // Publish message event
     await this.publishEvent({
@@ -430,7 +438,96 @@ class CollaborationManager {
     );
     return messagesData
       .map((data: string) => JSON.parse(data) as CollaborationMessage)
-      .reverse(); // Reverse to get chronological order
+      .reverse();
+  }
+
+  /** Edit a message if permitted (author within 2 min OR moderator) */
+  async editMessage(
+    roomId: string,
+    messageId: string,
+    newContent: string,
+  ): Promise<CollaborationMessage> {
+    if (!this.currentUser) throw new Error("No current user");
+
+    const msgsData = await redis.lrange(
+      `collaboration:messages:${roomId}`,
+      0,
+      -1,
+    );
+    const msgs: CollaborationMessage[] = msgsData.map((m) => JSON.parse(m));
+    const idx = msgs.findIndex((m) => m.id === messageId);
+    if (idx === -1) throw new Error("Message not found");
+    const msg = msgs[idx]!;
+
+    const canEdit =
+      (msg.userId === this.currentUser.id &&
+        Date.now() - msg.timestamp <= 2 * 60 * 1000) ||
+      this.currentUser.role === Role.MODERATOR;
+
+    if (!canEdit) throw new Error("Permission denied");
+
+    msg.content = newContent;
+    msg.updatedAt = Date.now();
+
+    // Update list element in-place to preserve ordering (newest first list)
+    await redis.lset(
+      `collaboration:messages:${roomId}`,
+      idx,
+      JSON.stringify(msg),
+    );
+
+    await this.publishEvent({
+      type: CollaborationEventType.MESSAGE_EDITED,
+      roomId,
+      userId: this.currentUser.id,
+      data: { message: msg },
+      timestamp: Date.now(),
+    });
+
+    return msg;
+  }
+
+  /** Delete a message if permitted (author within 2 min OR moderator) */
+  async deleteMessage(roomId: string, messageId: string): Promise<void> {
+    if (!this.currentUser) throw new Error("No current user");
+
+    const msgsData = await redis.lrange(
+      `collaboration:messages:${roomId}`,
+      0,
+      -1,
+    );
+    const msgs: CollaborationMessage[] = msgsData.map((m) => JSON.parse(m));
+    const idx = msgs.findIndex((m) => m.id === messageId);
+    if (idx === -1) throw new Error("Message not found");
+    const msg = msgs[idx]!;
+
+    const canDelete =
+      (msg.userId === this.currentUser.id &&
+        Date.now() - msg.timestamp <= 2 * 60 * 1000) ||
+      this.currentUser.role === Role.MODERATOR;
+
+    if (!canDelete) throw new Error("Permission denied");
+
+    // Remove message at index
+    // Redis has no direct lrem by index; rebuild list
+    msgs.splice(idx, 1);
+    await redis.del(`collaboration:messages:${roomId}`);
+    if (msgs.length) {
+      // Recreate list with newest-first ordering using RPUSH on reversed array
+      await redis.rpush(
+        `collaboration:messages:${roomId}`,
+        ...msgs.map((m) => JSON.stringify(m)),
+      );
+      await redis.ltrim(`collaboration:messages:${roomId}`, -100, -1);
+    }
+
+    await this.publishEvent({
+      type: CollaborationEventType.MESSAGE_DELETED,
+      roomId,
+      userId: this.currentUser.id,
+      data: { messageId },
+      timestamp: Date.now(),
+    });
   }
 
   // Event System
@@ -554,5 +651,5 @@ class CollaborationManager {
 export const collaborationManager = new CollaborationManager();
 
 // Export manager and types
-export { CollaborationManager };
 export * from "./types";
+export { CollaborationManager };
