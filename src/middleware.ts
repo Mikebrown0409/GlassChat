@@ -17,7 +17,10 @@ export async function middleware(req: NextRequest) {
   // Attempt to decode the NextAuth JWT (does NOT hit DB)
   let token: object | null = null;
   try {
-    token = await getToken({ req, secret: process.env.AUTH_SECRET });
+    token = await getToken({
+      req,
+      secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+    });
   } catch (error) {
     // If there's a JWT error, clear all auth cookies
     const response = NextResponse.next();
