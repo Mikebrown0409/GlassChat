@@ -4,22 +4,18 @@ import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import bgArt from "../../../public/landing-bg2.webp";
 
 export default function LandingClient() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  // We no longer redirect on the client; server-side logic in
+  // `src/app/landing/page.tsx` already handles redirecting when a valid session
+  // is present. Removing client-side redirects prevents infinite ping-pong
+  // when the server and client disagree about auth state (e.g. due to a stale
+  // cookie).
 
-  // Redirect to the home page once the user is authenticated. Wrap in useEffect
-  // so the navigation only happens after the component mounts and the session
-  // status has been resolved, preventing unnecessary re-renders/loops.
-  useEffect(() => {
-    if (status === "authenticated" && session) {
-      router.replace("/");
-    }
-  }, [status, session, router]);
+  // We still fetch the session status, mainly so the sign-in button could be
+  // replaced by a "Continue" button in the future, but we don't act on it here.
+  const { status } = useSession(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-950 px-4 py-24 text-center text-white">
