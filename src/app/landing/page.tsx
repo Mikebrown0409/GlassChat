@@ -50,25 +50,25 @@ export default function LandingPage() {
       }}
       className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-950 px-4 py-24 text-center text-white"
     >
+      {/* Full-page background artwork */}
+      <Image
+        src={heroArt}
+        alt="classical statue facing robot illustration"
+        fill
+        priority
+        unoptimized
+        sizes="100vw"
+        className="pointer-events-none absolute inset-0 z-0 object-cover opacity-20 mix-blend-screen select-none md:opacity-25"
+      />
+
       {/* Glass hero card */}
       <motion.section
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="backdrop-blur-lg/60 glass relative mx-auto flex max-w-3xl flex-col items-center rounded-3xl border border-violet-600/40 bg-zinc-900/40 px-8 py-16 shadow-[0_0_40px_0_rgba(124,58,237,0.45)]"
+        className="backdrop-blur-lg/60 glass relative z-10 mx-auto flex max-w-3xl flex-col items-center rounded-3xl border border-violet-600/40 bg-zinc-900/40 px-8 py-16 shadow-[0_0_40px_0_rgba(124,58,237,0.45)]"
         style={{ WebkitBackdropFilter: "blur(16px)" }}
       >
-        {/* background art */}
-        <Image
-          src={heroArt}
-          alt="classical statue facing robot illustration"
-          fill
-          priority
-          unoptimized
-          sizes="100vw"
-          className="pointer-events-none object-contain opacity-15 mix-blend-screen select-none md:opacity-20"
-        />
-
         <h1 className="relative z-10 bg-gradient-to-r from-white to-zinc-200 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent md:text-6xl">
           GlassChat
         </h1>
@@ -137,7 +137,7 @@ export default function LandingPage() {
       </motion.section>
 
       {/* animated gradient blobs */}
-      <motion.div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <motion.div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
         <motion.div
           style={parallax ? { x: blob1X, y: blob1Y } : undefined}
           className="absolute top-[-100px] left-1/4 h-[500px] w-[500px] -translate-x-1/2 [animation:spin_40s_linear_infinite] rounded-full bg-gradient-to-tr from-violet-600 via-indigo-700 to-purple-800 opacity-25 blur-3xl"
