@@ -64,7 +64,7 @@ export default function LandingPage() {
           fill
           priority
           unoptimized
-          className="pointer-events-none object-contain opacity-5 mix-blend-lighten select-none md:opacity-10"
+          className="pointer-events-none object-contain opacity-15 mix-blend-screen select-none md:opacity-20"
         />
 
         <h1 className="relative z-10 bg-gradient-to-r from-white to-zinc-200 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent md:text-6xl">
