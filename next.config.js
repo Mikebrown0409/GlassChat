@@ -47,6 +47,10 @@ const config = {
   // Environment variable passthrough
   env: {
     NEXT_PUBLIC_APP_NAME: "GlassChat",
+
+    // Added so Edge / middleware can read them
+    AUTH_SECRET: process.env.AUTH_SECRET,
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
   },
 
   // modularizeImports for Radix
