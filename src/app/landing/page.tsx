@@ -2,6 +2,7 @@
 
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -56,15 +57,24 @@ export default function LandingPage() {
         className="backdrop-blur-lg/60 glass relative mx-auto flex max-w-3xl flex-col items-center rounded-3xl border border-violet-600/40 bg-zinc-900/40 px-8 py-16 shadow-[0_0_40px_0_rgba(124,58,237,0.45)]"
         style={{ WebkitBackdropFilter: "blur(16px)" }}
       >
-        <h1 className="bg-gradient-to-r from-white to-zinc-200 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent md:text-6xl">
+        {/* background art */}
+        <Image
+          src="/landing-bg.webp"
+          alt="classical statue facing robot illustration"
+          fill
+          priority
+          className="pointer-events-none object-contain opacity-5 mix-blend-lighten select-none md:opacity-10"
+        />
+
+        <h1 className="relative z-10 bg-gradient-to-r from-white to-zinc-200 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent md:text-6xl">
           GlassChat
         </h1>
-        <p className="mt-4 max-w-xl text-lg leading-relaxed text-white/90">
+        <p className="relative z-10 mt-4 max-w-xl text-lg leading-relaxed text-white/90">
           AI chat & real-time collaboration—polished with glassmorphism.
           Brainstorm, code, and create together.
         </p>
 
-        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
+        <div className="relative z-10 mt-10 flex flex-col items-center gap-4 sm:flex-row">
           {/* animated gradient-border sign in */}
           <Link
             href="/login"
