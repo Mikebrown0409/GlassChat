@@ -19,7 +19,7 @@ export default function LandingPage() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="backdrop-blur-lg/60 glass relative mx-auto flex max-w-3xl flex-col items-center rounded-3xl border border-fuchsia-500/30 bg-zinc-900/40 px-8 py-16 shadow-[0_0_40px_0_rgba(217,70,239,0.4)]"
+        className="backdrop-blur-lg/60 glass relative mx-auto flex max-w-3xl flex-col items-center rounded-3xl border border-violet-600/40 bg-zinc-900/40 px-8 py-16 shadow-[0_0_40px_0_rgba(124,58,237,0.45)]"
         style={{ WebkitBackdropFilter: "blur(16px)" }}
       >
         <h1 className="bg-gradient-to-r from-white to-zinc-200 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent md:text-6xl">
@@ -36,7 +36,7 @@ export default function LandingPage() {
             href="/login"
             className="relative inline-block rounded-full p-[2px]"
           >
-            <span className="animate-gradient-x absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-violet-600 bg-[length:200%_200%]" />
+            <span className="animate-gradient-x absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-violet-700 bg-[length:200%_200%]" />
             <span className="relative block rounded-full bg-zinc-900/80 px-8 py-3 text-sm font-semibold text-white backdrop-blur-md">
               Sign&nbsp;In
             </span>
@@ -58,18 +58,9 @@ export default function LandingPage() {
           </a>
         </div>
 
-        {/* subtle binary scrolling layer */}
+        {/* animated noise overlay */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-          <pre
-            style={{
-              animation: "scroll 15s linear infinite",
-            }}
-            className="text-[10px] leading-3 whitespace-pre text-fuchsia-500/20 select-none"
-          >
-            {"0101010011001010 0011010101110001 1100101001010101 0110010100101010 00110101\n".repeat(
-              60,
-            )}
-          </pre>
+          <div className="animate-pulse-slow absolute inset-0 scale-110 rounded-3xl bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nNzAnIGhlaWdodD0nNzAnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zyc+PHJlY3Qgd2lkdGg9JzcwJyBoZWlnaHQ9JzcwJyBmaWxsPScjZmZmJyAvPjxmaWx0ZXIgaWQ9J24nPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249JzMuMCcgLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyBmaWx0ZXI9InVybCgjbikiIG9wYWNpdHk9JzAuMDUnIC8+PC9zdmc+')'] opacity-20" />
         </div>
         {/* feature tiles */}
         <div className="mt-16 grid w-full max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3">
@@ -80,7 +71,7 @@ export default function LandingPage() {
           ].map(({ title, desc }) => (
             <div
               key={title}
-              className="backdrop-blur-md/50 rounded-2xl border border-white/10 bg-white/5 p-6 text-left shadow-lg transition hover:border-fuchsia-400/60 hover:shadow-fuchsia-500/20"
+              className="backdrop-blur-md/50 rounded-2xl border border-white/10 bg-white/5 p-6 text-left shadow-lg transition hover:border-violet-500/60 hover:shadow-violet-500/20"
             >
               <h3 className="mb-2 text-lg font-semibold text-white">{title}</h3>
               <p className="text-sm text-white/70">{desc}</p>
@@ -91,8 +82,8 @@ export default function LandingPage() {
 
       {/* Animated gradient blobs */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-[-100px] left-1/4 h-[500px] w-[500px] -translate-x-1/2 [animation:spin_40s_linear_infinite] rounded-full bg-gradient-to-tr from-fuchsia-500 via-purple-600 to-indigo-700 opacity-30 blur-3xl" />
-        <div className="absolute right-0 bottom-[-120px] h-[400px] w-[400px] [animation:spin_60s_linear_reverse_infinite] rounded-full bg-gradient-to-br from-emerald-400 via-sky-500 to-purple-600 opacity-20 blur-2xl" />
+        <div className="absolute top-[-100px] left-1/4 h-[500px] w-[500px] -translate-x-1/2 [animation:spin_40s_linear_infinite] rounded-full bg-gradient-to-tr from-violet-600 via-indigo-700 to-purple-800 opacity-25 blur-3xl" />
+        <div className="absolute right-0 bottom-[-120px] h-[400px] w-[400px] [animation:spin_60s_linear_reverse_infinite] rounded-full bg-gradient-to-br from-cyan-500 via-indigo-600 to-violet-700 opacity-20 blur-2xl" />
       </div>
 
       {/* keyframes style injected */}
@@ -108,12 +99,21 @@ export default function LandingPage() {
             background-position: 0% 50%;
           }
         }
-        @keyframes scroll {
+        .animate-pulse-slow {
+          animation: pulseNoise 8s ease-in-out infinite;
+        }
+        @keyframes pulseNoise {
           0% {
-            transform: translateY(0%);
+            opacity: 0.15;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.25;
+            transform: scale(1.02);
           }
           100% {
-            transform: translateY(-100%);
+            opacity: 0.15;
+            transform: scale(1);
           }
         }
       `}</style>
