@@ -13,18 +13,12 @@ export const config = {
 };
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  // We only care about WebSocket upgrade requests
-  if (req.headers.upgrade !== "websocket") {
-    res.status(200).json({ status: "ok" });
-    return;
+  if (req.headers.upgrade === "websocket") {
+    startCollaborationGateway(); // ensure singleton running
+    handleWebSocketUpgrade(req as any, res.socket as any, Buffer.alloc(0));
+    // Important: do NOT call res.write / res.end
+    return; // let Node keep the socket open
   }
-
-  // Ensure the gateway singleton is initialised (for standalone mode)
-  startCollaborationGateway();
-
-  const socket = res.socket as any;
-  // `head` is an empty buffer because Next hasn't read any extra bytes yet
-  const head = Buffer.alloc(0);
-
-  handleWebSocketUpgrade(req as any, socket, head);
+  // Normal HTTP request
+  res.status(200).json({ status: "ok" });
 }
