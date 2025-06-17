@@ -26,7 +26,7 @@ export default async function LandingPage() {
           Get Started
         </Link>
         <a
-          href="https://github.com/your-org/glasschat"
+          href="https://github.com/Mikebrown0409/GlassChat"
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-md border border-white/40 px-8 py-3 font-semibold text-white/90 transition hover:bg-white/10"

@@ -2,6 +2,8 @@
 
 An elegant, real-time, AI-powered chat & collaboration platform built with the **T3 Stack**, sprinkled with glassmorphism and production-ready tooling.
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-glasschat-blue?logo=vercel)](https://glass-chat-two.vercel.app)
+
 > “Chat beautifully, collaborate instantly.”
 
 ---
@@ -38,7 +40,7 @@ An elegant, real-time, AI-powered chat & collaboration platform built with the *
 
 ```bash
 # 1. Clone
-git clone https://github.com/your-org/glasschat.git && cd glasschat
+git clone https://github.com/Mikebrown0409/GlassChat.git && cd GlassChat
 
 # 2. Install deps
 npm install
