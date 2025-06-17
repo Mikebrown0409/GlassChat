@@ -26,6 +26,9 @@ declare module "next-auth" {
   // }
 }
 
+// Flag to detect non-production environment
+const dev = process.env.NODE_ENV !== "production";
+
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
  *
@@ -37,7 +40,7 @@ export const authConfig = {
     DiscordProvider({
       clientId: process.env.AUTH_DISCORD_ID ?? "",
       clientSecret: process.env.AUTH_DISCORD_SECRET ?? "",
-      allowDangerousEmailAccountLinking: true,
+      ...(dev ? { allowDangerousEmailAccountLinking: true } : {}),
     }),
 
     // Google OAuth (only if credentials are provided)
@@ -46,7 +49,7 @@ export const authConfig = {
           GoogleProvider({
             clientId: process.env.AUTH_GOOGLE_ID,
             clientSecret: process.env.AUTH_GOOGLE_SECRET,
-            allowDangerousEmailAccountLinking: true,
+            ...(dev ? { allowDangerousEmailAccountLinking: true } : {}),
           }),
         ]
       : []),
