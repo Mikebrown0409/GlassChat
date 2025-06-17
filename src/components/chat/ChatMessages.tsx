@@ -2,6 +2,7 @@
 
 import BeamLoader from "@/components/ui/BeamLoader";
 import { clsx } from "clsx";
+import type { Easing } from "framer-motion";
 import { AnimatePresence, motion } from "framer-motion";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { MessageDisplay } from "./MessageDisplay";
@@ -25,8 +26,8 @@ interface ChatMessagesProps {
   messagesEndRef: RefObject<HTMLDivElement | null>;
 }
 
-// Professional easing curve for all animations (keep in sync)
-const DYNAMIC_EASE = [0.22, 1, 0.36, 1];
+// Explicitly type as cubic-bezier tuple to satisfy Framer Motion's Easing type
+const DYNAMIC_EASE: Easing = [0.22, 1, 0.36, 1] as const;
 
 export function ChatMessages({
   messages,

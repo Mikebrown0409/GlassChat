@@ -1,6 +1,7 @@
 "use client";
 
 import { clsx } from "clsx";
+import type { Easing } from "framer-motion";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -31,7 +32,7 @@ interface InsightsDrawerProps {
   memoryHook: ReturnType<typeof useMemory>;
 }
 
-const EASE = [0.22, 1, 0.36, 1];
+const EASE: Easing = [0.22, 1, 0.36, 1] as const;
 
 export function InsightsDrawer({
   open,

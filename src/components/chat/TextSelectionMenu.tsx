@@ -1,11 +1,12 @@
 "use client";
 
+import type { Easing } from "framer-motion";
 import { motion } from "framer-motion";
 import { Check, Copy, Languages, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 // Professional easing curve for all animations
-const DYNAMIC_EASE = [0.22, 1, 0.36, 1];
+const DYNAMIC_EASE: Easing = [0.22, 1, 0.36, 1] as const;
 
 interface TextSelectionMenuProps {
   position: { top: number; left: number };

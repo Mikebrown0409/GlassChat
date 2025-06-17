@@ -1,6 +1,7 @@
 "use client";
 
 import { clsx } from "clsx";
+import type { Easing } from "framer-motion";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Check,
@@ -43,7 +44,7 @@ interface CollaborationPanelProps {
   embedded?: boolean;
 }
 
-const DYNAMIC_EASE = [0.22, 1, 0.36, 1];
+const DYNAMIC_EASE: Easing = [0.22, 1, 0.36, 1] as const;
 
 export function CollaborationPanel({
   currentChatId,
