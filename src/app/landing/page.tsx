@@ -136,18 +136,6 @@ export default function LandingPage() {
         </div>
       </motion.section>
 
-      {/* animated gradient blobs */}
-      <motion.div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <motion.div
-          style={parallax ? { x: blob1X, y: blob1Y } : undefined}
-          className="absolute top-[-100px] left-1/4 h-[500px] w-[500px] -translate-x-1/2 [animation:spin_40s_linear_infinite] rounded-full bg-gradient-to-tr from-violet-600 via-indigo-700 to-purple-800 opacity-25 blur-3xl"
-        />
-        <motion.div
-          style={parallax ? { x: blob2X, y: blob2Y } : undefined}
-          className="absolute right-0 bottom-[-120px] h-[400px] w-[400px] [animation:spin_60s_linear_reverse_infinite] rounded-full bg-gradient-to-br from-cyan-500 via-indigo-600 to-violet-700 opacity-20 blur-2xl"
-        />
-      </motion.div>
-
       {/* tech stack badges */}
       <div className="mt-20 flex flex-wrap items-center justify-center gap-4 opacity-70">
         {["AI Models", "Live Collaboration", "Smart Memory"].map((l) => (
