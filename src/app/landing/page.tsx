@@ -4,6 +4,7 @@ import { motion, useMotionValue, useTransform } from "framer-motion";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function LandingPage() {
   const { data: session } = useSession();
@@ -14,6 +15,7 @@ export default function LandingPage() {
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
+  const [parallax, setParallax] = useState(false);
 
   const getCenter = (axis: "x" | "y") => {
     if (typeof window === "undefined") return 0;
@@ -40,6 +42,7 @@ export default function LandingPage() {
   return (
     <main
       onMouseMove={(e) => {
+        if (!parallax) setParallax(true);
         mouseX.set(e.clientX);
         mouseY.set(e.clientY);
       }}
@@ -123,11 +126,11 @@ export default function LandingPage() {
       {/* animated gradient blobs */}
       <motion.div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <motion.div
-          style={{ x: blob1X, y: blob1Y }}
+          style={parallax ? { x: blob1X, y: blob1Y } : undefined}
           className="absolute top-[-100px] left-1/4 h-[500px] w-[500px] -translate-x-1/2 [animation:spin_40s_linear_infinite] rounded-full bg-gradient-to-tr from-violet-600 via-indigo-700 to-purple-800 opacity-25 blur-3xl"
         />
         <motion.div
-          style={{ x: blob2X, y: blob2Y }}
+          style={parallax ? { x: blob2X, y: blob2Y } : undefined}
           className="absolute right-0 bottom-[-120px] h-[400px] w-[400px] [animation:spin_60s_linear_reverse_infinite] rounded-full bg-gradient-to-br from-cyan-500 via-indigo-600 to-violet-700 opacity-20 blur-2xl"
         />
       </motion.div>
