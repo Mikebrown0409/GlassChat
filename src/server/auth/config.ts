@@ -37,6 +37,7 @@ export const authConfig = {
     DiscordProvider({
       clientId: process.env.AUTH_DISCORD_ID ?? "",
       clientSecret: process.env.AUTH_DISCORD_SECRET ?? "",
+      allowDangerousEmailAccountLinking: true,
     }),
 
     // Google OAuth (only if credentials are provided)
@@ -45,6 +46,7 @@ export const authConfig = {
           GoogleProvider({
             clientId: process.env.AUTH_GOOGLE_ID,
             clientSecret: process.env.AUTH_GOOGLE_SECRET,
+            allowDangerousEmailAccountLinking: true,
           }),
         ]
       : []),
