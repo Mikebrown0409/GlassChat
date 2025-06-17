@@ -16,7 +16,10 @@ export const env = createEnv({
     // Google OAuth (optional)
     AUTH_GOOGLE_ID: z.string().optional(),
     AUTH_GOOGLE_SECRET: z.string().optional(),
-    DATABASE_URL: z.string().url(),
+    DATABASE_URL:
+      process.env.NODE_ENV === "production"
+        ? z.string().url("Invalid DATABASE_URL, expected absolute URL")
+        : z.string().min(1),
 
     // AI API Keys
     OPENAI_API_KEY: z.string().min(1),
