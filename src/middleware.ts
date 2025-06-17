@@ -23,7 +23,16 @@ export async function middleware(req: NextRequest) {
     // directly to getToken for clarity.
     const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
     token = await getToken({ req, secret });
+
+    console.log(
+      "[EDGE] token:",
+      !!token,
+      "cookie sent:",
+      (req.headers.get("cookie") ?? "").slice(0, 120),
+    );
   } catch (error) {
+    console.error("[EDGE] JWT error", error);
+
     // If there's a JWT error, clear all auth cookies
     const response = NextResponse.next();
     const cookieNames = [
