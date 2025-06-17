@@ -7,6 +7,8 @@ import {
   Settings as SettingsIcon,
   Sidebar as SidebarIcon,
 } from "lucide-react";
+import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "~/components/ui/Button";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import {
@@ -41,6 +43,8 @@ export function ChatHeader({
     currentRoomId: s.currentRoomId,
     onlineUsers: s.onlineUsers,
   }));
+
+  const router = useRouter();
 
   return (
     <header
@@ -100,14 +104,14 @@ export function ChatHeader({
             </DropdownMenuTrigger>
             <DropdownMenuContent side="bottom" align="end">
               <DropdownMenuItem
-                onSelect={() => alert("Settings")}
+                onSelect={() => router.push("/settings")}
                 className="flex items-center gap-2"
               >
                 <SettingsIcon size={16} />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuItem
-                onSelect={() => alert("Logout")}
+                onSelect={() => signOut({ callbackUrl: "/landing" })}
                 className="flex items-center gap-2 text-red-500 focus:text-red-500"
               >
                 <LogOut size={16} />

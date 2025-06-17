@@ -33,6 +33,8 @@ const MOCK_RESPONSES: Record<AIModel, string> = {
     "I'm a mock GPT-4 Turbo response. This would normally connect to OpenAI's API.",
   [AIModel.GPT_3_5_TURBO]:
     "I'm a mock GPT-3.5 Turbo response. This would normally connect to OpenAI's API.",
+  [AIModel.GPT_4O_MINI]:
+    "I'm a mock GPT-4o Mini response. This would normally connect to OpenAI's API.",
   [AIModel.CLAUDE_3_OPUS]:
     "I'm a mock Claude 3 Opus response. This would normally connect to Anthropic's API.",
   [AIModel.CLAUDE_3_SONNET]:
@@ -208,6 +210,13 @@ class AIModelManager {
       );
     }
 
+    // Debug logging
+    console.log("🔍 OpenAI API Key Debug:");
+    console.log("  - Key present:", !!env.OPENAI_API_KEY);
+    console.log("  - Key length:", env.OPENAI_API_KEY.length);
+    console.log("  - Key prefix:", env.OPENAI_API_KEY.substring(0, 10) + "...");
+    console.log("  - Model:", model);
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -228,7 +237,14 @@ class AIModelManager {
       }),
     });
 
+    // Debug logging for response
+    console.log("🔍 OpenAI Response Debug:");
+    console.log("  - Status:", response.status);
+    console.log("  - OK:", response.ok);
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.log("  - Error response:", errorText);
       await this.handleHTTPError(response, AIProvider.OPENAI);
     }
 

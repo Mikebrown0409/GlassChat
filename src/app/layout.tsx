@@ -5,7 +5,9 @@ import { type Metadata } from "next";
 
 import { ThemeProvider } from "~/components/ui/ThemeProvider";
 import { ThemeSwitcher } from "~/components/ui/ThemeSwitcher";
+import { UserCacheIsolator } from "~/components/UserCacheIsolator";
 import { CollabModeProvider } from "~/context/CollabModeContext";
+import { auth } from "~/server/auth";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
@@ -15,9 +17,11 @@ export const metadata: Metadata = {
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const session = await auth();
+
   return (
     <html
       lang="en"
@@ -53,6 +57,7 @@ export default function RootLayout({
             <ThemeSwitcher />
           </div>
           <CollabModeProvider>
+            <UserCacheIsolator userId={session?.user.id ?? null} />
             <TRPCReactProvider>{children}</TRPCReactProvider>
           </CollabModeProvider>
         </ThemeProvider>

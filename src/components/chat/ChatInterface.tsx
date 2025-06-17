@@ -52,14 +52,13 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   // generateResponse handled inside hook
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [selectedModelId, setSelectedModelId] = useState("gemini-2.0-flash");
   const {
     isTyping,
-    selectedModel,
-    setSelectedModel,
     generateResponseIsPending,
     handleSubmit: handleSubmitFromHook,
     handleStop,
-  } = useChatGeneration(currentChatId, messages);
+  } = useChatGeneration(currentChatId, messages, selectedModelId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -239,9 +238,26 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       id: "gemini-2.0-flash",
       name: "Gemini 2.0 Flash",
       description: "Fastest and newest",
+      enabled: true,
     },
-    { id: "gpt-4", name: "GPT-4 Turbo", description: "Most capable model" },
-    { id: "claude-3", name: "Claude 3", description: "Great for analysis" },
+    {
+      id: "gpt-4o-mini",
+      name: "GPT-4o Mini",
+      description: "Cost-efficient GPT-4o variant",
+      enabled: true,
+    },
+    {
+      id: "gpt-4",
+      name: "GPT-4 Turbo",
+      description: "Coming soon",
+      enabled: false,
+    },
+    {
+      id: "claude-3",
+      name: "Claude 3",
+      description: "Coming soon",
+      enabled: false,
+    },
   ];
 
   // Handle keyboard shortcuts for selection menu
@@ -405,8 +421,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           isTyping={isTyping}
           onSubmit={handleComposerSubmit}
           onStop={handleStop}
-          selectedModel={selectedModel}
-          setSelectedModel={setSelectedModel}
+          selectedModel={selectedModelId}
+          setSelectedModel={setSelectedModelId}
           modelDropdownOpen={modelDropdownOpen}
           setModelDropdownOpen={setModelDropdownOpen}
           models={models}

@@ -9,6 +9,8 @@ import {
   Plus,
   Settings as SettingsIcon,
 } from "lucide-react";
+import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { memo, useCallback, useMemo, useState } from "react";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/Button";
@@ -52,6 +54,7 @@ export function ChatSidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const [renamingChat, setRenamingChat] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const router = useRouter();
 
   const chats = useLiveChats();
   // Collaboration store — determine if we are in a room and who is online
@@ -244,14 +247,14 @@ export function ChatSidebar({
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start">
             <DropdownMenuItem
-              onSelect={() => alert("Settings")}
+              onSelect={() => router.push("/settings")}
               className="flex items-center gap-2"
             >
               <SettingsIcon size={16} />
               Settings
             </DropdownMenuItem>
             <DropdownMenuItem
-              onSelect={() => alert("Logout")}
+              onSelect={() => signOut({ callbackUrl: "/landing" })}
               className="flex items-center gap-2 text-red-500 focus:text-red-500"
             >
               <LogOut size={16} />

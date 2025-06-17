@@ -9,7 +9,6 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { createPortal } from "react-dom";
 import { AttachmentPicker } from "~/components/ui/AttachmentPicker";
 import { Button } from "~/components/ui/Button";
 import { SpeechToTextButton } from "~/components/ui/SpeechToTextButton";
@@ -19,6 +18,7 @@ interface ModelOption {
   id: string;
   name: string;
   description?: string;
+  enabled: boolean;
 }
 
 export interface ChatComposerHandle {
@@ -126,46 +126,18 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     useEffect(() => {
       if (!modelDropdownOpen) return;
       const handleOutside = (e: MouseEvent) => {
+        const target = e.target as Node;
         if (
-          triggerRef.current &&
-          !triggerRef.current.contains(e.target as Node)
+          triggerRef.current?.contains(target) ||
+          dropdownRefInternal.current?.contains(target)
         ) {
-          setModelDropdownOpen(false);
+          return; // click inside trigger or dropdown – ignore
         }
+        setModelDropdownOpen(false);
       };
       document.addEventListener("mousedown", handleOutside);
       return () => document.removeEventListener("mousedown", handleOutside);
     }, [modelDropdownOpen]);
-
-    const dropdownElement =
-      modelDropdownOpen && dropdownCoords
-        ? createPortal(
-            <div
-              ref={dropdownRefInternal}
-              className="fixed z-50 w-40 rounded-md border-none bg-neutral-900 shadow-lg"
-              style={{ top: dropdownCoords.y, left: dropdownCoords.x }}
-            >
-              {models.map((model) => (
-                <button
-                  key={model.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedModel(model.name);
-                    setModelDropdownOpen(false);
-                  }}
-                  className={`w-full px-2 py-1 text-left text-xs transition-colors first:rounded-t-md last:rounded-b-md hover:bg-neutral-800 ${
-                    selectedModel === model.name
-                      ? "text-white"
-                      : "text-gray-300"
-                  }`}
-                >
-                  {model.name}
-                </button>
-              ))}
-            </div>,
-            document.body,
-          )
-        : null;
 
     const handleSend = async () => {
       if (!input.trim() && attachments.length === 0) return;
@@ -195,6 +167,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       setInput("");
       setAttachments([]);
     };
+
+    console.log("render selectedModel", selectedModel);
+    const info = models.find((m) => m.id === selectedModel);
 
     return (
       <footer
@@ -254,47 +229,66 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                 {/* Right cluster */}
                 <div className="flex items-center gap-2">
                   {/* Model selector */}
-                  <div ref={dropdownRef} className="self-center">
-                    {(() => {
-                      const info = models.find((m) => m.name === selectedModel);
-                      const tooltip = info?.description
-                        ? `${info.name} – ${info.description}`
-                        : (info?.name ?? "");
-                      return (
-                        <Button
-                          ref={triggerRef}
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() =>
-                            setModelDropdownOpen(!modelDropdownOpen)
-                          }
-                          title={tooltip}
-                          className="h-6 px-2"
-                        >
-                          <span className="max-w-[90px] truncate text-[11px] font-medium">
-                            {selectedModel}
-                          </span>
-                          <svg
-                            width="7"
-                            height="7"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            className={`ml-0.5 transition-transform duration-200 ${
-                              modelDropdownOpen ? "rotate-180" : ""
-                            }`}
+                  <div ref={dropdownRef} className="relative self-center">
+                    <Button
+                      ref={triggerRef}
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                      title={info?.description ?? ""}
+                      className="h-6 px-2"
+                    >
+                      <span className="max-w-[90px] truncate text-[11px] font-medium">
+                        {info?.name ?? "Model"}
+                      </span>
+                      <svg
+                        width="7"
+                        height="7"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        className={`ml-0.5 transition-transform duration-200 ${
+                          modelDropdownOpen ? "rotate-180" : ""
+                        }`}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </Button>
+
+                    {modelDropdownOpen && (
+                      <div
+                        ref={dropdownRefInternal}
+                        className="absolute right-0 bottom-full z-50 mb-1 w-40 rounded-md bg-neutral-900 shadow-lg"
+                      >
+                        {models.map((model) => (
+                          <button
+                            key={model.id}
+                            type="button"
+                            disabled={!model.enabled}
+                            onClick={() => {
+                              if (model.enabled) {
+                                console.log("Selecting model", model.id);
+                                setSelectedModel(model.id);
+                                setModelDropdownOpen(false);
+                              }
+                            }}
+                            className={`block w-full px-2 py-1 text-left text-xs first:rounded-t-md last:rounded-b-md hover:bg-neutral-800 ${
+                              selectedModel === model.id
+                                ? "text-white"
+                                : "text-gray-300"
+                            } ${!model.enabled ? "cursor-not-allowed opacity-50" : ""}`}
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        </Button>
-                      );
-                    })()}
+                            {model.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Send / Stop */}
@@ -349,7 +343,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                 </div>
               )}
             </form>
-            {dropdownElement}
           </div>
         </div>
       </footer>

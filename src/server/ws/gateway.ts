@@ -1,3 +1,4 @@
+import { parse } from "cookie";
 import { IncomingMessage } from "http";
 import WebSocket, { WebSocketServer } from "ws";
 import * as Y from "yjs";
@@ -17,7 +18,18 @@ export function startCollaborationGateway(port = 4001) {
   wss = new WebSocketServer({ port });
   console.log(`[CollabWS] WebSocket gateway listening on :${port}`);
 
-  wss.on("connection", (socket: WebSocket) => {
+  wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
+    // Basic auth check: require NextAuth session cookie in production
+    if (process.env.NODE_ENV === "production") {
+      const cookies = parse(req.headers.cookie ?? "");
+      const hasSession =
+        cookies["next-auth.session-token"] ||
+        cookies["__Secure-next-auth.session-token"];
+      if (!hasSession) {
+        socket.close();
+        return;
+      }
+    }
     const client: ClientInfo = { socket, roomId: null };
 
     socket.on("message", (raw: WebSocket.RawData) => {

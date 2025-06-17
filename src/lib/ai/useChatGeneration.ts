@@ -13,9 +13,9 @@ interface Message {
 export function useChatGeneration(
   currentChatId: string | undefined,
   messages: Message[],
+  selectedModel: string,
 ) {
   const [isTyping, setIsTyping] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("Gemini 2.0 Flash");
 
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -36,9 +36,10 @@ export function useChatGeneration(
       await memory.addMemory(userMessage, { role: "user" });
 
       const map: Record<string, AIModel> = {
-        "Gemini 2.0 Flash": AIModel.GEMINI_2_0_FLASH,
-        "GPT-4 Turbo": AIModel.GPT_4_TURBO,
-        "Claude 3": AIModel.CLAUDE_3_SONNET,
+        "gemini-2.0-flash": AIModel.GEMINI_2_0_FLASH,
+        "gpt-4o-mini": AIModel.GPT_4O_MINI,
+        "gpt-4": AIModel.GPT_4_TURBO,
+        "claude-3": AIModel.CLAUDE_3_SONNET,
       };
       const aiModel = map[selectedModel] ?? AIModel.GEMINI_2_0_FLASH;
 
@@ -175,8 +176,6 @@ export function useChatGeneration(
 
   return {
     isTyping,
-    selectedModel,
-    setSelectedModel,
     generateResponseIsPending: generateResponse.isPending,
     handleSubmit,
     handleStop,
