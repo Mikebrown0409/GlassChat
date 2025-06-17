@@ -63,6 +63,7 @@ export default function LandingPage() {
           alt="classical statue facing robot illustration"
           fill
           priority
+          unoptimized
           className="pointer-events-none object-contain opacity-5 mix-blend-lighten select-none md:opacity-10"
         />
 
