@@ -5,14 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Attempt to decode the NextAuth JWT (does NOT hit DB)
-  let token: object | null = null;
-  try {
-    token = await getToken({ req, secret: process.env.AUTH_SECRET });
-  } catch {
-    // swallow, will trigger stale-cookie clearing below
-  }
-
   // Public routes that don't require auth
   const publicPaths = ["/landing", "/login"];
   const isPublic =
@@ -22,21 +14,42 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/favicon.ico") ||
     pathname.startsWith("/uploads");
 
-  if (isPublic && !token) {
-    // Clear cookies if invalid and continue to public page
+  // Attempt to decode the NextAuth JWT (does NOT hit DB)
+  let token: object | null = null;
+  try {
+    token = await getToken({ req, secret: process.env.AUTH_SECRET });
+  } catch (error) {
+    // If there's a JWT error, clear all auth cookies
     const response = NextResponse.next();
     const cookieNames = [
       "next-auth.session-token",
       "__Secure-next-auth.session-token",
       "next-auth.csrf-token",
       "__Host-next-auth.csrf-token",
+      "next-auth.callback-url",
+      "__Secure-next-auth.callback-url",
     ];
+
     cookieNames.forEach((name) => {
-      if (req.cookies.get(name)) {
-        response.cookies.set(name, "", { path: "/", expires: new Date(0) });
-      }
+      response.cookies.delete(name);
     });
+
+    // If not on a public path, redirect to landing
+    if (!isPublic) {
+      return NextResponse.redirect(new URL("/landing", req.url));
+    }
+
     return response;
+  }
+
+  // If we're on a public path and not authenticated, that's fine
+  if (isPublic && !token) {
+    return NextResponse.next();
+  }
+
+  // If we're not on a public path and not authenticated, redirect to landing
+  if (!isPublic && !token) {
+    return NextResponse.redirect(new URL("/landing", req.url));
   }
 
   return NextResponse.next();

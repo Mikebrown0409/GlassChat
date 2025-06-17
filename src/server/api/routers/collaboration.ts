@@ -115,6 +115,9 @@ export const collaborationRouter = createTRPCRouter({
       error?: string;
     }> => {
       try {
+        if (!collaborationManager.getCurrentUser()) {
+          await collaborationManager.createUser("Guest");
+        }
         const room = await collaborationManager.createRoom(
           input.chatId,
           input.name,
@@ -143,6 +146,9 @@ export const collaborationRouter = createTRPCRouter({
       error?: string;
     }> => {
       try {
+        if (!collaborationManager.getCurrentUser()) {
+          await collaborationManager.createUser("Guest");
+        }
         const room = await collaborationManager.joinRoom(input.roomId);
         return {
           success: true,

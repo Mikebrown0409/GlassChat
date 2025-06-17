@@ -6,6 +6,7 @@ import { db } from "~/lib/db";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 
+import { clsx } from "clsx";
 import { useCollabMode } from "~/context/CollabModeContext";
 import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { collaborationManager } from "~/lib/collaboration/collaborationManager";
@@ -393,7 +394,10 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       {/* Main Content with dynamic margin for sidebar */}
       <main
         data-chat-root
-        className="relative flex h-full min-w-0 flex-1 flex-col"
+        className={clsx(
+          "relative flex h-full min-w-0 flex-1 flex-col transition-all duration-300",
+          insightsOpen && isDesktop && "mr-80",
+        )}
       >
         {/* Top Bar */}
         <ChatHeader

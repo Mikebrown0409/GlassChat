@@ -437,7 +437,17 @@ class CollaborationManager {
       -1,
     );
     return messagesData
-      .map((data: string) => JSON.parse(data) as CollaborationMessage)
+      .map((data: string | CollaborationMessage) => {
+        try {
+          return typeof data === "string"
+            ? (JSON.parse(data) as CollaborationMessage)
+            : (data as CollaborationMessage);
+        } catch (err) {
+          console.error("Failed to parse collaboration message:", err, data);
+          return null;
+        }
+      })
+      .filter((m): m is CollaborationMessage => !!m)
       .reverse();
   }
 
@@ -560,7 +570,17 @@ class CollaborationManager {
       -1,
     );
     return eventsData
-      .map((data: string) => JSON.parse(data) as CollaborationEvent)
+      .map((data: string | CollaborationEvent) => {
+        try {
+          return typeof data === "string"
+            ? (JSON.parse(data) as CollaborationEvent)
+            : (data as CollaborationEvent);
+        } catch (err) {
+          console.error("Failed to parse collaboration event:", err, data);
+          return null;
+        }
+      })
+      .filter((event): event is CollaborationEvent => !!event)
       .filter((event: CollaborationEvent) => event.timestamp > since)
       .reverse(); // Get chronological order
   }

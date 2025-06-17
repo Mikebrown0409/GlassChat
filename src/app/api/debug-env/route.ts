@@ -10,5 +10,10 @@ export async function GET() {
     googleKeyLength: env.GOOGLE_GENERATIVE_AI_API_KEY?.length ?? 0,
     processEnvOpenAI: !!process.env.OPENAI_API_KEY,
     processEnvOpenAILength: process.env.OPENAI_API_KEY?.length ?? 0,
+    authSecretPresent: !!env.AUTH_SECRET,
+    authSecretLength: env.AUTH_SECRET?.length ?? 0,
+    authSecretPrefix: env.AUTH_SECRET?.substring(0, 10) + "...",
+    processEnvAuthSecret: !!process.env.AUTH_SECRET,
+    processEnvAuthSecretLength: process.env.AUTH_SECRET?.length ?? 0,
   });
 }

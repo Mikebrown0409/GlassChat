@@ -178,12 +178,16 @@ class MockRedis {
   }
 }
 
-// Initialize Redis client (use mock in development if no UPSTASH_REDIS_REST_URL)
+// Ensure a single MockRedis instance across the entire dev process
+const globalForRedis = globalThis as unknown as {
+  mockRedis?: MockRedis;
+};
+
 export const redis = process.env.UPSTASH_REDIS_REST_URL
   ? new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL,
       token: process.env.UPSTASH_REDIS_REST_TOKEN!,
     })
-  : new MockRedis();
+  : (globalForRedis.mockRedis ?? (globalForRedis.mockRedis = new MockRedis()));
 
 export type RedisClient = typeof redis;
