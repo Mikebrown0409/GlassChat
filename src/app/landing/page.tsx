@@ -118,33 +118,20 @@ export default function LandingPage() {
         />
       </motion.div>
 
-      {/* social proof */}
-      <div className="mt-20 flex items-center justify-center gap-6 opacity-70">
-        {["Acme", "VoiceAI", "PromptBase"].map((l) => (
+      {/* tech stack badges */}
+      <div className="mt-20 flex flex-wrap items-center justify-center gap-4 opacity-70">
+        {["GPT-4o", "Claude 3", "Supabase", "Upstash Redis"].map((l) => (
           <span
             key={l}
-            className="text-sm tracking-wider text-zinc-400 uppercase"
+            className="rounded-full border border-white/20 px-3 py-1 text-xs tracking-wide text-zinc-400 backdrop-blur-sm"
           >
             {l}
           </span>
         ))}
       </div>
 
-      {/* footer CTA */}
-      <section className="relative mt-32 w-full max-w-5xl overflow-hidden rounded-3xl border border-violet-600/40 bg-zinc-900/60 px-8 py-12 text-center shadow-[0_0_30px_0_rgba(124,58,237,0.3)] backdrop-blur-md">
-        <h2 className="mb-6 text-2xl font-semibold text-white">
-          Ready to start collaborating?
-        </h2>
-        <Link
-          href="/login"
-          className="relative inline-block rounded-full p-[2px]"
-        >
-          <span className="animate-gradient-x absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-violet-700 bg-[length:200%_200%]" />
-          <span className="relative block rounded-full bg-zinc-900/80 px-8 py-3 text-sm font-semibold text-white backdrop-blur-md">
-            Sign&nbsp;In
-          </span>
-        </Link>
-      </section>
+      {/* spacer */}
+      <div className="h-24" />
 
       {/* keyframes style injected */}
       <style jsx global>{`
