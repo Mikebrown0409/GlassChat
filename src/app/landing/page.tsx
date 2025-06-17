@@ -1,5 +1,6 @@
 "use client";
 
+import heroArt from "@/../public/landing-bg.webp";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
@@ -59,11 +60,12 @@ export default function LandingPage() {
       >
         {/* background art */}
         <Image
-          src="/landing-bg.webp"
+          src={heroArt}
           alt="classical statue facing robot illustration"
           fill
           priority
           unoptimized
+          sizes="100vw"
           className="pointer-events-none object-contain opacity-15 mix-blend-screen select-none md:opacity-20"
         />
 
