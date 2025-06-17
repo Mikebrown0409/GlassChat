@@ -1,38 +1,63 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { auth } from "~/server/auth";
+"use client";
 
-export default async function LandingPage() {
-  const session = await auth();
+import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+export default function LandingPage() {
+  const { data: session } = useSession();
+  const router = useRouter();
   if (session) {
-    redirect("/");
+    router.replace("/");
   }
 
   return (
-    <main className="bg-gradient-brand flex min-h-screen flex-col items-center justify-center px-4 text-center text-white">
-      <h1 className="text-5xl font-extrabold tracking-tight drop-shadow-lg md:text-6xl lg:text-7xl">
-        Welcome to{" "}
-        <span className="rounded-md bg-white/20 px-3 py-1">GlassChat</span>
-      </h1>
-      <p className="mt-6 max-w-2xl text-lg opacity-90 md:text-xl">
-        An AI chat experience with a beautiful glassmorphism interface.
-        Collaborate, learn, and explore ideas together.
-      </p>
-      <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
-        <Link
-          href="/login"
-          className="text-brand-primary rounded-md bg-white px-8 py-3 font-semibold shadow-lg transition hover:brightness-95"
-        >
-          Get Started
-        </Link>
-        <a
-          href="https://github.com/Mikebrown0409/GlassChat"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-md border border-white/40 px-8 py-3 font-semibold text-white/90 transition hover:bg-white/10"
-        >
-          View on GitHub
-        </a>
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-500 via-sky-500 to-indigo-600 px-4 py-24 text-center text-white">
+      {/* Glass hero card */}
+      <motion.section
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="backdrop-blur-lg/60 glass relative mx-auto flex max-w-3xl flex-col items-center rounded-3xl border border-fuchsia-500/30 bg-zinc-900/40 px-8 py-16 shadow-[0_0_40px_0_rgba(217,70,239,0.4)]"
+        style={{ WebkitBackdropFilter: "blur(16px)" }}
+      >
+        <h1 className="bg-gradient-to-r from-white to-zinc-200 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent md:text-6xl">
+          GlassChat
+        </h1>
+        <p className="mt-4 max-w-xl text-lg leading-relaxed text-white/90">
+          AI chat & real-time collaboration—polished with glassmorphism.
+          Brainstorm, code, and create together.
+        </p>
+
+        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
+          <Link
+            href="/login"
+            className="rounded-full bg-fuchsia-500 px-8 py-3 font-semibold text-white shadow-md transition hover:bg-fuchsia-400"
+          >
+            Sign&nbsp;In
+          </Link>
+          <Link
+            href="/register"
+            className="rounded-full border border-white/50 px-8 py-3 font-semibold text-white/90 transition hover:bg-white/10"
+          >
+            Register
+          </Link>
+          <a
+            href="https://github.com/Mikebrown0409/GlassChat"
+            target="_blank"
+            className="rounded-full border border-white/0 px-8 py-3 font-semibold text-white/70 underline-offset-4 transition hover:text-white"
+            rel="noopener noreferrer"
+          >
+            GitHub ↗
+          </a>
+        </div>
+      </motion.section>
+
+      {/* Decorative blobs */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-white/20 blur-3xl" />
+        <div className="absolute right-[-10%] bottom-[-20%] h-72 w-72 rotate-45 rounded-[30%] bg-white/10 blur-2xl" />
       </div>
     </main>
   );
