@@ -1,12 +1,12 @@
 "use client";
 
-import heroArt from "@/../public/landing-bg.webp";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import heroArt from "../../../public/landing-bg.webp";
 
 export default function LandingPage() {
   const { data: session } = useSession();
