@@ -5,14 +5,21 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import bgArt from "../../../public/landing-bg2.webp";
 
 export default function LandingClient() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
-  if (session) {
-    router.replace("/");
-  }
+
+  // Redirect to the home page once the user is authenticated. Wrap in useEffect
+  // so the navigation only happens after the component mounts and the session
+  // status has been resolved, preventing unnecessary re-renders/loops.
+  useEffect(() => {
+    if (status === "authenticated" && session) {
+      router.replace("/");
+    }
+  }, [status, session, router]);
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-950 px-4 py-24 text-center text-white">

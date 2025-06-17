@@ -1,0 +1,11 @@
+
+> glasschat@0.1.0 start
+> next start
+
+   ▲ Next.js 15.3.3
+   - Local:        http://localhost:4000
+   - Network:      http://192.168.1.108:4000
+
+ ✓ Starting...
+ ✓ Ready in 391ms
+🔑 AI Real Mode: API keys detected
