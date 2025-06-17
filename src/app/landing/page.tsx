@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import heroArt from "../../../public/landing-bg.webp";
+import bgArt from "../../../public/landing-bg2.webp";
 
 export default function LandingPage() {
   const { data: session } = useSession();
@@ -52,7 +52,7 @@ export default function LandingPage() {
     >
       {/* Full-page background artwork */}
       <Image
-        src={heroArt}
+        src={bgArt}
         alt="classical statue facing robot illustration"
         fill
         priority
