@@ -9,6 +9,8 @@ datasource db {
     provider = "postgresql"
     // Uses Supabase Postgres. Ensure DATABASE_URL is set (e.g. to the value of POSTGRES_PRISMA_URL)
     url      = env("DATABASE_URL")
+    // Use the direct Postgres connection (5432) for migrations to avoid pooling limitations.
+    directUrl = env("DATABASE_DIRECT_URL")
 }
 
 model Post {
