@@ -66,13 +66,13 @@ export default function LandingPage() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="backdrop-blur-lg/60 glass relative z-10 mx-auto flex max-w-3xl flex-col items-center rounded-3xl border border-violet-600/40 bg-zinc-900/40 px-8 py-16 shadow-[0_0_40px_0_rgba(124,58,237,0.45)]"
+        className="backdrop-blur-lg/60 glass relative z-10 mx-auto flex max-w-2xl flex-col items-center rounded-3xl border border-violet-600/40 bg-zinc-900/40 px-6 py-12 shadow-[0_0_30px_0_rgba(124,58,237,0.35)]"
         style={{ WebkitBackdropFilter: "blur(16px)" }}
       >
-        <h1 className="relative z-10 bg-gradient-to-r from-white to-zinc-200 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent md:text-6xl">
+        <h1 className="relative z-10 bg-gradient-to-r from-white to-zinc-200 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent md:text-5xl">
           GlassChat
         </h1>
-        <p className="relative z-10 mt-4 max-w-xl text-lg leading-relaxed text-white/90">
+        <p className="relative z-10 mt-3 max-w-xl text-base leading-relaxed text-white/90 md:text-lg">
           AI chat & real-time collaboration—polished with glassmorphism.
           Brainstorm, code, and create together.
         </p>
