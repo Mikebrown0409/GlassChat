@@ -239,13 +239,21 @@ export function ChatSidebar({
 
       {/* Bottom user/settings section */}
       <div className="flex items-center justify-between gap-2 border-t border-zinc-800 p-4">
+        <Avatar>
+          <AvatarFallback>U</AvatarFallback>
+        </Avatar>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Avatar className="cursor-pointer">
-              <AvatarFallback>U</AvatarFallback>
-            </Avatar>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="p-0 hover:bg-zinc-800"
+            >
+              <MoreHorizontal size={16} className="text-zinc-400" />
+            </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start">
+          <DropdownMenuContent side="top" align="end">
             <DropdownMenuItem
               onSelect={() => router.push("/settings")}
               className="flex items-center gap-2"
@@ -262,7 +270,6 @@ export function ChatSidebar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <MoreHorizontal size={16} className="text-zinc-400" />
       </div>
     </motion.aside>
   );

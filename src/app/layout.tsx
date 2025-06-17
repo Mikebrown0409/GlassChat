@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 
 import { Analytics } from "@vercel/analytics/react";
+import { AuthSessionProvider } from "~/components/AuthSessionProvider";
 import { ThemeProvider } from "~/components/ui/ThemeProvider";
 import { ThemeSwitcher } from "~/components/ui/ThemeSwitcher";
 import { UserCacheIsolator } from "~/components/UserCacheIsolator";
@@ -53,16 +54,18 @@ export default async function RootLayout({
         />
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
-        <ThemeProvider storageKey="glasschat-theme">
-          <div className="absolute top-4 right-4">
-            <ThemeSwitcher />
-          </div>
-          <CollabModeProvider>
-            <UserCacheIsolator userId={session?.user.id ?? null} />
-            <TRPCReactProvider>{children}</TRPCReactProvider>
-            <Analytics />
-          </CollabModeProvider>
-        </ThemeProvider>
+        <AuthSessionProvider session={session}>
+          <ThemeProvider storageKey="glasschat-theme">
+            <div className="absolute top-4 right-4">
+              <ThemeSwitcher />
+            </div>
+            <CollabModeProvider>
+              <UserCacheIsolator userId={session?.user.id ?? null} />
+              <TRPCReactProvider>{children}</TRPCReactProvider>
+              <Analytics />
+            </CollabModeProvider>
+          </ThemeProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   );
