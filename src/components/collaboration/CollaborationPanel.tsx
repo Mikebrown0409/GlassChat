@@ -248,7 +248,10 @@ export function CollaborationPanel({
   const handleShareRoom = async () => {
     if (!currentRoomId) return;
 
-    const shareUrl = `${window.location.origin}/collaborate?room=${currentRoomId}`;
+    const shareUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/collaborate?room=${currentRoomId}`
+        : "";
 
     try {
       await navigator.clipboard.writeText(shareUrl);
