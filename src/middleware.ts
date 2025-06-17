@@ -34,12 +34,12 @@ export async function middleware(req: NextRequest) {
       response.cookies.delete(name);
     });
 
-    // If not on a public path, redirect to landing
-    if (!isPublic) {
-      return NextResponse.redirect(new URL("/landing", req.url));
+    // Redirect to the same URL (or /landing for non-public) so the next request has clean cookies
+    if (isPublic) {
+      return NextResponse.redirect(new URL(req.url));
     }
 
-    return response;
+    return NextResponse.redirect(new URL("/landing", req.url));
   }
 
   // If we're on a public path and not authenticated, that's fine

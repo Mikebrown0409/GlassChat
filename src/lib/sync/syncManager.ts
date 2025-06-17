@@ -2,15 +2,15 @@ import { Redis } from "@upstash/redis";
 import { nanoid } from "nanoid";
 import { db, type Chat, type Message, type User } from "../db";
 import {
-  type SyncableEntity,
-  type SyncOperationRecord,
-  type SyncConflict,
-  type RedisMessage,
-  type SyncManagerConfig,
-  type SyncStats,
+  ConflictResolution,
   SyncOperation,
   SyncStatus,
-  ConflictResolution,
+  type RedisMessage,
+  type SyncableEntity,
+  type SyncConflict,
+  type SyncManagerConfig,
+  type SyncOperationRecord,
+  type SyncStats,
 } from "./types";
 
 class SyncManager {
@@ -60,7 +60,7 @@ class SyncManager {
     try {
       // For Upstash Redis, we need both URL and token
       if (this.config.redisUrl.startsWith("https://")) {
-        const token = process.env.UPSTASH_REDIS_TOKEN;
+        const token = process.env.UPSTASH_REDIS_REST_TOKEN;
         if (!token) {
           console.warn("Upstash Redis token not found, using local-only mode");
           return;
@@ -665,7 +665,7 @@ class SyncManager {
 
 // Create singleton instance
 export const syncManager = new SyncManager({
-  redisUrl: process.env.NEXT_PUBLIC_UPSTASH_REDIS_URL,
+  redisUrl: process.env.UPSTASH_REDIS_REST_URL,
   syncIntervalMs: 5000,
   enableRealTimeSync: true,
   conflictResolutionStrategy: ConflictResolution.LOCAL_WINS,

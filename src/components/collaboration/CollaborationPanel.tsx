@@ -4,7 +4,6 @@ import { clsx } from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Check,
-  Code,
   MessageCircle,
   MoreVertical,
   Pencil,
@@ -52,9 +51,9 @@ export function CollaborationPanel({
   onToggle,
   embedded = false,
 }: CollaborationPanelProps) {
-  const [activeTab, setActiveTab] = useState<
-    "rooms" | "messages" | "live-coding" | "users"
-  >("rooms");
+  const [activeTab, setActiveTab] = useState<"rooms" | "messages" | "users">(
+    "rooms",
+  );
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("collabRoomId");
@@ -315,16 +314,11 @@ export function CollaborationPanel({
           {[
             { id: "rooms", label: "Rooms", icon: Users },
             { id: "messages", label: "Chat", icon: MessageCircle },
-            { id: "live-coding", label: "Live Code", icon: Code },
             { id: "users", label: "Users", icon: Users },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
-              onClick={() =>
-                setActiveTab(
-                  id as "rooms" | "messages" | "live-coding" | "users",
-                )
-              }
+              onClick={() => setActiveTab(id as "rooms" | "messages" | "users")}
               className={clsx(
                 "flex flex-1 items-center justify-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
                 activeTab === id
@@ -378,32 +372,6 @@ export function CollaborationPanel({
             </h3>
             <p className="mb-4 text-sm text-slate-400">
               Join or create a room to start chatting with others
-            </p>
-            <button
-              onClick={() => setActiveTab("rooms")}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
-            >
-              Go to Rooms
-            </button>
-          </div>
-        )}
-
-        {activeTab === "live-coding" && currentRoomId && (
-          <MemoLiveCodingTab
-            _roomId={currentRoomId}
-            liveCoding={collaboration.liveCoding}
-            currentUser={collaboration.user.user}
-          />
-        )}
-
-        {activeTab === "live-coding" && !currentRoomId && (
-          <div className="py-8 text-center">
-            <Code size={48} className="mx-auto mb-4 text-slate-600" />
-            <h3 className="mb-2 text-lg font-medium text-white">
-              No Room Connected
-            </h3>
-            <p className="mb-4 text-sm text-slate-400">
-              Join or create a room to start coding with others
             </p>
             <button
               onClick={() => setActiveTab("rooms")}
@@ -755,143 +723,6 @@ function ChatTab({
   );
 }
 
-// Live Coding Tab Component
-function LiveCodingTab({
-  _roomId,
-  liveCoding,
-  currentUser,
-}: {
-  _roomId: string;
-  liveCoding: {
-    localContent?: string;
-    updateCode: (
-      code: string,
-      cursorPosition?: { line: number; column: number },
-    ) => Promise<void>;
-    toggleLiveCodingMode: () => Promise<{
-      success: boolean;
-      isLiveCodingMode?: boolean;
-      error?: string;
-    }>;
-    isLiveCodingMode: boolean;
-    isToggling: boolean;
-    session?: {
-      version: number;
-      lastModifiedBy: string;
-    } | null;
-    isUpdating: boolean;
-    lastSyncTime?: number;
-  };
-  currentUser: CollaborationUser | null;
-}) {
-  // Use localContent from the hook for immediate UI updates and conflict prevention
-  const code = liveCoding.localContent ?? "";
-
-  const handleCodeChange = (newCode: string) => {
-    // No need to set local state - the hook handles local updates and syncing
-    void liveCoding.updateCode(newCode);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-white">Live Coding Mode</h3>
-        <button
-          onClick={() => liveCoding.toggleLiveCodingMode()}
-          disabled={liveCoding.isToggling}
-          className={clsx(
-            "rounded-md px-3 py-1 text-xs transition-colors",
-            liveCoding.isLiveCodingMode
-              ? "bg-green-600/20 text-green-400 hover:bg-green-600/30"
-              : "bg-slate-600 text-slate-300 hover:bg-slate-500",
-          )}
-        >
-          {liveCoding.isToggling
-            ? "Switching..."
-            : liveCoding.isLiveCodingMode
-              ? "Enabled"
-              : "Enable"}
-        </button>
-      </div>
-
-      {liveCoding.isLiveCodingMode && (
-        <div className="space-y-3">
-          <div className="rounded-lg border border-slate-700/50 bg-slate-800/30 p-3">
-            <div className="mb-2 flex items-center gap-2">
-              <Code size={14} className="text-purple-400" />
-              <span className="text-xs font-medium text-white">
-                Collaborative Editor
-              </span>
-            </div>
-            <p className="text-xs text-slate-400">
-              Real-time code collaboration • Auto-saves • Version tracking
-            </p>
-          </div>
-
-          <div className="relative">
-            <textarea
-              value={code}
-              onChange={(e) => handleCodeChange(e.target.value)}
-              placeholder="// Start coding together!
-console.log('Hello, collaboration!');
-
-function collaborate() {
-  return 'Amazing teamwork!';
-}"
-              className="h-56 w-full resize-none rounded-lg border border-slate-600 bg-slate-900 p-4 font-mono text-sm text-white placeholder:text-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-              spellCheck={false}
-            />
-            <div className="absolute top-2 right-2 rounded bg-slate-800/80 px-2 py-1 text-xs text-slate-500">
-              JavaScript
-            </div>
-          </div>
-
-          {liveCoding.session && (
-            <div className="flex items-center justify-between rounded-lg bg-slate-800/50 p-2 text-xs text-slate-400">
-              <span>
-                Version {liveCoding.session.version} • Last modified by{" "}
-                <span className="text-purple-400">
-                  {liveCoding.session.lastModifiedBy === currentUser?.id
-                    ? "you"
-                    : "another user"}
-                </span>
-              </span>
-              <div className="flex items-center gap-2">
-                {liveCoding.isUpdating ? (
-                  <span className="text-blue-400">● Saving...</span>
-                ) : liveCoding.lastSyncTime &&
-                  Date.now() - liveCoding.lastSyncTime < 3000 ? (
-                  <span className="text-green-400">● Synced</span>
-                ) : (
-                  <span className="text-slate-500">● Ready</span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {!liveCoding.isLiveCodingMode && (
-        <div className="py-8 text-center">
-          <Code size={48} className="mx-auto mb-4 text-slate-600" />
-          <h3 className="mb-2 text-lg font-medium text-white">
-            Live Coding Disabled
-          </h3>
-          <p className="mb-4 text-sm text-slate-400">
-            Enable live coding mode to start collaborative programming
-          </p>
-          <div className="text-xs text-slate-500">
-            • Real-time code synchronization
-            <br />
-            • Multiple cursor support
-            <br />• Version history tracking
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Users Tab Component
 function UsersTab({
   _roomId,
@@ -950,5 +781,4 @@ function UsersTab({
 
 const MemoRoomsTab = memo(RoomsTab);
 const MemoChatTab = memo(ChatTab);
-const MemoLiveCodingTab = memo(LiveCodingTab);
 const MemoUsersTab = memo(UsersTab);

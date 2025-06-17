@@ -9,7 +9,6 @@ import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 import { clsx } from "clsx";
 import { useCollabMode } from "~/context/CollabModeContext";
 import { useMediaQuery } from "~/hooks/useMediaQuery";
-import { collaborationManager } from "~/lib/collaboration/collaborationManager";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import { InsightsDrawer } from "../insights/InsightsDrawer";
 import { ChatComposer, type ChatComposerHandle } from "./ChatComposer";
@@ -317,26 +316,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   const handleToggleCollab = () => {
     toggle();
     if (mode === "solo") {
-      // entering collab: open drawer, ensure room exists
-      void (async () => {
-        try {
-          if (!currentRoomIdStore) {
-            if (!collaborationManager.getCurrentUser()) {
-              await collaborationManager.createUser(
-                session?.user?.name ?? "Guest",
-                session?.user?.image ?? undefined,
-              );
-            }
-            const room = await collaborationManager.createRoom(
-              currentChatId ?? "global",
-              "Shared Session",
-            );
-            useCollaborationStore.getState().setCurrentRoomId(room.id);
-          }
-        } catch (err) {
-          console.error("Failed to create/join room", err);
-        }
-      })();
+      // entering collab: just open drawer; user can create/join via UI
       setInsightsTab("collaboration");
       setInsightsOpen(true);
     } else {
