@@ -23,7 +23,7 @@ export function OAuthButton({
   return (
     <button
       type="button"
-      onClick={() => signIn(provider)}
+      onClick={() => signIn(provider, { callbackUrl: "/" })}
       className={clsx(
         "w-full cursor-pointer rounded-md py-3 font-medium transition",
         base,
