@@ -13,7 +13,7 @@ export default function LandingPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-500 via-sky-500 to-indigo-600 px-4 py-24 text-center text-white">
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-950 px-4 py-24 text-center text-white">
       {/* Glass hero card */}
       <motion.section
         initial={{ opacity: 0, y: 30 }}
@@ -54,10 +54,10 @@ export default function LandingPage() {
         </div>
       </motion.section>
 
-      {/* Decorative blobs */}
+      {/* Animated gradient blobs */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-white/20 blur-3xl" />
-        <div className="absolute right-[-10%] bottom-[-20%] h-72 w-72 rotate-45 rounded-[30%] bg-white/10 blur-2xl" />
+        <div className="absolute top-[-100px] left-1/4 h-[500px] w-[500px] -translate-x-1/2 [animation:spin_40s_linear_infinite] rounded-full bg-gradient-to-tr from-fuchsia-500 via-purple-600 to-indigo-700 opacity-30 blur-3xl" />
+        <div className="absolute right-0 bottom-[-120px] h-[400px] w-[400px] [animation:spin_60s_linear_reverse_infinite] rounded-full bg-gradient-to-br from-emerald-400 via-sky-500 to-purple-600 opacity-20 blur-2xl" />
       </div>
     </main>
   );
