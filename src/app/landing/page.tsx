@@ -91,9 +91,18 @@ export default function LandingPage() {
         {/* feature tiles */}
         <div className="mt-16 grid w-full max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3">
           {[
-            { title: "GPT-4o", desc: "Latest OpenAI model" },
-            { title: "Realtime", desc: "Upstash Redis sync" },
-            { title: "Memory", desc: "Context that grows" },
+            {
+              title: "Multiple AI Models",
+              desc: "Chat with GPT-4o, Claude & more—switch instantly.",
+            },
+            {
+              title: "Realtime Collab",
+              desc: "See every participant's cursor & messages live.",
+            },
+            {
+              title: "Persistent Memory",
+              desc: "GlassChat remembers your project context & summaries.",
+            },
           ].map(({ title, desc }) => (
             <div
               key={title}
@@ -120,7 +129,7 @@ export default function LandingPage() {
 
       {/* tech stack badges */}
       <div className="mt-20 flex flex-wrap items-center justify-center gap-4 opacity-70">
-        {["GPT-4o", "Claude 3", "Supabase", "Upstash Redis"].map((l) => (
+        {["AI Models", "Live Collaboration", "Smart Memory"].map((l) => (
           <span
             key={l}
             className="rounded-full border border-white/20 px-3 py-1 text-xs tracking-wide text-zinc-400 backdrop-blur-sm"
