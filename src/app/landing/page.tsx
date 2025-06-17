@@ -1,11 +1,10 @@
 "use client";
 
-import { motion, useMotionValue, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import bgArt from "../../../public/landing-bg2.webp";
 
 export default function LandingPage() {
@@ -15,41 +14,8 @@ export default function LandingPage() {
     router.replace("/");
   }
 
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const [parallax, setParallax] = useState(false);
-
-  const getCenter = (axis: "x" | "y") => {
-    if (typeof window === "undefined") return 0;
-    return axis === "x" ? window.innerWidth / 2 : window.innerHeight / 2;
-  };
-
-  const blob1X = useTransform(
-    mouseX,
-    (v) => `${(v - getCenter("x")) * -0.02}px`,
-  );
-  const blob1Y = useTransform(
-    mouseY,
-    (v) => `${(v - getCenter("y")) * -0.02}px`,
-  );
-  const blob2X = useTransform(
-    mouseX,
-    (v) => `${(v - getCenter("x")) * 0.015}px`,
-  );
-  const blob2Y = useTransform(
-    mouseY,
-    (v) => `${(v - getCenter("y")) * 0.015}px`,
-  );
-
   return (
-    <main
-      onMouseMove={(e) => {
-        if (!parallax) setParallax(true);
-        mouseX.set(e.clientX);
-        mouseY.set(e.clientY);
-      }}
-      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-950 px-4 py-24 text-center text-white"
-    >
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-950 px-4 py-24 text-center text-white">
       {/* Full-page background artwork */}
       <Image
         src={bgArt}
@@ -58,7 +24,7 @@ export default function LandingPage() {
         priority
         unoptimized
         sizes="100vw"
-        className="pointer-events-none absolute inset-0 z-0 object-cover opacity-20 mix-blend-screen select-none md:opacity-25"
+        className="pointer-events-none absolute inset-0 z-0 object-cover opacity-40 select-none md:opacity-50"
       />
 
       {/* Glass hero card */}
