@@ -3,6 +3,7 @@ import "~/styles/globals.css";
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 
+import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "~/components/ui/ThemeProvider";
 import { ThemeSwitcher } from "~/components/ui/ThemeSwitcher";
 import { UserCacheIsolator } from "~/components/UserCacheIsolator";
@@ -59,6 +60,7 @@ export default async function RootLayout({
           <CollabModeProvider>
             <UserCacheIsolator userId={session?.user.id ?? null} />
             <TRPCReactProvider>{children}</TRPCReactProvider>
+            <Analytics />
           </CollabModeProvider>
         </ThemeProvider>
       </body>
