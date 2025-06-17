@@ -1,0 +1,153 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import bgArt from "../../../public/landing-bg2.webp";
+
+export default function LandingClient() {
+  const { data: session } = useSession();
+  const router = useRouter();
+  if (session) {
+    router.replace("/");
+  }
+
+  return (
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-950 px-4 py-24 text-center text-white">
+      {/* Full-page background artwork */}
+      <Image
+        src={bgArt}
+        alt="classical statue facing robot illustration"
+        fill
+        priority
+        unoptimized
+        sizes="100vw"
+        className="pointer-events-none absolute inset-0 z-0 object-cover opacity-40 select-none md:opacity-50"
+      />
+
+      {/* Glass hero card */}
+      <motion.section
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="backdrop-blur-lg/60 glass relative z-10 mx-auto flex max-w-2xl flex-col items-center rounded-3xl border border-violet-600/40 bg-zinc-900/40 px-6 py-12 shadow-[0_0_30px_0_rgba(124,58,237,0.35)]"
+        style={{ WebkitBackdropFilter: "blur(16px)" }}
+      >
+        <h1 className="relative z-10 bg-gradient-to-r from-white to-zinc-200 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent md:text-5xl">
+          GlassChat
+        </h1>
+        <p className="relative z-10 mt-3 max-w-xl text-base leading-relaxed text-white/90 md:text-lg">
+          AI chat & real-time collaboration—polished with glassmorphism.
+          Brainstorm, code, and create together.
+        </p>
+
+        <div className="relative z-10 mt-10 flex flex-col items-center gap-4 sm:flex-row">
+          {/* animated gradient-border sign in */}
+          <Link
+            href="/login"
+            className="relative inline-block rounded-full p-[2px]"
+          >
+            <span className="animate-gradient-x absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-violet-700 bg-[length:200%_200%]" />
+            <span className="relative block rounded-full bg-zinc-900/80 px-8 py-3 text-sm font-semibold text-white backdrop-blur-md">
+              Sign&nbsp;In
+            </span>
+          </Link>
+
+          <Link
+            href="/register"
+            className="rounded-full border border-white/40 px-8 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/10"
+          >
+            Register
+          </Link>
+          <a
+            href="https://github.com/Mikebrown0409/GlassChat"
+            target="_blank"
+            className="rounded-full px-8 py-3 text-sm font-semibold text-white/70 underline-offset-4 transition hover:text-white"
+            rel="noopener noreferrer"
+          >
+            GitHub ↗
+          </a>
+        </div>
+
+        {/* animated noise overlay */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
+          <div className="animate-pulse-slow absolute inset-0 scale-110 rounded-3xl bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nNzAnIGhlaWdodD0nNzAnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zyc+PHJlY3Qgd2lkdGg9JzcwJyBoZWlnaHQ9JzcwJyBmaWxsPScjZmZmJyAvPjxmaWx0ZXIgaWQ9J24nPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249JzMuMCcgLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyBmaWx0ZXI9InVybCgjbikiIG9wYWNpdHk9JzAuMDUnIC8+PC9zdmc+')'] opacity-20" />
+        </div>
+        {/* feature tiles */}
+        <div className="mt-16 grid w-full max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3">
+          {[
+            {
+              title: "Multiple AI Models",
+              desc: "Chat with GPT-4o, Claude & more—switch instantly.",
+            },
+            {
+              title: "Realtime Collab",
+              desc: "See every participant's cursor & messages live.",
+            },
+            {
+              title: "Persistent Memory",
+              desc: "GlassChat remembers your project context & summaries.",
+            },
+          ].map(({ title, desc }) => (
+            <div
+              key={title}
+              className="backdrop-blur-md/50 rounded-2xl border border-white/10 bg-white/5 p-6 text-left shadow-lg transition hover:border-violet-500/60 hover:shadow-violet-500/20"
+            >
+              <h3 className="mb-2 text-lg font-semibold text-white">{title}</h3>
+              <p className="text-sm text-white/70">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* tech stack badges */}
+      <div className="mt-20 flex flex-wrap items-center justify-center gap-4 opacity-70">
+        {["AI Models", "Live Collaboration", "Smart Memory"].map((l) => (
+          <span
+            key={l}
+            className="rounded-full border border-white/20 px-3 py-1 text-xs tracking-wide text-zinc-400 backdrop-blur-sm"
+          >
+            {l}
+          </span>
+        ))}
+      </div>
+
+      {/* spacer */}
+      <div className="h-24" />
+
+      {/* keyframes style injected */}
+      <style jsx global>{`
+        @keyframes gradient-x {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+        .animate-pulse-slow {
+          animation: pulseNoise 8s ease-in-out infinite;
+        }
+        @keyframes pulseNoise {
+          0% {
+            opacity: 0.15;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.25;
+            transform: scale(1.02);
+          }
+          100% {
+            opacity: 0.15;
+            transform: scale(1);
+          }
+        }
+      `}</style>
+    </main>
+  );
+}
