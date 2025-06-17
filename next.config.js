@@ -51,6 +51,10 @@ const config = {
     // Make secrets visible to Edge / middleware
     AUTH_SECRET: process.env.AUTH_SECRET,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+
+    // Expose canonical production URL for client-side redirects
+    NEXT_PUBLIC_BASE_URL:
+      process.env.NEXTAUTH_URL ?? "https://glass-chat-two.vercel.app",
   },
 
   // modularizeImports for Radix

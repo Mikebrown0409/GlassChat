@@ -23,7 +23,11 @@ export function OAuthButton({
   return (
     <button
       type="button"
-      onClick={() => signIn(provider, { callbackUrl: "/" })}
+      onClick={() =>
+        signIn(provider, {
+          callbackUrl: `${process.env.NEXT_PUBLIC_BASE_URL ?? "https://glass-chat-two.vercel.app"}/`,
+        })
+      }
       className={clsx(
         "w-full cursor-pointer rounded-md py-3 font-medium transition",
         base,
