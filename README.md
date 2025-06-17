@@ -1,4 +1,4 @@
-# GlassChat 🪟
+# GlassChat
 
 An elegant, real-time, AI-powered chat & collaboration platform built with the **T3 Stack**, sprinkled with glassmorphism and production-ready tooling.
 
