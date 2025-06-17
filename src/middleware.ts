@@ -37,11 +37,13 @@ export async function middleware(req: NextRequest) {
       response.cookies.delete(name);
     });
 
-    // Redirect to the same URL (or /landing for non-public) so the next request has clean cookies
+    // For public paths, simply continue without redirect so the page can render
+    // after we cleared the invalid cookies, avoiding redirect loops.
     if (isPublic) {
-      return NextResponse.redirect(new URL(req.url));
+      return response;
     }
 
+    // For protected routes, send the user to /landing after clearing cookies.
     return NextResponse.redirect(new URL("/landing", req.url));
   }
 
