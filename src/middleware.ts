@@ -6,7 +6,7 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Public routes that don't require auth
-  const publicPaths = ["/landing", "/login", "/register"];
+  const publicPaths = ["/landing", "/login", "/register", "/api/debug-env"];
   const isPublic =
     publicPaths.includes(pathname) ||
     pathname.startsWith("/api/auth") ||

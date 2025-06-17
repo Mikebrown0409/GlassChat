@@ -48,7 +48,7 @@ const config = {
   env: {
     NEXT_PUBLIC_APP_NAME: "GlassChat",
 
-    // Added so Edge / middleware can read them
+    // Make secrets visible to Edge / middleware
     AUTH_SECRET: process.env.AUTH_SECRET,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
   },
