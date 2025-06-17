@@ -17,10 +17,11 @@ export async function middleware(req: NextRequest) {
   // Attempt to decode the NextAuth JWT (does NOT hit DB)
   let token: object | null = null;
   try {
-    token = await getToken({
-      req,
-      secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
-    });
+    // Provide no secret here so getToken uses NEXTAUTH_SECRET at runtime. This
+    // avoids edge-build inlining a stale secret value, which was causing
+    // 'no matching decryption secret' errors between edge and serverless
+    // runtimes.
+    token = await getToken({ req });
   } catch (error) {
     // If there's a JWT error, clear all auth cookies
     const response = NextResponse.next();
