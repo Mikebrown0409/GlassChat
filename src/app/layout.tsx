@@ -3,7 +3,7 @@ import "~/styles/globals.css";
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 
-import { Analytics } from "@vercel/analytics/react";
+import Analytics from "~/components/AnalyticsClient";
 import { AuthSessionProvider } from "~/components/AuthSessionProvider";
 import { ThemeProvider } from "~/components/ui/ThemeProvider";
 import { ThemeSwitcher } from "~/components/ui/ThemeSwitcher";
