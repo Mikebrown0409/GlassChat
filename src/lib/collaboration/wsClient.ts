@@ -8,7 +8,10 @@ export class CollaborationWSClient {
   }
 
   connect() {
-    const url = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/ws`;
+    // Guard against server-side execution (location is undefined in Node)
+    if (typeof window === "undefined") return;
+
+    const url = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/api/ws`;
     this.ws = new WebSocket(url);
     this.ws.binaryType = "arraybuffer";
 
