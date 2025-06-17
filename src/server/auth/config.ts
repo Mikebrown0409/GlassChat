@@ -36,12 +36,16 @@ const dev = process.env.NODE_ENV !== "production";
  */
 export const authConfig = {
   providers: [
-    // Discord OAuth
-    DiscordProvider({
-      clientId: process.env.AUTH_DISCORD_ID ?? "",
-      clientSecret: process.env.AUTH_DISCORD_SECRET ?? "",
-      ...(dev ? { allowDangerousEmailAccountLinking: true } : {}),
-    }),
+    // Discord OAuth (only if credentials are provided)
+    ...(process.env.AUTH_DISCORD_ID && process.env.AUTH_DISCORD_SECRET
+      ? [
+          DiscordProvider({
+            clientId: process.env.AUTH_DISCORD_ID,
+            clientSecret: process.env.AUTH_DISCORD_SECRET,
+            ...(dev ? { allowDangerousEmailAccountLinking: true } : {}),
+          }),
+        ]
+      : []),
 
     // Google OAuth (only if credentials are provided)
     ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
@@ -53,6 +57,7 @@ export const authConfig = {
           }),
         ]
       : []),
+
     /**
      * ...add more providers here. For example GitHub, LinkedIn, etc.
      */
