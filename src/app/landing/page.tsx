@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform } from "framer-motion";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,8 +12,34 @@ export default function LandingPage() {
     router.replace("/");
   }
 
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const blob1X = useTransform(
+    mouseX,
+    (v) => `${(v - window.innerWidth / 2) * -0.02}px`,
+  );
+  const blob1Y = useTransform(
+    mouseY,
+    (v) => `${(v - window.innerHeight / 2) * -0.02}px`,
+  );
+  const blob2X = useTransform(
+    mouseX,
+    (v) => `${(v - window.innerWidth / 2) * 0.015}px`,
+  );
+  const blob2Y = useTransform(
+    mouseY,
+    (v) => `${(v - window.innerHeight / 2) * 0.015}px`,
+  );
+
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-950 px-4 py-24 text-center text-white">
+    <main
+      onMouseMove={(e) => {
+        mouseX.set(e.clientX);
+        mouseY.set(e.clientY);
+      }}
+      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-950 px-4 py-24 text-center text-white"
+    >
       {/* Glass hero card */}
       <motion.section
         initial={{ opacity: 0, y: 30 }}
@@ -80,11 +106,45 @@ export default function LandingPage() {
         </div>
       </motion.section>
 
-      {/* Animated gradient blobs */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-[-100px] left-1/4 h-[500px] w-[500px] -translate-x-1/2 [animation:spin_40s_linear_infinite] rounded-full bg-gradient-to-tr from-violet-600 via-indigo-700 to-purple-800 opacity-25 blur-3xl" />
-        <div className="absolute right-0 bottom-[-120px] h-[400px] w-[400px] [animation:spin_60s_linear_reverse_infinite] rounded-full bg-gradient-to-br from-cyan-500 via-indigo-600 to-violet-700 opacity-20 blur-2xl" />
+      {/* animated gradient blobs */}
+      <motion.div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <motion.div
+          style={{ x: blob1X, y: blob1Y }}
+          className="absolute top-[-100px] left-1/4 h-[500px] w-[500px] -translate-x-1/2 [animation:spin_40s_linear_infinite] rounded-full bg-gradient-to-tr from-violet-600 via-indigo-700 to-purple-800 opacity-25 blur-3xl"
+        />
+        <motion.div
+          style={{ x: blob2X, y: blob2Y }}
+          className="absolute right-0 bottom-[-120px] h-[400px] w-[400px] [animation:spin_60s_linear_reverse_infinite] rounded-full bg-gradient-to-br from-cyan-500 via-indigo-600 to-violet-700 opacity-20 blur-2xl"
+        />
+      </motion.div>
+
+      {/* social proof */}
+      <div className="mt-20 flex items-center justify-center gap-6 opacity-70">
+        {["Acme", "VoiceAI", "PromptBase"].map((l) => (
+          <span
+            key={l}
+            className="text-sm tracking-wider text-zinc-400 uppercase"
+          >
+            {l}
+          </span>
+        ))}
       </div>
+
+      {/* footer CTA */}
+      <section className="relative mt-32 w-full max-w-5xl overflow-hidden rounded-3xl border border-violet-600/40 bg-zinc-900/60 px-8 py-12 text-center shadow-[0_0_30px_0_rgba(124,58,237,0.3)] backdrop-blur-md">
+        <h2 className="mb-6 text-2xl font-semibold text-white">
+          Ready to start collaborating?
+        </h2>
+        <Link
+          href="/login"
+          className="relative inline-block rounded-full p-[2px]"
+        >
+          <span className="animate-gradient-x absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-violet-700 bg-[length:200%_200%]" />
+          <span className="relative block rounded-full bg-zinc-900/80 px-8 py-3 text-sm font-semibold text-white backdrop-blur-md">
+            Sign&nbsp;In
+          </span>
+        </Link>
+      </section>
 
       {/* keyframes style injected */}
       <style jsx global>{`
