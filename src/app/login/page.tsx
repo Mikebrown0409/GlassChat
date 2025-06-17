@@ -2,19 +2,26 @@
 
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { OAuthButton } from "~/components/auth/OAuthButton";
 
 export default function LoginPage() {
-  const { data: session } = useSession();
+  const { status } = useSession();
   const router = useRouter();
-  if (session) {
-    router.replace("/");
-  }
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/");
+    }
+  }, [status, router]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  if (status === "authenticated") {
+    return null; // or a spinner
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
