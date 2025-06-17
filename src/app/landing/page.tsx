@@ -15,21 +15,26 @@ export default function LandingPage() {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
+  const getCenter = (axis: "x" | "y") => {
+    if (typeof window === "undefined") return 0;
+    return axis === "x" ? window.innerWidth / 2 : window.innerHeight / 2;
+  };
+
   const blob1X = useTransform(
     mouseX,
-    (v) => `${(v - window.innerWidth / 2) * -0.02}px`,
+    (v) => `${(v - getCenter("x")) * -0.02}px`,
   );
   const blob1Y = useTransform(
     mouseY,
-    (v) => `${(v - window.innerHeight / 2) * -0.02}px`,
+    (v) => `${(v - getCenter("y")) * -0.02}px`,
   );
   const blob2X = useTransform(
     mouseX,
-    (v) => `${(v - window.innerWidth / 2) * 0.015}px`,
+    (v) => `${(v - getCenter("x")) * 0.015}px`,
   );
   const blob2Y = useTransform(
     mouseY,
-    (v) => `${(v - window.innerHeight / 2) * 0.015}px`,
+    (v) => `${(v - getCenter("y")) * 0.015}px`,
   );
 
   return (
