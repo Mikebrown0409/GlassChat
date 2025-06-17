@@ -76,4 +76,6 @@ export const authConfig = {
   session: {
     strategy: "jwt",
   },
+  // Trust any host when NEXTAUTH_URL is not explicitly set (e.g. Vercel preview URLs)
+  trustHost: true,
 } satisfies NextAuthConfig;
