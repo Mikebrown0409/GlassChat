@@ -5,15 +5,22 @@ import Link from "next/link";
 import { useState } from "react";
 
 export default function RegisterPage() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // For now just call credentials signIn (not yet implemented)
+    if (password !== confirm) {
+      alert("Passwords do not match");
+      setLoading(false);
+      return;
+    }
     await signIn("credentials", {
+      name,
       email,
       password,
       callbackUrl: "/",
@@ -29,7 +36,15 @@ export default function RegisterPage() {
         <h1 className="text-center text-2xl font-semibold text-white">
           Create your account
         </h1>
-        <label className="mt-6 block text-sm text-white/80">Email</label>
+        <label className="mt-6 block text-sm text-white/80">Name</label>
+        <input
+          type="text"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="mt-1 w-full rounded-md bg-white/90 px-3 py-2 text-sm text-zinc-900 focus:outline-none"
+        />
+        <label className="mt-4 block text-sm text-white/80">Email</label>
         <input
           type="email"
           required
@@ -45,10 +60,20 @@ export default function RegisterPage() {
           onChange={(e) => setPassword(e.target.value)}
           className="mt-1 w-full rounded-md bg-white/90 px-3 py-2 text-sm text-zinc-900 focus:outline-none"
         />
+        <label className="mt-4 block text-sm text-white/80">
+          Confirm Password
+        </label>
+        <input
+          type="password"
+          required
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          className="mt-1 w-full rounded-md bg-white/90 px-3 py-2 text-sm text-zinc-900 focus:outline-none"
+        />
         <button
           type="submit"
           disabled={loading}
-          className="mt-6 w-full rounded-md bg-emerald-400 px-4 py-2 font-semibold text-zinc-900 transition hover:bg-emerald-300"
+          className="mt-6 w-full cursor-pointer rounded-md bg-emerald-400 px-4 py-2 font-semibold text-zinc-900 transition hover:bg-emerald-300 disabled:cursor-not-allowed"
         >
           {loading ? "Creating…" : "Register"}
         </button>

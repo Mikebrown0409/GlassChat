@@ -25,7 +25,7 @@ export function OAuthButton({
       type="button"
       onClick={() => signIn(provider)}
       className={clsx(
-        "w-full rounded-md py-3 font-medium transition",
+        "w-full cursor-pointer rounded-md py-3 font-medium transition",
         base,
         className,
       )}
