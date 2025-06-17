@@ -1,10 +1,12 @@
 import NextAuth from "next-auth";
-import { cache } from "react";
-
 import { authConfig } from "./config";
 
-const { auth: uncachedAuth, handlers, signIn, signOut } = NextAuth(authConfig);
+// Use auth() directly without React cache. Caching here would persist the
+// session result across *all* subsequent requests in the same edge/serverless
+// instance, leading to stale sessions and redirect loops in production.
+// NextAuth already memoises internal calls per–request, so additional
+// component-level caching is unnecessary and harmful.
 
-const auth = cache(uncachedAuth);
+const { auth, handlers, signIn, signOut } = NextAuth(authConfig);
 
 export { auth, handlers, signIn, signOut };
