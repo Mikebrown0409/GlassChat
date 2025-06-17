@@ -67,6 +67,7 @@
     "@trpc/server": "^11.0.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@upstash/redis": "^1.35.0",
+    "@vercel/analytics": "^1.5.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "comlink": "^4.4.2",
@@ -95,10 +96,10 @@
     "superjson": "^2.2.1",
     "tailwind-merge": "^2.1.1",
     "tailwindcss-animate": "^1.0.7",
-    "zustand": "^4.5.2",
-    "zod": "^3.24.2",
     "ws": "^8.17.0",
-    "yjs": "^13.6.9"
+    "yjs": "^13.6.9",
+    "zod": "^3.24.2",
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
