@@ -1,8 +1,9 @@
 import { clsx } from "clsx";
-import { Copy, LogOut, Users } from "lucide-react";
+import { Copy, LogOut, Plus, Users } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useCollaboration } from "~/lib/collaboration-v2/hooks";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import { Button } from "./Button";
 
@@ -12,212 +13,279 @@ export function CollabToggle() {
   const [showRoomInput, setShowRoomInput] = useState(false);
   const [roomIdInput, setRoomIdInput] = useState("");
   const [showPopup, setShowPopup] = useState(false);
-  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
-  const buttonRef = useRef<HTMLDivElement>(null);
+  const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Check if Pusher is available (production real-time) vs WebSocket/manual refresh
   const isPusherAvailable = !!(
     process.env.NEXT_PUBLIC_PUSHER_KEY && process.env.NEXT_PUBLIC_PUSHER_CLUSTER
   );
 
-  // Check if we're in development mode
-  const isDevelopment = process.env.NODE_ENV === "development";
+  // Get collaboration status to check WebSocket connection
+  const collaboration = useCollaboration(
+    currentRoomId,
+    session?.user?.name ?? "User",
+  );
 
-  const handleTogglePopup = () => {
-    if (buttonRef.current && !showPopup) {
+  // Collaboration is active when we're actually in a room
+  const isInRoom = !!currentRoomId;
+
+  // Calculate popup position when it opens
+  useEffect(() => {
+    if (showPopup && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       setPopupPosition({
-        x: rect.left + rect.width / 2,
-        y: rect.bottom + 8,
+        top: rect.bottom + 8, // 8px below the button
+        left: rect.right - 256, // 256px = w-64, align right edge
       });
     }
-    setShowPopup(!showPopup);
-  };
+  }, [showPopup]);
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      setTimeout(() => {
+        if (
+          popupRef.current &&
+          !popupRef.current.contains(event.target as Node)
+        ) {
+          setShowPopup(false);
+          setShowRoomInput(false);
+        }
+      }, 0);
+    }
+
+    if (showPopup) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+
+    // Return empty cleanup function for when not showing popup
+    return () => {
+      // Cleanup function
+    };
+  }, [showPopup]);
 
   const handleJoinRoom = () => {
-    if (roomIdInput.trim() && session?.user) {
-      // Use authenticated user's name or email as the user identifier
-      const userName = session.user.name ?? session.user.email ?? "Anonymous";
-      // Use Pusher-based collaboration with URL search parameters
-      window.location.href = `/?room=${encodeURIComponent(roomIdInput.trim())}&user=${encodeURIComponent(userName)}`;
-    }
-  };
-
-  const _handleCreateRoom = () => {
-    if (session?.user) {
-      const newRoomId = Date.now().toString();
-      // Use authenticated user's name or email as the user identifier
-      const userName = session.user.name ?? session.user.email ?? "Anonymous";
+    if (roomIdInput.trim()) {
+      console.log("🚪 Joining room:", roomIdInput.trim());
+      // Navigate to room URL - the ChatInterface will handle joining
+      window.location.href = `/?room=${encodeURIComponent(roomIdInput.trim())}`;
       setShowPopup(false);
-      // Use Pusher-based collaboration with URL search parameters
-      window.location.href = `/?room=${newRoomId}&user=${encodeURIComponent(userName)}`;
     }
   };
 
   const handleLeaveRoom = () => {
+    console.log("🚪 Leaving room");
+    // Clear room from URL and reload
     window.location.href = "/";
+  };
+
+  const handleCreateRoom = () => {
+    // Generate a simple room ID and join it
+    const newRoomId = `room-${Date.now()}`;
+    console.log("🆕 Creating new room:", newRoomId);
+    window.location.href = `/?room=${newRoomId}`;
     setShowPopup(false);
   };
 
-  const handleRefresh = () => {
-    window.location.reload();
-  };
+  const handleCopyInviteLink = async () => {
+    if (!currentRoomId) return;
 
-  const copyInviteLink = async () => {
-    if (currentRoomId && session?.user) {
-      const userName = session.user.name ?? session.user.email ?? "Anonymous";
-      const inviteUrl = `${window.location.origin}/?room=${currentRoomId}&user=${encodeURIComponent(userName)}`;
+    const inviteUrl = `${window.location.origin}/?room=${encodeURIComponent(currentRoomId)}`;
+
+    try {
       await navigator.clipboard.writeText(inviteUrl);
-      // You could add a toast notification here
+      console.log("📋 Invite link copied to clipboard");
+      setCopySuccess(true);
+
+      // Hide success message after 2 seconds
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy invite link:", error);
+      // Fallback: select the text
+      const textArea = document.createElement("textarea");
+      textArea.value = inviteUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
     }
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
-      ) {
-        setShowPopup(false);
-      }
-    };
+  const handleManualRefresh = () => {
+    if (!currentRoomId) return;
 
-    if (showPopup) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    setIsRefreshing(true);
+    console.log("🔄 Manually refreshing page for collaboration sync");
 
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showPopup]);
+    // Simple page refresh to sync collaboration data
+    setTimeout(() => {
+      window.location.reload();
+    }, 200); // Brief delay for visual feedback
+  };
 
-  // Determine refresh button text based on real-time capabilities
+  const handleToggleClick = () => {
+    setShowPopup(!showPopup);
+  };
+
+  // Get refresh button text based on real-time capabilities
   const getRefreshButtonText = () => {
+    if (isRefreshing) return "Refreshing...";
     if (isPusherAvailable) {
-      return "🔄 Refresh";
-    } else if (isDevelopment) {
-      return "🔄 Refresh (Dev Mode)";
+      return "Refresh Room";
+    } else if (collaboration?.isWebSocketConnected) {
+      return "Refresh Room";
     } else {
-      return "🔄 Refresh (No Real-time)";
+      return "Refresh (Real-time Unavailable)";
     }
   };
 
-  const popup = showPopup && (
+  // Popup content to be rendered in portal
+  const popupContent = (
     <div
-      className="fixed z-50 min-w-[200px] rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+      className="fixed w-64 rounded-lg border border-zinc-700 bg-zinc-900 p-4 shadow-lg"
+      ref={popupRef}
       style={{
-        left: `${popupPosition.x}px`,
-        top: `${popupPosition.y}px`,
-        transform: "translateX(-50%)",
+        top: popupPosition.top,
+        left: popupPosition.left,
+        zIndex: 99999,
       }}
     >
-      <div className="space-y-2">
-        {/* Create Room */}
-        {!currentRoomId && (
-          <button
-            onClick={_handleCreateRoom}
-            className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <Users className="h-4 w-4" />
-            Create Room
-          </button>
-        )}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-white">Collaboration</h3>
 
-        {/* Join Room */}
-        {!currentRoomId && (
-          <button
-            onClick={() => {
-              setShowPopup(false);
-              setShowRoomInput(true);
-            }}
-            className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <LogOut className="h-4 w-4 rotate-180" />
-            Join Room
-          </button>
-        )}
+        {currentRoomId ? (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-300">
+              Current room:{" "}
+              <span className="font-mono text-blue-400">{currentRoomId}</span>
+            </p>
 
-        {/* Copy Invite Link */}
-        {currentRoomId && (
-          <button
-            onClick={copyInviteLink}
-            className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <Copy className="h-4 w-4" />
-            Copy Invite Link
-          </button>
-        )}
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCopyInviteLink}
+              className="w-full text-xs"
+              disabled={copySuccess}
+            >
+              <Copy size={12} className="mr-1" />
+              {copySuccess ? "✓ Link Copied!" : "Copy Invite Link"}
+            </Button>
 
-        {/* Refresh Button */}
-        <button
-          onClick={handleRefresh}
-          className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-        >
-          {getRefreshButtonText()}
-        </button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleManualRefresh}
+              className="w-full text-xs"
+              disabled={isRefreshing}
+            >
+              <span className={`mr-1 ${isRefreshing ? "animate-spin" : ""}`}>
+                🔄
+              </span>
+              {getRefreshButtonText()}
+            </Button>
 
-        {/* Leave Room */}
-        {currentRoomId && (
-          <button
-            onClick={handleLeaveRoom}
-            className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
-          >
-            <LogOut className="h-4 w-4" />
-            Leave Room
-          </button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleLeaveRoom}
+              className="w-full text-xs"
+            >
+              <LogOut size={12} className="mr-1" />
+              Leave Room
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-400">Not in a room yet</p>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCreateRoom}
+              className="w-full text-xs"
+            >
+              <Plus size={12} className="mr-1" />
+              Create New Room
+            </Button>
+
+            <div className="border-t border-zinc-700 pt-2">
+              {showRoomInput ? (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={roomIdInput}
+                    onChange={(e) => setRoomIdInput(e.target.value)}
+                    placeholder="Enter room ID..."
+                    className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1 text-xs text-white placeholder-gray-400"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleJoinRoom();
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <div className="flex gap-1">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleJoinRoom}
+                      disabled={!roomIdInput.trim()}
+                      className="flex-1 text-xs"
+                    >
+                      Join
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowRoomInput(false)}
+                      className="text-xs"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowRoomInput(true)}
+                  className="w-full text-xs"
+                >
+                  Join Existing Room
+                </Button>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
   );
 
   return (
-    <>
-      <div ref={buttonRef} className="relative">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleTogglePopup}
-          className={clsx(
-            "flex items-center gap-2",
-            currentRoomId && "text-blue-600 dark:text-blue-400",
-          )}
-        >
-          <Users className="h-4 w-4" />
-          {currentRoomId ? `Room: ${currentRoomId.slice(-6)}` : "Collaborate"}
-        </Button>
-      </div>
+    <div className="relative">
+      <Button
+        ref={buttonRef}
+        variant="ghost"
+        size="icon"
+        onClick={handleToggleClick}
+        title={isInRoom ? "Leave room" : "Enable collaboration"}
+        className={clsx(isInRoom && "bg-blue-600/20 text-blue-400")}
+      >
+        <Users size={18} />
+      </Button>
 
-      {/* Portal for popup */}
-      {typeof window !== "undefined" && createPortal(popup, document.body)}
-
-      {/* Room Input Modal */}
-      {showRoomInput && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-96 rounded-lg bg-white p-6 dark:bg-gray-800">
-            <h3 className="mb-4 text-lg font-semibold">Join Room</h3>
-            <input
-              type="text"
-              value={roomIdInput}
-              onChange={(e) => setRoomIdInput(e.target.value)}
-              placeholder="Enter room ID"
-              className="mb-4 w-full rounded border p-2 dark:border-gray-600 dark:bg-gray-700"
-              onKeyPress={(e) => e.key === "Enter" && handleJoinRoom()}
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <Button onClick={handleJoinRoom} disabled={!roomIdInput.trim()}>
-                Join Room
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => setShowRoomInput(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+      {/* Render popup in portal to escape stacking context */}
+      {showPopup &&
+        typeof window !== "undefined" &&
+        createPortal(popupContent, document.body)}
+    </div>
   );
 }
