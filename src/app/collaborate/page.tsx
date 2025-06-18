@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CollaborationPanel } from "~/components/collaboration/CollaborationPanel";
 import { useCollaboration } from "~/lib/collaboration/hooks";
 
