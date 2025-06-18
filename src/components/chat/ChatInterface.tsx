@@ -118,8 +118,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
             msg.sender === "AI Assistant"
               ? ("assistant" as const)
               : ("user" as const),
-          createdAt: new Date(msg.timestamp).toISOString(),
-          updatedAt: new Date(msg.timestamp).toISOString(),
+          createdAt: new Date(msg.timestamp).getTime(),
+          updatedAt: new Date(msg.timestamp).getTime(),
           metadata: {
             sender: msg.sender,
             isCollaborationMessage: true,
