@@ -1,6 +1,6 @@
-import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { auth } from "~/server/auth";
 
 // Edge middleware: redirects unauthenticated users to /landing
 export async function middleware(req: NextRequest) {
@@ -31,18 +31,15 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/favicon.ico") ||
     pathname.startsWith("/uploads");
 
-  // Attempt to decode the NextAuth JWT (does NOT hit DB)
-  let token: object | null = null;
+  // Attempt to get the session using NextAuth's auth() function
+  let session = null;
   try {
-    // Use the same secret priority as NextAuth config: AUTH_SECRET first, then NEXTAUTH_SECRET
-    const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
-    token = await getToken({ req, secret });
-
-    console.log(`[EDGE] Token decoded: ${!!token}`);
+    session = await auth();
+    console.log(`[EDGE] Session found: ${!!session}`);
   } catch (error) {
-    console.error("[EDGE] JWT error", error);
+    console.error("[EDGE] Auth error", error);
 
-    // If there's a JWT error, clear all auth cookies
+    // If there's an auth error, clear all auth cookies
     const response = NextResponse.next();
     const cookieNames = [
       // NextAuth v5 cookie names
@@ -76,12 +73,12 @@ export async function middleware(req: NextRequest) {
   }
 
   // If we're on a public path and not authenticated, that's fine
-  if (isPublic && !token) {
+  if (isPublic && !session) {
     return NextResponse.next();
   }
 
   // If we're not on a public path and not authenticated, redirect to landing
-  if (!isPublic && !token) {
+  if (!isPublic && !session) {
     return NextResponse.redirect(new URL("/landing", req.url));
   }
 
