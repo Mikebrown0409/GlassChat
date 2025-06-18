@@ -114,6 +114,12 @@ class MockRedis {
     return -1; // Assume no expiration for simplicity
   }
 
+  async persist(key: string): Promise<number> {
+    // In MockRedis, we don't actually track expiration timers per key precisely
+    // For simplicity, just return 1 if key exists
+    return this.data.has(key) ? 1 : 0;
+  }
+
   async publish(channel: string, message: unknown): Promise<number> {
     const callbacks = this.subscribers.get(channel);
     if (callbacks) {
