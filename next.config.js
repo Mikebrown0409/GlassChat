@@ -95,7 +95,7 @@ const config = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live; style-src 'self' 'unsafe-inline'; img-src * data: blob:; connect-src 'self' wss://*.pusher.com https://*.pusher.com wss://sockjs-*.pusher.com https://sockjs-*.pusher.com; media-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'self';",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live; style-src 'self' 'unsafe-inline'; img-src * data: blob:; connect-src 'self' wss://*.pusher.com https://*.pusher.com wss://sockjs-us3.pusher.com https://sockjs-us3.pusher.com wss://ws-us3.pusher.com https://ws-us3.pusher.com; media-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'self';",
           },
           {
             key: "Referrer-Policy",

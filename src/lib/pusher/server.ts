@@ -3,13 +3,38 @@ import Pusher from "pusher";
 let pusher: Pusher | null = null;
 
 export function getPusherServer(): Pusher {
-  pusher ??= new Pusher({
-    appId: process.env.PUSHER_APP_ID!,
-    key: process.env.PUSHER_KEY!,
-    secret: process.env.PUSHER_SECRET!,
-    cluster: process.env.PUSHER_CLUSTER!,
-    useTLS: true,
-  });
+  if (!pusher) {
+    const appId = process.env.PUSHER_APP_ID;
+    const key = process.env.PUSHER_KEY;
+    const secret = process.env.PUSHER_SECRET;
+    const cluster = process.env.PUSHER_CLUSTER;
+
+    if (!appId || !key || !secret || !cluster) {
+      throw new Error(
+        `Missing Pusher server credentials. AppId: ${!!appId}, Key: ${!!key}, Secret: ${!!secret}, Cluster: ${!!cluster}`,
+      );
+    }
+
+    // Remove any quotes that might be in the environment variables
+    const cleanAppId = appId.replace(/^["']|["']$/g, "");
+    const cleanKey = key.replace(/^["']|["']$/g, "");
+    const cleanSecret = secret.replace(/^["']|["']$/g, "");
+    const cleanCluster = cluster.replace(/^["']|["']$/g, "");
+
+    console.log("🔧 Initializing Pusher server with:", {
+      appId: cleanAppId,
+      key: cleanKey.substring(0, 8) + "...",
+      cluster: cleanCluster,
+    });
+
+    pusher = new Pusher({
+      appId: cleanAppId,
+      key: cleanKey,
+      secret: cleanSecret,
+      cluster: cleanCluster,
+      useTLS: true,
+    });
+  }
   return pusher;
 }
 
