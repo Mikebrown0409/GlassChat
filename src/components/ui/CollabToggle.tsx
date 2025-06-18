@@ -1,14 +1,11 @@
 import { clsx } from "clsx";
 import { Copy, LogOut, Plus, Users } from "lucide-react";
-import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useCollaboration } from "~/lib/collaboration-v2/hooks";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import { Button } from "./Button";
 
 export function CollabToggle() {
-  const { data: session } = useSession();
   const { currentRoomId } = useCollaborationStore();
   const [showRoomInput, setShowRoomInput] = useState(false);
   const [roomIdInput, setRoomIdInput] = useState("");
@@ -19,15 +16,9 @@ export function CollabToggle() {
   const popupRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Check if Pusher is available (production real-time) vs WebSocket/manual refresh
+  // Check if Pusher is available (production real-time)
   const isPusherAvailable = !!(
     process.env.NEXT_PUBLIC_PUSHER_KEY && process.env.NEXT_PUBLIC_PUSHER_CLUSTER
-  );
-
-  // Get collaboration status to check WebSocket connection
-  const collaboration = useCollaboration(
-    currentRoomId,
-    session?.user?.name ?? "User",
   );
 
   // Collaboration is active when we're actually in a room
@@ -139,8 +130,6 @@ export function CollabToggle() {
   const getRefreshButtonText = () => {
     if (isRefreshing) return "Refreshing...";
     if (isPusherAvailable) {
-      return "Refresh Room";
-    } else if (collaboration?.isWebSocketConnected) {
       return "Refresh Room";
     } else {
       return "Refresh (Real-time Unavailable)";
