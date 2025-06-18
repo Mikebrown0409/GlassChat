@@ -234,7 +234,7 @@ export function ChatSidebar({
               </div>
               <div className="mt-2 flex flex-wrap gap-2 px-2">
                 {onlineUsers.map((u, index) => {
-                  const userName = u.userName || u.userId;
+                  const userName = u.userName ?? u.userId;
                   const displayChar = userName.charAt(0).toUpperCase();
 
                   return (
@@ -262,7 +262,7 @@ export function ChatSidebar({
       <div className="flex items-center justify-between gap-2 border-t border-zinc-800 p-4">
         <Avatar>
           <AvatarFallback>
-            {session?.user?.name?.charAt(0).toUpperCase() || "U"}
+            {session?.user?.name?.charAt(0).toUpperCase() ?? "U"}
           </AvatarFallback>
         </Avatar>
 

@@ -4,9 +4,9 @@ import { createPortal } from "react-dom";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import { Button } from "./Button";
 
-interface CollabToggleProps {
-  // No longer needs onClick - manages its own state
-}
+// Component doesn't need props currently but interface kept for future extensibility
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface CollabToggleProps {}
 
 export function CollabToggle() {
   const { currentRoomId } = useCollaborationStore();
@@ -243,16 +243,16 @@ export function CollabToggle() {
 
   return (
     <div className="relative">
-    <Button
+      <Button
         ref={buttonRef}
-      variant="ghost"
-      size="icon"
+        variant="ghost"
+        size="icon"
         onClick={handleToggleClick}
         title={isInRoom ? "Leave room" : "Enable collaboration"}
         className={isInRoom ? "bg-blue-600/20 text-blue-400" : ""}
-    >
-      <Users size={18} />
-    </Button>
+      >
+        <Users size={18} />
+      </Button>
 
       {/* Render popup in portal to escape stacking context */}
       {showPopup &&

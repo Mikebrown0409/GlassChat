@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CollaborationPanel } from "~/components/collaboration/CollaborationPanel";
 import { useCollaboration } from "~/lib/collaboration/hooks";
 
@@ -14,23 +14,26 @@ export default function CollaboratePage() {
 
   const collaboration = useCollaboration(currentRoomId);
 
-  const handleJoinRoom = async (targetRoomId: string) => {
-    if (!collaboration.user) {
-      alert("Please create a user first");
-      return;
-    }
+  const handleJoinRoom = useCallback(
+    async (targetRoomId: string) => {
+      if (!collaboration.user) {
+        alert("Please create a user first");
+        return;
+      }
 
-    setIsJoining(true);
-    try {
-      await collaboration.joinRoom(targetRoomId);
-      setCurrentRoomId(targetRoomId);
-    } catch (error) {
-      console.error("Failed to join room:", error);
-      alert("Failed to join room. It may not exist.");
-    } finally {
-      setIsJoining(false);
-    }
-  };
+      setIsJoining(true);
+      try {
+        await collaboration.joinRoom(targetRoomId);
+        setCurrentRoomId(targetRoomId);
+      } catch (error) {
+        console.error("Failed to join room:", error);
+        alert("Failed to join room. It may not exist.");
+      } finally {
+        setIsJoining(false);
+      }
+    },
+    [collaboration],
+  );
 
   // Auto-join room if URL parameter provided
   useEffect(() => {

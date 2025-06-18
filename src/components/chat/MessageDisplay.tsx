@@ -39,8 +39,8 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
   };
 
   // Check if this is a collaboration message and get sender info
-  const isCollabMessage = message.metadata?.isCollaborationMessage;
-  const senderName = message.metadata?.sender;
+  const isCollabMessage = Boolean(message.metadata?.isCollaborationMessage);
+  const senderName = (message.metadata as any)?.sender as string | undefined;
   const isAIMessage = senderName === "AI Assistant";
 
   // Get current user name from session
@@ -52,7 +52,10 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
     ? senderName === currentUserName
     : message.role === "user"; // Regular non-collab messages
   const isOtherUser =
-    isCollabMessage && !isAIMessage && senderName !== currentUserName;
+    isCollabMessage &&
+    !isAIMessage &&
+    senderName &&
+    senderName !== currentUserName;
 
   // Generate consistent color for user based on their name
   const getUserColor = (name: string) => {
@@ -113,10 +116,12 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                 <span
                   className={clsx(
                     "rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap",
-                    getUserColor(senderName),
+                    senderName
+                      ? getUserColor(senderName)
+                      : "border-gray-500/30 bg-gray-500/20 text-gray-300",
                   )}
                 >
-                  {senderName}
+                  {senderName ?? "Unknown User"}
                 </span>
               </div>
             )}

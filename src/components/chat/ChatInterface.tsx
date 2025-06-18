@@ -113,7 +113,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       ? collaboration.messages.map((msg) => ({
           id: msg.id,
           content: msg.content,
-          chatId: collaboration.room?.chatId || effectiveChatId || "",
+          chatId: collaboration.room?.chatId ?? effectiveChatId ?? "",
           role:
             msg.sender === "AI Assistant"
               ? ("assistant" as const)

@@ -76,7 +76,7 @@ export function ChatHeader({
             <div className="flex -space-x-2">
               {onlineUsers.slice(0, 3).map((u, index) => {
                 // Get user name from user ID - fallback to first char of userId
-                const userName = u.userName || u.userId;
+                const userName = u.userName ?? u.userId;
                 const displayChar = userName.charAt(0).toUpperCase();
 
                 return (
@@ -84,14 +84,14 @@ export function ChatHeader({
                     key={`${u.userId}-${index}`}
                     className="border-surface-0 h-6 w-6 border-2"
                     style={{
-                      backgroundColor: u.color || "#444",
-                      borderColor: u.color || "#444",
+                      backgroundColor: u.color ?? "#444",
+                      borderColor: u.color ?? "#444",
                     }}
                     title={userName}
                   >
                     <AvatarFallback
                       className="text-[10px] font-medium text-white"
-                      style={{ backgroundColor: u.color || "#444" }}
+                      style={{ backgroundColor: u.color ?? "#444" }}
                     >
                       {displayChar}
                     </AvatarFallback>
