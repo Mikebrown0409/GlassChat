@@ -53,7 +53,7 @@ class SyncManager {
 
   private async initializeRedis(): Promise<void> {
     if (!this.config.redisUrl) {
-      console.info("No Redis URL provided, using local-only mode");
+      // Redis not available on client side, using local-only mode
       return;
     }
 

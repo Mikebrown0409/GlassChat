@@ -163,22 +163,28 @@ export function CollaborationPanel({
 
   // Auto rejoin room if state says we have currentRoomId but collaboration hook hasn't joined yet
   useEffect(() => {
-    if (
-      currentRoomId &&
-      !collaboration.rooms.rooms.find((r) => r.id === currentRoomId)
-    ) {
-      void collaboration.rooms
-        .joinRoom(currentRoomId)
-        .then(() => {
-          // After successful join fetch latest messages
-          void collaboration.messages.refetch();
-        })
-        .catch((err) => {
-          console.error("Auto-join failed", err);
-          setCurrentRoomId(null);
-          localStorage.removeItem("collabRoomId");
-        });
-    }
+    // Add a small delay to avoid race conditions with room creation
+    const timeoutId = setTimeout(() => {
+      if (
+        currentRoomId &&
+        collaboration.rooms.rooms.length > 0 && // Only auto-join if we have rooms data
+        !collaboration.rooms.rooms.find((r) => r.id === currentRoomId)
+      ) {
+        void collaboration.rooms
+          .joinRoom(currentRoomId)
+          .then(() => {
+            // After successful join fetch latest messages
+            void collaboration.messages.refetch();
+          })
+          .catch((err) => {
+            console.error("Auto-join failed", err);
+            setCurrentRoomId(null);
+            localStorage.removeItem("collabRoomId");
+          });
+      }
+    }, 1000); // 1 second delay to allow room creation to complete
+
+    return () => clearTimeout(timeoutId);
   }, [currentRoomId, collaboration.rooms.rooms]);
 
   const handleCreateUser = async () => {
@@ -205,12 +211,18 @@ export function CollaborationPanel({
       await collaboration.user.createUser("Guest");
     }
 
-    const room = await collaboration.rooms.createRoom(
-      currentChatId,
-      `Chat Room`,
-    );
-    if (room.success && room.room) {
-      setCurrentRoomId(room.room.id);
+    try {
+      const room = await collaboration.rooms.createRoom(
+        currentChatId,
+        `Chat Room`,
+      );
+      if (room.success && room.room) {
+        setCurrentRoomId(room.room.id);
+        // Trigger a refetch to update the rooms list
+        await collaboration.rooms.refetch();
+      }
+    } catch (error) {
+      console.error("Failed to create room:", error);
     }
   };
 
