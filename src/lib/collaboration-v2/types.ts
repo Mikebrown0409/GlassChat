@@ -53,4 +53,3 @@ export interface JoinRoomResponse {
   room?: Room;
   error?: string;
 }
- 

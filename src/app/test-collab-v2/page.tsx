@@ -337,4 +337,3 @@ const UserNamePrompt = ({ onJoin }: { onJoin: (name: string) => void }) => {
     </form>
   );
 };
- 

@@ -93,6 +93,18 @@ class MockRedis {
     return "OK";
   }
 
+  async lset(key: string, index: number, value: string): Promise<string> {
+    const list = this.lists.get(key);
+    if (!list) {
+      throw new Error("ERR no such key");
+    }
+    if (index < 0 || index >= list.length) {
+      throw new Error("ERR index out of range");
+    }
+    list[index] = value;
+    return "OK";
+  }
+
   async expire(key: string, seconds: number): Promise<number> {
     if (this.data.has(key)) {
       const timer = setTimeout(() => {
@@ -155,9 +167,10 @@ function createRedisClient() {
   if (process.env.NODE_ENV === "development" && typeof window === "undefined") {
     try {
       // Only import ioredis in development and server-side
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const IORedis = require("ioredis").Redis as typeof Redis;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
+      const IORedis = require("ioredis");
       console.log("🔧 Using local Redis (development override)");
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
       return new IORedis({
         host: "localhost",
         port: 6379,
@@ -193,8 +206,10 @@ const globalForRedis = globalThis as unknown as {
   redisClient: Redis | MockRedis | undefined;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 export const redis =
   globalForRedis.redisClient ??
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   (globalForRedis.redisClient = createRedisClient());
 
 export type RedisClient = typeof redis;

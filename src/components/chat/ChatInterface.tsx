@@ -78,7 +78,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   // Add debug logging for when effectiveChatId changes (reduced frequency)
   useEffect(() => {
     if (effectiveChatId) {
-    console.log("📱 effectiveChatId changed to:", effectiveChatId);
+      console.log("📱 effectiveChatId changed to:", effectiveChatId);
     }
   }, [effectiveChatId]);
 
@@ -87,7 +87,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     if (roomIdFromUrl || currentRoomIdFromStore) {
       console.log("🏠 ChatInterface room state:", {
         roomIdFromUrl,
-      currentRoomIdFromStore,
+        currentRoomIdFromStore,
         effectiveChatId,
       });
     }
@@ -100,7 +100,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         roomId: collaboration.room.id,
         chatId: collaboration.room.chatId,
         users: collaboration.room.users?.length,
-    });
+      });
     }
   }, [currentRoomIdFromStore, collaboration.room?.id]);
 
@@ -161,52 +161,52 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       return;
     }
 
-      const joinRoomFromUrl = async () => {
+    const joinRoomFromUrl = async () => {
       setIsJoiningFromUrl(true);
-        try {
-          setUrlRoomJoined(roomIdFromUrl); // Mark as attempted
+      try {
+        setUrlRoomJoined(roomIdFromUrl); // Mark as attempted
 
         console.log("🔗 Joining room from URL:", roomIdFromUrl);
 
         // Set room in global state first to prevent race conditions
         setCurrentRoomIdGlobal(roomIdFromUrl);
 
-          // Join the room and get the room data
-          const joinResult = await collaboration.joinRoom(roomIdFromUrl);
+        // Join the room and get the room data
+        const joinResult = await collaboration.joinRoom(roomIdFromUrl);
 
-          if (joinResult.success && joinResult.room) {
-            const roomChatId = joinResult.room.chatId;
+        if (joinResult.success && joinResult.room) {
+          const roomChatId = joinResult.room.chatId;
 
           console.log("✅ Room joined successfully:", {
-              roomId: joinResult.room.id,
-              roomName: joinResult.room.name,
+            roomId: joinResult.room.id,
+            roomName: joinResult.room.name,
             roomChatId,
-              roomUsers: joinResult.room.users.length,
-            });
+            roomUsers: joinResult.room.users.length,
+          });
 
           // **CRITICAL FIX**: Switch chat context to the room's chatId
-            try {
-              const existingChats = await syncManager.getChats();
-              const chatExists = existingChats.some(
-                (chat) => chat.id === roomChatId,
-              );
+          try {
+            const existingChats = await syncManager.getChats();
+            const chatExists = existingChats.some(
+              (chat) => chat.id === roomChatId,
+            );
 
-              if (!chatExists) {
+            if (!chatExists) {
               console.log("📝 Creating new shared chat for room:", roomChatId);
-                await syncManager.createChatWithId(
-                  roomChatId,
+              await syncManager.createChatWithId(
+                roomChatId,
                 joinResult.room.name ?? "Shared Room",
-                );
-              }
-
-              // Switch to the room's chat - this will be used by effectiveChatId
-              setCurrentChatId(roomChatId);
-            console.log("�� Switched to shared room chat:", roomChatId);
-            } catch (error) {
-            console.error("❌ Failed to handle room chat creation:", error);
-              // Fallback: still switch to the chatId even if creation failed
-              setCurrentChatId(roomChatId);
+              );
             }
+
+            // Switch to the room's chat - this will be used by effectiveChatId
+            setCurrentChatId(roomChatId);
+            console.log("�� Switched to shared room chat:", roomChatId);
+          } catch (error) {
+            console.error("❌ Failed to handle room chat creation:", error);
+            // Fallback: still switch to the chatId even if creation failed
+            setCurrentChatId(roomChatId);
+          }
 
           // Room joined successfully - collaboration features now available in main chat
 
@@ -234,7 +234,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
             // Keep urlRoomJoined set to prevent further attempts
           }
         }
-        } catch (error) {
+      } catch (error) {
         console.error("❌ Failed to join room from URL:", error);
 
         // Track failure
@@ -254,8 +254,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         }
       } finally {
         setIsJoiningFromUrl(false);
-        }
-      };
+      }
+    };
 
     // Small delay to ensure user is fully initialized
     const timeoutId = setTimeout(() => void joinRoomFromUrl(), 300);

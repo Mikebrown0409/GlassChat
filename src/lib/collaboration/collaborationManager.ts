@@ -687,8 +687,7 @@ class CollaborationManager {
       await redis.set(
         `collaboration:presence:${roomId}:${this.currentUser.id}`,
         JSON.stringify(presence),
-        "EX",
-        Math.ceil(this.config.presenceHeartbeatInterval / 1000) * 2, // 2x heartbeat interval
+        { ex: Math.ceil(this.config.presenceHeartbeatInterval / 1000) * 2 }, // 2x heartbeat interval
       );
     };
 

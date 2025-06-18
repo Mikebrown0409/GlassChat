@@ -45,14 +45,14 @@ export default function RoomPage() {
       const result = await collaboration.joinRoom(roomId);
 
       if (result.success && result.room) {
-      // Show a message if this was a placeholder room
+        // Show a message if this was a placeholder room
         if (result.room.name === "Shared Room") {
           console.log("📝 Created a new shared room for collaboration");
-      }
+        }
 
         console.log("✅ Room joined successfully, redirecting to chat");
-      // Redirect to main chat interface with room joined
-      router.push(`/?room=${roomId}`);
+        // Redirect to main chat interface with room joined
+        router.push(`/?room=${roomId}`);
       } else {
         throw new Error(
           "error" in result ? result.error : "Failed to join room",

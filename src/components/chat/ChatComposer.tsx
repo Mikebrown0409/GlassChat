@@ -182,7 +182,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       // NEW: Route to appropriate handler based on mode
       if (isCollaborationMode && chatMode === "team") {
         // Send as team message (user-to-user)
-      onSubmit(finalContent);
+        onSubmit(finalContent);
       } else {
         // Send to AI (either collaboration AI mode or solo mode)
         onSubmitToAI(finalContent);

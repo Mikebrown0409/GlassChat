@@ -291,4 +291,3 @@ export function useCollaborationBridge(roomId: string | null) {
     isSendingToAI: v2Collaboration.isSendingToAI ?? false,
   };
 }
- 
