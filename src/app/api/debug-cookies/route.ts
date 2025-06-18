@@ -8,13 +8,45 @@ export async function GET(req: NextRequest) {
     // Use the same secret priority as NextAuth config: AUTH_SECRET first, then NEXTAUTH_SECRET
     const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
 
-    // Try to get the token
+    // Try to get the token with different approaches
     let token = null;
     let tokenError = null;
+    let tokenWithoutSecret = null;
+    let tokenWithNextAuthSecret = null;
+    let tokenWithAuthSecret = null;
+
     try {
+      // Try with the combined secret
       token = await getToken({ req, secret });
     } catch (error) {
       tokenError = error instanceof Error ? error.message : String(error);
+    }
+
+    // Try without specifying secret (let NextAuth figure it out)
+    try {
+      tokenWithoutSecret = await getToken({ req });
+    } catch {
+      // ignore
+    }
+
+    // Try with NEXTAUTH_SECRET specifically
+    try {
+      tokenWithNextAuthSecret = await getToken({
+        req,
+        secret: process.env.NEXTAUTH_SECRET,
+      });
+    } catch {
+      // ignore
+    }
+
+    // Try with AUTH_SECRET specifically
+    try {
+      tokenWithAuthSecret = await getToken({
+        req,
+        secret: process.env.AUTH_SECRET,
+      });
+    } catch {
+      // ignore
     }
 
     // Parse cookies
@@ -28,6 +60,11 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Get the raw session token
+    const rawSessionToken =
+      cookies["__Secure-authjs.session-token"] ??
+      cookies["authjs.session-token"];
+
     const debugInfo = {
       timestamp: new Date().toISOString(),
       host: req.headers.get("host"),
@@ -35,10 +72,10 @@ export async function GET(req: NextRequest) {
       cookieHeader: cookieHeader?.slice(0, 500) ?? null,
       parsedCookies: cookies,
       authCookies: {
-        sessionToken:
-          cookies["__Secure-authjs.session-token"] ??
-          cookies["authjs.session-token"] ??
-          null,
+        sessionToken: rawSessionToken
+          ? rawSessionToken.slice(0, 100) + "..."
+          : null,
+        sessionTokenLength: rawSessionToken?.length ?? 0,
         csrfToken:
           cookies["__Host-authjs.csrf-token"] ??
           cookies["authjs.csrf-token"] ??
@@ -60,9 +97,16 @@ export async function GET(req: NextRequest) {
           : process.env.NEXTAUTH_SECRET
             ? "NEXTAUTH_SECRET"
             : "NONE",
+        secretsMatch: process.env.AUTH_SECRET === process.env.NEXTAUTH_SECRET,
       },
-      token: token ? "VALID" : "NULL",
+      tokenTests: {
+        withCombinedSecret: token ? "VALID" : "NULL",
+        withoutSecret: tokenWithoutSecret ? "VALID" : "NULL",
+        withNextAuthSecret: tokenWithNextAuthSecret ? "VALID" : "NULL",
+        withAuthSecret: tokenWithAuthSecret ? "VALID" : "NULL",
+      },
       tokenError,
+      runtime: "nodejs", // This endpoint runs in Node.js runtime
     };
 
     return NextResponse.json(debugInfo, { status: 200 });

@@ -22,6 +22,7 @@ export async function middleware(req: NextRequest) {
     "/register",
     "/api/debug-env",
     "/api/debug-cookies",
+    "/api/debug-edge",
   ];
   const isPublic =
     publicPaths.includes(pathname) ||
