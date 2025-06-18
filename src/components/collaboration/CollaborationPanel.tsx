@@ -249,6 +249,16 @@ export function CollaborationPanel({
           collaboration.rooms.refetch(),
           collaboration.messages.refetch(),
         ]);
+        console.log("Room created successfully:", room.room.id);
+        // Push users to global store immediately for UI
+        const initialUsers = (room.room?.users ?? []).map((u) => ({
+          userId: u.id,
+          roomId: room.room?.id ?? "",
+          isOnline: true,
+          lastSeen: Date.now(),
+          isTyping: false,
+        }));
+        setOnlineUsersGlobal(initialUsers);
       }
     } catch (error) {
       console.error("Failed to create room:", error);
@@ -257,8 +267,18 @@ export function CollaborationPanel({
 
   const handleJoinRoom = async (roomId: string) => {
     try {
-      await collaboration.rooms.joinRoom(roomId);
+      const joinRes = await collaboration.rooms.joinRoom(roomId);
       setCurrentRoomId(roomId);
+      if (joinRes.success && joinRes.room) {
+        const users = joinRes.room.users.map((u) => ({
+          userId: u.id,
+          roomId,
+          isOnline: true,
+          lastSeen: Date.now(),
+          isTyping: false,
+        }));
+        setOnlineUsersGlobal(users);
+      }
     } catch (error: unknown) {
       console.error("Failed to join room:", error);
     }
