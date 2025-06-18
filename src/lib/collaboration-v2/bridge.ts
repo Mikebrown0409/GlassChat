@@ -367,6 +367,9 @@ export function useCollaborationBridge(roomId: string | null) {
           const summary = await memoryManagerClient.getSummary(chatId);
           if (summary) {
             memoryContext = `\n\n**CONVERSATION MEMORY:**\nSummary: ${summary.summary}\nKey topics: ${summary.keywords.join(", ")}\n\n`;
+            console.log("🧠 Using memory context:", summary.summary);
+          } else {
+            console.log("🧠 No memory summary found for chatId:", chatId);
           }
         } catch (memoryError) {
           console.warn("Failed to get memory context:", memoryError);
@@ -375,11 +378,42 @@ export function useCollaborationBridge(roomId: string | null) {
         // Generate AI response using the same system as regular chat
         const systemPrompt = `You are a helpful, clear, and professional AI assistant integrated into a shared collaboration room.${memoryContext}Follow these RESPONSE STYLE GUIDELINES for **every** reply unless explicitly instructed otherwise:\n1. **Structure & Formatting**\n   • Start with bold section headings (e.g., **Overview**, **Step-by-Step**).\n   • Use numbered lists for processes, bullets for unordered data, and Markdown tables for comparisons or timelines.\n   • Insert blank lines between paragraphs/sections for readability.\n2. **Visual Hierarchy**\n   • Bold section headers; *italicize* emphasis sparingly.\n   • Use \`inline code\` for commands or variables.\n   • Keep paragraphs ≤ 4 lines.\n3. **Tables**\n   • Include bold header rows.\n   • Ensure columns are aligned and tables are not split across multiple code blocks.\n4. **Tone & Readability**\n   • Friendly yet professional, no fluff.\n   • Break down complex topics into plain English first, then dive deeper.\n   • End with a ✅ **Summary** section when appropriate.\n5. **Conversation Memory**\n   • Reference prior context and maintain continuity.\n   • Use the conversation memory above to provide personalized responses.\n6. **Optional Enhancements**\n   • Emojis (📌, ✅) only when they add clarity.\n   • Collapsible sections if supported.\n\nAlways apply these rules while answering based on the provided message history and conversation memory. Remember you are in a shared collaboration room where multiple users can see your responses.`;
 
-        // Get recent messages for context
-        const preparedMessages = [
-          { role: "system" as const, content: systemPrompt },
-          { role: "user" as const, content: content },
-        ];
+        // Get recent messages for additional context
+        let recentMessagesContext = "";
+        try {
+          const recentMemories = await memoryManagerClient.getMemories(chatId);
+          if (recentMemories.length > 0) {
+            const lastFewMemories = recentMemories.slice(-6); // Last 6 memories
+            recentMessagesContext = lastFewMemories
+              .map((m) => {
+                const role = (m.metadata as { role?: string })?.role ?? "user";
+                return `${role}: ${m.content}`;
+              })
+              .join("\n");
+            console.log(
+              "🧠 Recent conversation context:",
+              recentMessagesContext,
+            );
+          }
+        } catch (error) {
+          console.warn("Failed to get recent memories:", error);
+        }
+
+        // Prepare messages with recent context if no summary available
+        const preparedMessages: Array<{
+          role: "system" | "user" | "assistant";
+          content: string;
+        }> = [{ role: "system" as const, content: systemPrompt }];
+
+        // Add recent conversation context if available
+        if (recentMessagesContext) {
+          preparedMessages.push({
+            role: "system" as const,
+            content: `Recent conversation context:\n${recentMessagesContext}`,
+          });
+        }
+
+        preparedMessages.push({ role: "user" as const, content: content });
 
         // Use the API directly since we can't use the hook here
         const response = await fetch("/api/trpc/ai.generateResponse", {
