@@ -1,11 +1,13 @@
 import { clsx } from "clsx";
 import { Copy, LogOut, Users } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import { Button } from "./Button";
 
 export function CollabToggle() {
+  const { data: session } = useSession();
   const { currentRoomId } = useCollaborationStore();
   const [showRoomInput, setShowRoomInput] = useState(false);
   const [roomIdInput, setRoomIdInput] = useState("");
@@ -33,14 +35,23 @@ export function CollabToggle() {
   };
 
   const handleJoinRoom = () => {
-    if (roomIdInput.trim()) {
-      window.location.href = `/room-v2/${roomIdInput.trim()}`;
+    if (roomIdInput.trim() && session?.user) {
+      // Use authenticated user's name or email as the user identifier
+      const userName = session.user.name ?? session.user.email ?? "Anonymous";
+      // Use Pusher-based collaboration with URL search parameters
+      window.location.href = `/?room=${encodeURIComponent(roomIdInput.trim())}&user=${encodeURIComponent(userName)}`;
     }
   };
 
   const _handleCreateRoom = () => {
-    const newRoomId = Date.now().toString();
-    window.location.href = `/room-v2/${newRoomId}`;
+    if (session?.user) {
+      const newRoomId = Date.now().toString();
+      // Use authenticated user's name or email as the user identifier
+      const userName = session.user.name ?? session.user.email ?? "Anonymous";
+      setShowPopup(false);
+      // Use Pusher-based collaboration with URL search parameters
+      window.location.href = `/?room=${newRoomId}&user=${encodeURIComponent(userName)}`;
+    }
   };
 
   const handleLeaveRoom = () => {
@@ -53,8 +64,9 @@ export function CollabToggle() {
   };
 
   const copyInviteLink = async () => {
-    if (currentRoomId) {
-      const inviteUrl = `${window.location.origin}/room-v2/${currentRoomId}`;
+    if (currentRoomId && session?.user) {
+      const userName = session.user.name ?? session.user.email ?? "Anonymous";
+      const inviteUrl = `${window.location.origin}/?room=${currentRoomId}&user=${encodeURIComponent(userName)}`;
       await navigator.clipboard.writeText(inviteUrl);
       // You could add a toast notification here
     }
@@ -100,6 +112,31 @@ export function CollabToggle() {
       }}
     >
       <div className="space-y-2">
+        {/* Create Room */}
+        {!currentRoomId && (
+          <button
+            onClick={_handleCreateRoom}
+            className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <Users className="h-4 w-4" />
+            Create Room
+          </button>
+        )}
+
+        {/* Join Room */}
+        {!currentRoomId && (
+          <button
+            onClick={() => {
+              setShowPopup(false);
+              setShowRoomInput(true);
+            }}
+            className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <LogOut className="h-4 w-4 rotate-180" />
+            Join Room
+          </button>
+        )}
+
         {/* Copy Invite Link */}
         {currentRoomId && (
           <button
