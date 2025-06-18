@@ -98,7 +98,12 @@ export function ChatSidebar({
               className="focus:ring-brand-primary h-8 w-full rounded-md border-none bg-zinc-800/70 px-2 text-sm text-zinc-100 focus:ring-2"
             />
           ) : (
-            <div className="group grid w-full grid-cols-[1fr_auto] items-center overflow-hidden rounded-md px-3 py-1 hover:bg-zinc-800">
+            <div
+              className={cn(
+                "group grid w-full grid-cols-[1fr_auto] items-center overflow-hidden rounded-md px-3 py-1",
+                currentChatId === chat.id ? "bg-zinc-800" : "hover:bg-zinc-800",
+              )}
+            >
               <button
                 type="button"
                 className={cn(
@@ -163,9 +168,14 @@ export function ChatSidebar({
       animate={{ width: sidebarOpen ? "16rem" : 0 }}
       transition={{ ease: DYNAMIC_EASE, duration: 0.3 }}
       className={cn(
-        "relative flex h-full flex-shrink-0 flex-col overflow-hidden rounded-br-2xl bg-zinc-900 text-zinc-200 shadow-inner",
-        sidebarOpen ? "w-64 border-r border-zinc-800/40" : "w-0 border-none",
+        "glass-effect flex h-full flex-shrink-0 flex-col overflow-hidden rounded-br-2xl text-zinc-200 backdrop-blur-lg",
+        sidebarOpen ? "w-64 border-r border-white/10" : "w-0 border-none",
       )}
+      style={{
+        background: "rgba(20,20,20,0.4)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+      }}
     >
       <div className="flex items-center gap-2 p-4 text-lg font-semibold">
         <MessageCircle size={20} />

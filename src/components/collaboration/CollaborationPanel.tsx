@@ -86,6 +86,31 @@ export function CollaborationPanel({
     setOnlineUsersGlobal(collaboration.presence?.onlineUsers ?? []);
   }, [collaboration.presence?.onlineUsers, setOnlineUsersGlobal]);
 
+  // Derive online users from room data if presence array empty
+  useEffect(() => {
+    if (!currentRoomId) return;
+    if (collaboration.presence.onlineUsers.length === 0) {
+      const room = collaboration.rooms.rooms.find(
+        (r) => r.id === currentRoomId,
+      );
+      if (room) {
+        const derived = room.users.map((u) => ({
+          userId: u.id,
+          roomId: currentRoomId,
+          isOnline: true,
+          lastSeen: Date.now(),
+          isTyping: false,
+        }));
+        setOnlineUsersGlobal(derived);
+      }
+    }
+  }, [
+    collaboration.presence.onlineUsers.length,
+    collaboration.rooms.rooms,
+    currentRoomId,
+    setOnlineUsersGlobal,
+  ]);
+
   // Auto-create user if not exists
   useEffect(() => {
     if (!collaboration.user.user && !showUserSetup) {

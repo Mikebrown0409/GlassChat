@@ -41,11 +41,11 @@ export function useUnifiedCollaboration(roomId: string | null) {
 
   // Single API call that fetches ALL collaboration data
   const { data: roomData, refetch } = api.collaboration.getRoomData.useQuery(
-    { roomId: roomId ?? "" },
+    { roomId: (roomId || "skip") as string },
     {
-      enabled: !!roomId && !isUserTyping, // Don't fetch while user is typing
-      refetchInterval: isUserTyping ? false : 15000, // Much slower: 15 seconds
-      staleTime: 5000, // Consider data fresh for 5 seconds
+      enabled: !!roomId && roomId.length > 0 && !isUserTyping,
+      refetchInterval: isUserTyping ? false : 15000,
+      staleTime: 5000,
     },
   );
 
