@@ -7,12 +7,18 @@ import { useCollaboration } from "~/lib/collaboration-v2/hooks";
 export default function RoomPage() {
   const params = useParams();
   const router = useRouter();
-  const roomId = params.roomId as string;
+  const roomId = params?.roomId as string;
 
   const [userName, setUserName] = useState("");
   const [isJoining, setIsJoining] = useState(false);
 
   const collaboration = useCollaboration();
+
+  // If roomId is not available, redirect to home
+  if (!roomId) {
+    router.push("/");
+    return null;
+  }
 
   // Auto-redirect if already in a room
   useEffect(() => {
