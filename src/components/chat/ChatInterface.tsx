@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useChatGeneration } from "~/lib/ai/useChatGeneration";
-import { useCollaboration } from "~/lib/collaboration/hooks";
+import { useCollaborationBridge } from "~/lib/collaboration-v2/bridge";
 import { db } from "~/lib/db";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
@@ -14,8 +14,8 @@ import { useCollabMode } from "~/context/CollabModeContext";
 import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import { InsightsDrawer } from "../insights/InsightsDrawer";
-import { ChatComposer, type ChatComposerHandle } from "./ChatComposer";
-import { ChatHeader } from "./ChatHeader";
+import { ChatComposerV2, type ChatComposerHandle } from "./ChatComposerV2";
+import { ChatHeaderV2 } from "./ChatHeaderV2";
 import { ChatMessages } from "./ChatMessages";
 import { ChatSidebar } from "./ChatSidebar";
 
@@ -46,9 +46,9 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   const chats = useLiveChats();
 
-  // Collaboration integration - MOVED UP to fix initialization order
+  // Collaboration integration - UPDATED TO USE V2 BRIDGE
   const currentRoomIdFromStore = useCollaborationStore((s) => s.currentRoomId);
-  const collaboration = useCollaboration(currentRoomIdFromStore);
+  const collaboration = useCollaborationBridge(currentRoomIdFromStore);
   const setCurrentRoomIdGlobal = useCollaborationStore(
     (s) => s.setCurrentRoomId,
   );
@@ -161,7 +161,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
             // Switch to the room's chat - this will be used by effectiveChatId
             setCurrentChatId(roomChatId);
-            console.log("🔄 Switched to shared room chat:", roomChatId);
+            console.log("�� Switched to shared room chat:", roomChatId);
           } catch (error) {
             console.error("❌ Failed to handle room chat creation:", error);
             // Fallback: still switch to the chatId even if creation failed
@@ -477,11 +477,31 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     };
   }, []);
 
-  const handleComposerSubmit = (text: string) => {
+  const handleComposerSubmit = async (text: string) => {
     // **ALWAYS SEND TO LLM**: Main chat is always for LLM interaction
     // When in collaboration room, this creates shared LLM conversation via effectiveChatId
     // The collaboration panel has separate user-to-user chat
-    void handleSubmitFromHook(text, () => composerRef.current?.setInput(""));
+    await handleSubmitFromHook(text, () => composerRef.current?.setInput(""));
+  };
+
+  // NEW: Handle collaboration messages
+  const handleCollaborationMessage = async (content: string) => {
+    if (!collaboration.sendMessage) return;
+    try {
+      await collaboration.sendMessage(content);
+    } catch (error) {
+      console.error("Failed to send collaboration message:", error);
+    }
+  };
+
+  // NEW: Handle AI messages in collaboration
+  const handleCollaborationAIMessage = async (content: string) => {
+    if (!collaboration.sendMessageToAI) return;
+    try {
+      await collaboration.sendMessageToAI(content);
+    } catch (error) {
+      console.error("Failed to send AI message:", error);
+    }
   };
 
   const handleToggleMemory = () => {
@@ -559,11 +579,19 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         )}
       >
         {/* Top Bar */}
-        <ChatHeader
-          sidebarOpen={sidebarOpen}
-          onOpenSidebar={() => setSidebarOpen(true)}
-          onToggleMemory={handleToggleMemory}
-          onToggleCollab={handleToggleCollab}
+        <ChatHeaderV2
+          title={
+            collaboration.room
+              ? `Room: ${collaboration.room.name || collaboration.room.id}`
+              : "Chat"
+          }
+          isCollaborationMode={!!collaboration.room}
+          collaborationRoom={collaboration.room}
+          isWsConnected={collaboration.isWsConnected}
+          onRefreshData={collaboration.refreshData}
+          onToggleSidebar={() => setSidebarOpen(true)}
+          onToggleInsights={() => setInsightsOpen(!insightsOpen)}
+          insightsOpen={insightsOpen}
         />
 
         {/* Messages Area */}
@@ -579,17 +607,26 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         />
 
         {/* Input Area (Composer) */}
-        <ChatComposer
+        <ChatComposerV2
           ref={composerRef}
-          isTyping={isTyping}
-          onSubmit={handleComposerSubmit}
-          onStop={handleStop}
-          selectedModel={selectedModelId}
-          setSelectedModel={setSelectedModelId}
-          modelDropdownOpen={modelDropdownOpen}
-          setModelDropdownOpen={setModelDropdownOpen}
-          models={models}
-          dropdownRef={dropdownRef}
+          onSendMessage={
+            !!collaboration.room
+              ? handleCollaborationMessage
+              : handleComposerSubmit
+          }
+          onSendToAI={
+            collaboration.room ? handleCollaborationAIMessage : undefined
+          }
+          isSendingMessage={
+            collaboration.room ? collaboration.isSendingMessage : isTyping
+          }
+          isSendingToAI={collaboration.isSendingToAI}
+          isCollaborationMode={!!collaboration.room}
+          disabled={
+            isTyping ||
+            collaboration.isSendingMessage ||
+            collaboration.isSendingToAI
+          }
         />
       </main>
 

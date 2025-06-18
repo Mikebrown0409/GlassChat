@@ -2,6 +2,11 @@
 // Can be replaced with Redis/Database later if needed
 
 import { nanoid } from "nanoid";
+import type {
+  CollaborationMessage,
+  CollaborationParticipant,
+  CollaborationRoom,
+} from "./types";
 import { Participant, Room, RoomMessage } from "./types";
 
 // In-memory storage
@@ -30,21 +35,41 @@ function getRandomColor(): string {
   return USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)]!;
 }
 
-export function createRoom(roomId: string, name?: string): Room {
-  // Use provided roomId instead of generating random one
-  const chatId = `room-${roomId}-${Date.now()}`;
+function generateColor(): string {
+  const colors = [
+    "#3B82F6",
+    "#EF4444",
+    "#10B981",
+    "#F59E0B",
+    "#8B5CF6",
+    "#EC4899",
+    "#14B8A6",
+    "#F97316",
+  ];
+  return colors[Math.floor(Math.random() * colors.length)] ?? "#3B82F6";
+}
 
-  const room: Room = {
+export function createRoom(roomId: string, name: string): CollaborationRoom {
+  console.log("[Storage] Creating room with ID:", roomId);
+
+  const existingRoom = rooms.get(roomId);
+  if (existingRoom) {
+    console.log("[Storage] Room already exists:", roomId);
+    return existingRoom;
+  }
+
+  const room: CollaborationRoom = {
     id: roomId,
-    name: name || roomId, // Use name if provided, otherwise use roomId as name
-    chatId,
-    createdAt: new Date().toISOString(),
+    name: name ?? `Room ${roomId}`,
     participants: [],
+    createdAt: new Date().toISOString(),
+    lastActivity: new Date().toISOString(),
   };
 
   rooms.set(roomId, room);
-  messages.set(roomId, []); // Initialize empty message array
-  console.log(`[Storage] Created room with ID: ${roomId}`);
+  messages.set(roomId, []);
+
+  console.log("[Storage] Room created successfully:", roomId);
   return room;
 }
 
@@ -54,50 +79,40 @@ export function getRoom(roomId: string): Room | null {
 
 export function addParticipant(
   roomId: string,
-  participant: Participant,
-): Room | null {
+  participantName: string,
+): CollaborationParticipant {
   const room = rooms.get(roomId);
   if (!room) {
-    console.log(`[Storage] Room ${roomId} not found for participant add`);
-    return null;
+    throw new Error(`Room ${roomId} not found`);
   }
 
-  // Check if user already exists in room
-  let existingParticipant = room.participants.find(
-    (p) => p.name === participant.name,
+  // Check if participant already exists
+  const existingParticipant = room.participants.find(
+    (p) => p.name === participantName,
   );
-
-  if (!existingParticipant) {
-    // Create new participant with color
-    const newParticipant: Participant = {
-      ...participant,
-      color: getRandomColor(),
-      isOnline: true,
-      lastSeen: new Date().toISOString(),
-    };
-    room.participants.push(newParticipant);
-    console.log(
-      `[Storage] Added new participant ${participant.name} to room ${roomId}`,
-    );
-  } else {
-    // Mark existing participant as online
-    existingParticipant.isOnline = true;
-    existingParticipant.lastSeen = new Date().toISOString();
-    console.log(
-      `[Storage] Marked participant ${participant.name} as online in room ${roomId}`,
-    );
+  if (existingParticipant) {
+    console.log("[Storage] Participant already exists:", participantName);
+    return existingParticipant;
   }
 
-  // Update user session
-  const participantToTrack = existingParticipant || participant;
-  userSessions.set(participantToTrack.id, {
-    userId: participantToTrack.id,
-    roomId,
-    lastSeen: new Date(),
-  });
+  // Add new participant
+  const participant: CollaborationParticipant = {
+    id: nanoid(8),
+    name: participantName,
+    color: generateColor(),
+    joinedAt: new Date().toISOString(),
+  };
 
-  rooms.set(roomId, room);
-  return room;
+  room.participants.push(participant);
+  room.lastActivity = new Date().toISOString();
+
+  console.log(
+    "[Storage] Added new participant",
+    participantName,
+    "to room",
+    roomId,
+  );
+  return participant;
 }
 
 export function joinRoom(
@@ -169,38 +184,27 @@ export function getAllRooms(): Room[] {
 // Updated message functions
 export function addMessage(
   roomId: string,
-  message:
-    | Omit<RoomMessage, "id">
-    | { sender: string; content: string; timestamp?: string; type?: string },
-): RoomMessage | null {
+  message: Omit<CollaborationMessage, "id" | "timestamp">,
+): CollaborationMessage {
   const room = rooms.get(roomId);
   if (!room) {
-    console.log(`[Storage] Room ${roomId} not found for message`);
-    return null;
+    throw new Error(`Room ${roomId} not found`);
   }
 
-  const fullMessage: RoomMessage = {
-    id: "id" in message ? message.id : nanoid(8),
-    sender: message.sender,
-    content: message.content,
-    timestamp: message.timestamp || new Date().toISOString(),
-    type: ("type" in message ? message.type : "user") as "user" | "ai",
+  const newMessage: CollaborationMessage = {
+    id: nanoid(8),
+    ...message,
+    timestamp: new Date().toISOString(),
   };
 
-  let roomMessages = messages.get(roomId);
-  if (!roomMessages) {
-    roomMessages = [];
-    messages.set(roomId, roomMessages);
-  }
+  const roomMessages = messages.get(roomId) ?? [];
+  roomMessages.push(newMessage);
+  messages.set(roomId, roomMessages);
 
-  roomMessages.push(fullMessage);
+  // Update room activity
+  room.lastActivity = new Date().toISOString();
 
-  // Keep only last 100 messages per room to prevent memory bloat
-  if (roomMessages.length > 100) {
-    roomMessages.splice(0, roomMessages.length - 100);
-  }
-
-  return fullMessage;
+  return newMessage;
 }
 
 export function getMessages(roomId: string): RoomMessage[] {
