@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useCollaboration } from "~/lib/collaboration/hooks";
 
 export default function RoomPage() {
@@ -15,23 +15,7 @@ export default function RoomPage() {
 
   const collaboration = useCollaboration(roomId);
 
-  useEffect(() => {
-    if (status === "loading") return; // Still loading session
-
-    if (status === "unauthenticated") {
-      // Redirect to login with return URL
-      router.push(
-        `/login?callbackUrl=${encodeURIComponent(window.location.href)}`,
-      );
-      return;
-    }
-
-    if (status === "authenticated" && roomId && !isJoining) {
-      void handleJoinRoom();
-    }
-  }, [status, roomId, isJoining]);
-
-  const handleJoinRoom = async () => {
+  const handleJoinRoom = useCallback(async () => {
     if (!roomId) return;
 
     setIsJoining(true);
@@ -47,7 +31,11 @@ export default function RoomPage() {
 
         const createResult = await collaboration.createUser(userName);
         if (!createResult.success) {
-          throw new Error(createResult.error || "Failed to create user");
+          throw new Error(
+            "error" in createResult
+              ? createResult.error
+              : "Failed to create user",
+          );
         }
         console.log("✅ User created for room join");
       }
@@ -66,7 +54,9 @@ export default function RoomPage() {
         // Redirect to main chat interface with room joined
         router.push(`/?room=${roomId}`);
       } else {
-        throw new Error(result.error || "Failed to join room");
+        throw new Error(
+          "error" in result ? result.error : "Failed to join room",
+        );
       }
     } catch (error) {
       console.error("❌ Failed to join room:", error);
@@ -84,7 +74,29 @@ export default function RoomPage() {
     } finally {
       setIsJoining(false);
     }
-  };
+  }, [
+    roomId,
+    collaboration,
+    session?.user?.name,
+    session?.user?.email,
+    router,
+  ]);
+
+  useEffect(() => {
+    if (status === "loading") return; // Still loading session
+
+    if (status === "unauthenticated") {
+      // Redirect to login with return URL
+      router.push(
+        `/login?callbackUrl=${encodeURIComponent(window.location.href)}`,
+      );
+      return;
+    }
+
+    if (status === "authenticated" && roomId && !isJoining) {
+      void handleJoinRoom();
+    }
+  }, [status, roomId, isJoining, handleJoinRoom, router]);
 
   if (status === "loading") {
     return (
