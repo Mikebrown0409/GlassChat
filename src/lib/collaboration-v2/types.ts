@@ -7,6 +7,7 @@ export interface Room {
   chatId: string; // The shared chat ID everyone talks in
   createdAt: string;
   participants: Participant[];
+  lastActivity?: string;
 }
 
 export interface Participant {

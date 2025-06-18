@@ -9,7 +9,8 @@ import { SimpleCollabPanel } from "../collaboration-v2/SimpleCollabPanel";
 export function ChatInterfaceV2() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const roomIdFromUrl = searchParams.get("room");
+  const roomIdFromUrl = searchParams?.get("room");
+  const userFromUrl = searchParams?.get("user");
 
   const [isCollabPanelOpen, setIsCollabPanelOpen] = useState(false);
   const [personalChatId, setPersonalChatId] = useState<string>("");
@@ -21,7 +22,10 @@ export function ChatInterfaceV2() {
     );
   }, []);
 
-  const collaboration = useCollaboration();
+  const collaboration = useCollaboration(
+    roomIdFromUrl ?? null,
+    userFromUrl ?? null,
+  );
 
   // Determine which chat to use
   const effectiveChatId =
@@ -43,17 +47,11 @@ export function ChatInterfaceV2() {
       // Show a simple prompt to join the room
       const userName = prompt(`Join room? Enter your name:`);
       if (userName?.trim()) {
-        collaboration
-          .joinRoom(roomIdFromUrl, userName.trim())
-          .then((room) => {
-            if (room) {
-              console.log("✅ Successfully joined room:", room.name);
-            }
-          })
-          .catch((error) => {
-            console.error("❌ Failed to join room:", error);
-            alert("Failed to join room. Please try again.");
-          });
+        // In V2, room joining is handled by changing the URL with both room and participant
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set("room", roomIdFromUrl);
+        newUrl.searchParams.set("user", userName.trim());
+        router.replace(newUrl.pathname + newUrl.search);
       }
     }
   }, [roomIdFromUrl, collaboration.isInRoom, collaboration, router]);

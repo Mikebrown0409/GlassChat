@@ -2,12 +2,20 @@
 // Can be replaced with Redis/Database later if needed
 
 import { nanoid } from "nanoid";
-import type {
-  CollaborationMessage,
-  CollaborationParticipant,
-  CollaborationRoom,
-} from "./types";
-import { Participant, Room, RoomMessage } from "./types";
+import type { Participant, Room, RoomMessage } from "./types";
+
+// Legacy compatibility types (for storage functions that haven't been migrated)
+interface CollaborationRoom extends Room {
+  // Legacy storage format compatibility
+}
+
+interface CollaborationParticipant extends Participant {
+  // Legacy storage format compatibility
+}
+
+interface CollaborationMessage extends RoomMessage {
+  // Legacy storage format compatibility
+}
 
 // In-memory storage
 const rooms = new Map<string, Room>();
@@ -61,6 +69,7 @@ export function createRoom(roomId: string, name: string): CollaborationRoom {
   const room: CollaborationRoom = {
     id: roomId,
     name: name ?? `Room ${roomId}`,
+    chatId: `shared-room-${roomId}`,
     participants: [],
     createdAt: new Date().toISOString(),
     lastActivity: new Date().toISOString(),

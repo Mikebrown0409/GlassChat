@@ -346,12 +346,35 @@ export function useCollaboration(
     };
   }, [roomId, hasAttemptedJoin, refreshData]);
 
+  // Derived values for legacy compatibility
+  const currentRoom = roomQuery.data?.room;
+  const isInRoom = Boolean(currentRoom);
+  const currentUser =
+    participantName &&
+    currentRoom?.participants?.find((p) => p.name === participantName)
+      ? {
+          id: `user-${participantName}`,
+          name: participantName,
+          color:
+            currentRoom.participants.find((p) => p.name === participantName)
+              ?.color || "#3B82F6",
+        }
+      : null;
+  const otherParticipants =
+    currentRoom?.participants?.filter((p) => p.name !== participantName) ?? [];
+
   return {
-    room: roomQuery.data?.room,
+    // V2 Core properties
+    room: currentRoom,
     messages: messagesQuery.data?.messages ?? [],
     isLoading: roomQuery.isLoading || messagesQuery.isLoading,
     joinRoom: () => {
-      if (!hasAttemptedJoin && !joinRoomMutation.isPending) {
+      if (
+        !hasAttemptedJoin &&
+        !joinRoomMutation.isPending &&
+        roomId &&
+        participantName
+      ) {
         setHasAttemptedJoin(true);
         joinRoomMutation.mutate({ roomId, userName: participantName });
       }
@@ -364,5 +387,22 @@ export function useCollaboration(
     isWebSocketConnected,
     refreshData, // Manual refresh - the ONLY way to sync when WebSocket is down
     error: roomQuery.error?.message || messagesQuery.error?.message || wsError,
+
+    // Legacy compatibility properties
+    isInRoom,
+    currentRoom,
+    currentUser,
+    otherParticipants,
+
+    // Additional missing properties for complete compatibility
+    createRoom: async (name: string) => {
+      // In V2, rooms are created implicitly when joined
+      const newRoomId = `room-${Date.now()}`;
+      return { id: newRoomId, name, success: true };
+    },
+    leaveRoom: () => {
+      // In V2, leaving is handled by changing URL
+      window.location.href = "/";
+    },
   };
 }

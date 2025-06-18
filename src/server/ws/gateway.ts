@@ -2,7 +2,12 @@ import { parse } from "cookie";
 import { IncomingMessage } from "http";
 import WebSocket, { WebSocketServer } from "ws";
 import * as Y from "yjs";
-import { WSV2Update } from "~/lib/collaboration-v2/types";
+import type { WSV2Update } from "~/lib/collaboration-v2/types";
+
+// Extend WebSocket interface to add custom properties
+interface ExtendedWebSocket extends WebSocket {
+  _clientType?: string;
+}
 
 // In-memory map of roomId -> Y.Doc (will be replaced by Redis persistence later)
 const docs = new Map<string, Y.Doc>();
@@ -52,7 +57,7 @@ export function startCollaborationGateway() {
               // eslint-disable-next-line @typescript-eslint/ban-ts-comment
               // @ts-ignore
               socket._roomId = msg.roomId;
-              socket._clientType = "v2";
+              (socket as ExtendedWebSocket)._clientType = "v2";
               console.log(`[CollabWS] V2 client joined room ${msg.roomId}`);
             } else {
               // Legacy Yjs client

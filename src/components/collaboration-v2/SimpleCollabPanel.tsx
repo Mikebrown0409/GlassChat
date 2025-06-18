@@ -17,15 +17,12 @@ export function SimpleCollabPanel({
   const [roomName, setRoomName] = useState("");
   const [showCreateRoom, setShowCreateRoom] = useState(false);
 
-  const collaboration = useCollaboration();
+  const collaboration = useCollaboration(null, null);
 
   const handleCreateRoom = async () => {
     if (!userName.trim() || !roomName.trim()) return;
 
-    const room = await collaboration.createRoom(
-      roomName.trim(),
-      userName.trim(),
-    );
+    const room = await collaboration.createRoom(roomName.trim());
     if (room) {
       setShowCreateRoom(false);
       setRoomName("");

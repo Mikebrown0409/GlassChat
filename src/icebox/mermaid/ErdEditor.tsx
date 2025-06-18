@@ -11,10 +11,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MermaidDiagram } from "~/components/chat/MermaidDiagram";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
@@ -83,8 +83,8 @@ export function ErdEditor() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const initialCodeParam = searchParams.get("code");
-  const messageIdParam = searchParams.get("msg");
+  const initialCodeParam = searchParams?.get("code");
+  const messageIdParam = searchParams?.get("msg");
 
   const initialCode: string = initialCodeParam
     ? decodeURIComponent(initialCodeParam)

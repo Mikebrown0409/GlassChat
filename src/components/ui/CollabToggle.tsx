@@ -51,6 +51,9 @@ export function CollabToggle() {
       document.addEventListener("click", handleClickOutside);
       return () => document.removeEventListener("click", handleClickOutside);
     }
+
+    // Return empty cleanup function for when not showing popup
+    return () => {};
   }, [showPopup]);
 
   const handleJoinRoom = () => {

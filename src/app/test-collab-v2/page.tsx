@@ -1,29 +1,20 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCollaboration } from "~/lib/collaboration-v2/hooks";
 
 export default function TestCollabV2() {
   const searchParams = useSearchParams();
-  const roomId = searchParams.get("room") ?? "test-room";
+  const roomId = searchParams?.get("room") ?? "test-room";
   const [participantName, setParticipantName] = useState("");
   const [hasJoined, setHasJoined] = useState(false);
 
-  const {
-    room,
-    messages,
-    sendMessage,
-    sendMessageToAI,
-    isSendingMessage,
-    isSendingToAI,
-    error,
-    isWsConnected,
-    refreshData,
-  } = useCollaboration(
-    hasJoined ? roomId : null,
-    hasJoined ? participantName : null,
-  );
+  const { room, messages, sendMessage, sendMessageToAI, error, refreshData } =
+    useCollaboration(
+      hasJoined ? roomId : null,
+      hasJoined ? participantName : null,
+    );
 
   const handleJoin = (name: string) => {
     setParticipantName(name);
@@ -97,27 +88,13 @@ export default function TestCollabV2() {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Connection Status */}
-              <div className="flex items-center gap-2">
-                <div
-                  className={`h-3 w-3 rounded-full ${
-                    isWsConnected ? "bg-green-400" : "bg-yellow-400"
-                  }`}
-                />
-                <span className="text-sm text-slate-300">
-                  {isWsConnected ? "WebSocket Connected" : "Manual Mode"}
-                </span>
-              </div>
-
               {/* Manual Refresh */}
-              {!isWsConnected && (
-                <button
-                  onClick={handleManualRefresh}
-                  className="rounded-lg bg-purple-600 px-4 py-2 text-sm text-white transition-colors hover:bg-purple-700"
-                >
-                  Refresh
-                </button>
-              )}
+              <button
+                onClick={handleManualRefresh}
+                className="rounded-lg bg-purple-600 px-4 py-2 text-sm text-white transition-colors hover:bg-purple-700"
+              >
+                Refresh
+              </button>
 
               {/* Participants Count */}
               <div className="text-sm text-slate-300">
@@ -165,8 +142,6 @@ export default function TestCollabV2() {
               messages={messages ?? []}
               onSendMessage={handleSendMessage}
               onSendToAI={handleSendToAI}
-              isSendingMessage={isSendingMessage}
-              isSendingToAI={isSendingToAI}
               currentUser={participantName}
             />
           </div>
@@ -180,8 +155,6 @@ const CollaborationChat = ({
   messages,
   onSendMessage,
   onSendToAI,
-  isSendingMessage,
-  isSendingToAI,
   currentUser,
 }: {
   messages: Array<{
@@ -193,12 +166,11 @@ const CollaborationChat = ({
   }>;
   onSendMessage: (content: string) => Promise<void>;
   onSendToAI: (content: string) => Promise<void>;
-  isSendingMessage: boolean;
-  isSendingToAI: boolean;
   currentUser: string;
 }) => {
   const [input, setInput] = useState("");
   const [isAIMode, setIsAIMode] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -207,10 +179,11 @@ const CollaborationChat = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isSending) return;
 
     const content = input.trim();
     setInput("");
+    setIsSending(true);
 
     try {
       if (isAIMode) {
@@ -220,6 +193,8 @@ const CollaborationChat = ({
       }
     } catch (error) {
       console.error("Failed to send message:", error);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -300,18 +275,18 @@ const CollaborationChat = ({
               isAIMode ? "Ask the AI assistant..." : "Type a message..."
             }
             className="flex-1 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-400 focus:border-purple-400 focus:ring-1 focus:ring-purple-400 focus:outline-none"
-            disabled={isSendingMessage || isSendingToAI}
+            disabled={isSending}
           />
           <button
             type="submit"
-            disabled={!input.trim() || isSendingMessage || isSendingToAI}
+            disabled={!input.trim() || isSending}
             className={`rounded-xl px-6 py-3 font-medium transition-colors ${
               isAIMode
                 ? "bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800"
                 : "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800"
             } text-white disabled:cursor-not-allowed disabled:opacity-50`}
           >
-            {isSendingMessage || isSendingToAI ? (
+            {isSending ? (
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
             ) : (
               "Send"

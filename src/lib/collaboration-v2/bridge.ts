@@ -243,7 +243,8 @@ export function useCollaborationBridge(roomId: string | null) {
   return {
     // User management
     user: bridgedUser,
-    createUser: async () => bridgedUser, // V2 handles user creation automatically
+    createUser: async (_name?: string) => bridgedUser, // V2 handles user creation automatically
+    isCreating: false, // V2 doesn't have user creation concept
     isCreatingUser: false,
 
     // Room management
@@ -279,12 +280,15 @@ export function useCollaborationBridge(roomId: string | null) {
     lastSyncTime: 0,
 
     // Loading states
-    isSendingMessage: v2Collaboration.isSendingMessage ?? false,
+    isSendingMessage: v2Collaboration.isSending ?? false,
+    isCreating: false, // V2 doesn't have user creation concept
+    isCreatingRoom: false, // V2 rooms are created implicitly
+    isJoiningRoom: v2Collaboration.isJoining ?? false,
     isUpdatingCode: false,
     isTogglingLiveCoding: false,
 
     // V2 specific features (additional)
-    isWsConnected: v2Collaboration.isWsConnected ?? false,
+    isWsConnected: v2Collaboration.isWebSocketConnected ?? false,
     refreshData: v2Collaboration.refreshData,
     sendMessageToAI: v2Collaboration.sendMessageToAI,
     isSendingToAI: v2Collaboration.isSendingToAI ?? false,
