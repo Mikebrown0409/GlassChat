@@ -225,9 +225,9 @@ export function useUnifiedCollaboration(roomId: string | null) {
       }
 
       return new Promise<void>((resolve, reject) => {
-        updateTimeoutRef.current = setTimeout(() => {
+      updateTimeoutRef.current = setTimeout(() => {
           setIsUserTyping(false);
-          updateCodeMutation
+        updateCodeMutation
             .mutateAsync({
               roomId,
               content,
@@ -236,7 +236,7 @@ export function useUnifiedCollaboration(roomId: string | null) {
             .then(() => resolve())
             .catch(reject);
         }, 500); // 500ms debounce
-      });
+          });
     },
     [roomId, wsClient, updateCodeMutation],
   );
@@ -262,7 +262,7 @@ export function useUnifiedCollaboration(roomId: string | null) {
         // Remove optimistic message on error
         optimisticRemove(tempMsg.id);
         throw error;
-      }
+          }
     },
     [roomId, sendMessageMutation],
   );
@@ -577,9 +577,9 @@ export function useCollaborationRooms() {
 
       try {
         console.log("🚪 Joining room via server:", roomId);
-        const result = await joinRoomMutation.mutateAsync({ roomId });
+      const result = await joinRoomMutation.mutateAsync({ roomId });
         console.log("✅ Successfully joined room:", roomId);
-        return result;
+      return result;
       } finally {
         // Clear join attempt after completion
         setJoinAttempts((prev) => {

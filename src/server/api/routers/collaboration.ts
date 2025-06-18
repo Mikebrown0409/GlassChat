@@ -67,7 +67,10 @@ const DeleteMessageSchema = z.object({
 });
 
 // Helper to get session-specific collaboration manager
-function getSessionManager(ctx: any) {
+function getSessionManager(ctx: {
+  session?: { user?: { id?: string } };
+  req?: { ip?: string; headers?: Record<string, string> };
+}) {
   // Use session user ID if available, otherwise use IP + user agent for anonymous sessions
   const sessionId =
     ctx.session?.user?.id ??

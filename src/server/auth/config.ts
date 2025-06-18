@@ -73,15 +73,13 @@ export const authConfig = {
                   where: { email },
                 });
 
-                if (!user) {
-                  user = await db.user.create({
-                    data: {
-                      name,
-                      email,
-                      image: null,
-                    },
-                  });
-                }
+                user ??= await db.user.create({
+                  data: {
+                    name,
+                    email,
+                    image: null,
+                  },
+                });
 
                 return {
                   id: user.id,

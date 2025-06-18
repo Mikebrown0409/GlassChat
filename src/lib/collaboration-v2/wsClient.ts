@@ -1,7 +1,7 @@
 interface RoomUpdate {
   type: "participant_joined" | "participant_left" | "message_sent";
   roomId: string;
-  data: any;
+  data: unknown;
 }
 
 export class CollaborationV2WSClient {
@@ -58,7 +58,7 @@ export class CollaborationV2WSClient {
       this.ws.addEventListener("message", (evt) => {
         if (typeof evt.data === "string") {
           try {
-            const update: RoomUpdate = JSON.parse(evt.data);
+            const update: RoomUpdate = JSON.parse(evt.data) as RoomUpdate;
             if (this.onUpdateCallback) {
               this.onUpdateCallback(update);
             }
@@ -127,7 +127,7 @@ export class CollaborationV2WSClient {
     this.onUpdateCallback = callback;
   }
 
-  send(message: any) {
+  send(message: Record<string, unknown>) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     }

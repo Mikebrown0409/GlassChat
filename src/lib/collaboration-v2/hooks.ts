@@ -60,7 +60,7 @@ export function useCollaboration(
 
   // Send message mutation
   const sendMessageMutation = api.collaborationV2.sendMessage.useMutation({
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Always refresh messages after sending
       void queryClient.invalidateQueries({
         queryKey: ["collaborationV2", "messages", roomId],
@@ -81,7 +81,7 @@ export function useCollaboration(
   // Send message to AI mutation
   const sendMessageToAIMutation =
     api.collaborationV2.sendMessageToAI.useMutation({
-      onSuccess: (data) => {
+      onSuccess: () => {
         // Always refresh messages after AI response
         void queryClient.invalidateQueries({
           queryKey: ["collaborationV2", "messages", roomId],
@@ -297,7 +297,7 @@ export function useCollaboration(
 
         ws.onmessage = (event) => {
           try {
-            const data = JSON.parse(event.data as string);
+            const data = JSON.parse(event.data as string) as { type: string };
 
             // Handle different message types
             if (
@@ -357,7 +357,7 @@ export function useCollaboration(
           name: participantName,
           color:
             currentRoom.participants.find((p) => p.name === participantName)
-              ?.color || "#3B82F6",
+              ?.color ?? "#3B82F6",
         }
       : null;
   const otherParticipants =
@@ -386,7 +386,7 @@ export function useCollaboration(
     isSendingToAI: sendMessageToAIMutation.isPending,
     isWebSocketConnected,
     refreshData, // Manual refresh - the ONLY way to sync when WebSocket is down
-    error: roomQuery.error?.message || messagesQuery.error?.message || wsError,
+    error: roomQuery.error?.message ?? messagesQuery.error?.message ?? wsError,
 
     // Legacy compatibility properties
     isInRoom,

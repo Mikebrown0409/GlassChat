@@ -17,8 +17,8 @@ const rehypeKatexTyped = rehypeKatex as unknown as Pluggable;
 interface Props {
   content: string;
   role: "user" | "assistant" | "system";
-  messageId?: string;
-  onUpdateMessage?: (newContent: string) => void;
+  _messageId?: string;
+  _onUpdateMessage?: (newContent: string) => void;
 }
 
 // Previously attempted to auto-convert tabular-looking text into markdown tables.
@@ -70,8 +70,8 @@ function MarkdownTableWrapper({ children }: { children?: React.ReactNode }) {
 export default function MarkdownContent({
   content,
   role,
-  messageId,
-  onUpdateMessage,
+  _messageId,
+  _onUpdateMessage,
 }: Props) {
   const stringifyChildren = (node: ReactNode): string => {
     if (typeof node === "string") return node;

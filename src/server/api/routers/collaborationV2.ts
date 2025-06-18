@@ -9,14 +9,19 @@ import { wsGateway } from "~/server/ws/gateway";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 
 // Helper function to broadcast WebSocket messages (import the gateway)
-function broadcastToRoom(roomId: string, message: any) {
+function broadcastToRoom(roomId: string, message: Record<string, unknown>) {
   try {
     // Import dynamically to avoid potential circular dependencies
-    const { startCollaborationGateway } = require("~/server/ws/gateway");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { startCollaborationGateway } = require("~/server/ws/gateway") as {
+      startCollaborationGateway: () => {
+        clients?: Set<WebSocket & { _roomId?: string; _clientType?: string }>;
+      };
+    };
     const wss = startCollaborationGateway();
 
-    if (wss && wss.clients) {
-      wss.clients.forEach((client: any) => {
+    if (wss?.clients) {
+      wss.clients.forEach((client) => {
         if (
           client.readyState === 1 && // WebSocket.OPEN
           client._roomId === roomId &&

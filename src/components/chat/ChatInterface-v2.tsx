@@ -38,7 +38,7 @@ export function ChatInterfaceV2() {
     messages,
     sendMessage: sendToAI,
     isLoading: isGenerating,
-    cancelGeneration,
+    _cancelGeneration,
   } = useChatGeneration(effectiveChatId);
 
   // Handle room joining from URL
@@ -82,20 +82,8 @@ export function ChatInterfaceV2() {
     await sendToAI(content);
   };
 
-  const handleTranslate = (text?: string) => {
-    console.log("Translate:", text);
-  };
-
-  const handleExplain = (text?: string) => {
-    console.log("Explain:", text);
-  };
-
   const handleSuggestionClick = (suggestion: string) => {
     void sendToAI(suggestion);
-  };
-
-  const handleUpdateMessage = (id: string, newContent: string) => {
-    console.log("Update message:", id, newContent);
   };
 
   return (
@@ -304,7 +292,7 @@ export function ChatInterfaceV2() {
                     document.querySelector<HTMLInputElement>(
                       'input[type="text"]',
                     );
-                  if (input && input.value.trim()) {
+                  if (input?.value.trim()) {
                     void handleSendMessage(input.value);
                     input.value = "";
                   }

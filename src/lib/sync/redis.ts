@@ -149,7 +149,8 @@ function createRedisClient() {
   if (process.env.NODE_ENV === "development" && typeof window === "undefined") {
     try {
       // Only import ioredis in development and server-side
-      const IORedis = require("ioredis").Redis;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const IORedis = require("ioredis").Redis as typeof Redis;
       console.log("🔧 Using local Redis (development override)");
       return new IORedis({
         host: "localhost",
@@ -183,7 +184,7 @@ function createRedisClient() {
 }
 
 const globalForRedis = globalThis as unknown as {
-  redisClient: ReturnType<typeof createRedisClient> | undefined;
+  redisClient: Redis | MockRedis | undefined;
 };
 
 export const redis =

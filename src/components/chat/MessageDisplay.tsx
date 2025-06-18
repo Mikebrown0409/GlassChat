@@ -179,6 +179,7 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
             )}
 
             {/* Timestamp for user messages (both current user and other users) */}
+            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {(message.role === "user" || isOtherUser || isCurrentUser) &&
               !isAIMessage && (
                 <span

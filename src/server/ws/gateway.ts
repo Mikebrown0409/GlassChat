@@ -62,14 +62,14 @@ export function startCollaborationGateway() {
             } else {
               // Legacy Yjs client
               client.clientType = "yjs";
-              // @ts-ignore attach for easy lookup
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore
-              socket._roomId = msg.roomId;
-              const doc = getDoc(msg.roomId);
-              // Send current state vector to client for sync
-              const state = Y.encodeStateAsUpdate(doc);
-              socket.send(state);
+            // @ts-ignore attach for easy lookup
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            socket._roomId = msg.roomId;
+            const doc = getDoc(msg.roomId);
+            // Send current state vector to client for sync
+            const state = Y.encodeStateAsUpdate(doc);
+            socket.send(state);
             }
           } else if (client.clientType === "v2") {
             // Handle v2 collaboration messages
