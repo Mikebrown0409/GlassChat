@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useCollaboration } from "~/lib/collaboration-v2/hooks";
+import { usePusherCollaboration } from "~/lib/collaboration-v2/pusherHooks";
 import { useChatGeneration } from "~/lib/collaboration-v2/useChatGeneration";
 import { SimpleCollabPanel } from "../collaboration-v2/SimpleCollabPanel";
 
@@ -14,6 +14,7 @@ export function ChatInterfaceV2() {
 
   const [isCollabPanelOpen, setIsCollabPanelOpen] = useState(false);
   const [personalChatId, setPersonalChatId] = useState<string>("");
+  const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
 
   // Generate personalChatId on client-side only to avoid hydration mismatch
   useEffect(() => {
@@ -22,10 +23,39 @@ export function ChatInterfaceV2() {
     );
   }, []);
 
-  const collaboration = useCollaboration(
-    roomIdFromUrl ?? null,
-    userFromUrl ?? null,
-  );
+  // Use Pusher for real-time collaboration instead of WebSockets
+  const pusherCollab = usePusherCollaboration({
+    roomId: roomIdFromUrl ?? undefined,
+    userId: userFromUrl ?? "anonymous-user",
+    onMessageSync: (event) => {
+      console.log("📨 [ChatInterface] Message sync:", event);
+    },
+    onRoomStateUpdate: (event) => {
+      console.log("🏠 [ChatInterface] Room state update:", event);
+    },
+  });
+
+  // Create a compatibility layer to match the old hook API
+  const collaboration = {
+    isInRoom: !!(roomIdFromUrl && userFromUrl && pusherCollab.isConnected),
+    currentRoom: roomIdFromUrl
+      ? {
+          id: roomIdFromUrl,
+          name: `Room ${roomIdFromUrl}`,
+          chatId: `shared-room-${roomIdFromUrl}`,
+        }
+      : null,
+    currentUser: userFromUrl
+      ? {
+          id: userFromUrl,
+          name: userFromUrl,
+          color: "#3B82F6",
+        }
+      : null,
+    otherParticipants: [], // Pusher doesn't provide participant list in this simple setup
+    isWebSocketConnected: pusherCollab.isConnected,
+    error: pusherCollab.error,
+  };
 
   // Determine which chat to use
   const effectiveChatId =
@@ -42,18 +72,12 @@ export function ChatInterfaceV2() {
 
   // Handle room joining from URL
   useEffect(() => {
-    if (roomIdFromUrl && !collaboration.isInRoom) {
-      // Show a simple prompt to join the room
-      const userName = prompt(`Join room? Enter your name:`);
-      if (userName?.trim()) {
-        // In V2, room joining is handled by changing the URL with both room and participant
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set("room", roomIdFromUrl);
-        newUrl.searchParams.set("user", userName.trim());
-        router.replace(newUrl.pathname + newUrl.search);
-      }
+    if (roomIdFromUrl && userFromUrl && !hasJoinedRoom) {
+      console.log(`🔗 Joining room from URL: ${roomIdFromUrl}`);
+      void pusherCollab.joinRoom(roomIdFromUrl);
+      setHasJoinedRoom(true);
     }
-  }, [roomIdFromUrl, collaboration.isInRoom, collaboration, router]);
+  }, [roomIdFromUrl, userFromUrl, hasJoinedRoom, pusherCollab]);
 
   // Clean up URL when leaving room
   useEffect(() => {
@@ -61,6 +85,7 @@ export function ChatInterfaceV2() {
       // Remove room parameter from URL
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete("room");
+      newUrl.searchParams.delete("user");
       router.replace(newUrl.pathname + newUrl.search);
     }
   }, [collaboration.isInRoom, roomIdFromUrl, router]);
@@ -73,6 +98,13 @@ export function ChatInterfaceV2() {
       console.log(
         `📤 Sending to shared room: ${collaboration.currentRoom?.name}`,
       );
+      // Also send via Pusher for real-time sync
+      await pusherCollab.sendMessage({
+        type: "chat_message",
+        content: content,
+        sender: userFromUrl ?? "Anonymous",
+        timestamp: Date.now(),
+      });
     } else {
       // Personal chat
       console.log(`📤 Sending to personal chat`);
@@ -84,6 +116,24 @@ export function ChatInterfaceV2() {
   const handleSuggestionClick = (suggestion: string) => {
     void sendToAI(suggestion);
   };
+
+  // Handle room joining from URL prompt
+  useEffect(() => {
+    if (roomIdFromUrl && !userFromUrl && !hasJoinedRoom) {
+      // Show a simple prompt to join the room
+      const userName = prompt(`Join room "${roomIdFromUrl}"? Enter your name:`);
+      if (userName?.trim()) {
+        // Update URL with user parameter
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set("room", roomIdFromUrl);
+        newUrl.searchParams.set("user", userName.trim());
+        router.replace(newUrl.pathname + newUrl.search);
+      } else {
+        // User cancelled - redirect to home
+        router.replace("/");
+      }
+    }
+  }, [roomIdFromUrl, userFromUrl, hasJoinedRoom, router]);
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -97,7 +147,9 @@ export function ChatInterfaceV2() {
           </h2>
           <p className="text-sm text-gray-600">
             {collaboration.isInRoom
-              ? `${collaboration.otherParticipants.length + 1} participants`
+              ? pusherCollab.isConnected
+                ? "🟢 Connected via Pusher"
+                : "🔄 Connecting..."
               : "Private conversation"}
           </p>
         </div>
@@ -120,24 +172,20 @@ export function ChatInterfaceV2() {
                     <span className="text-sm">
                       {collaboration.currentUser.name} (you)
                     </span>
-                  </div>
-                )}
-                {collaboration.otherParticipants.map((participant) => (
-                  <div key={participant.id} className="flex items-center gap-2">
                     <div
-                      className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium text-white"
-                      style={{ backgroundColor: participant.color }}
-                    >
-                      {participant.name[0]?.toUpperCase()}
-                    </div>
-                    <span className="text-sm">{participant.name}</span>
-                    <div
-                      className="h-2 w-2 rounded-full bg-green-500"
-                      title="Online"
+                      className={`h-2 w-2 rounded-full ${pusherCollab.isConnected ? "bg-green-500" : "bg-yellow-500"}`}
+                      title={
+                        pusherCollab.isConnected ? "Connected" : "Connecting"
+                      }
                     />
                   </div>
-                ))}
+                )}
               </div>
+              {pusherCollab.error && (
+                <div className="mt-2 text-sm text-red-600">
+                  ⚠️ {pusherCollab.error}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -156,7 +204,9 @@ export function ChatInterfaceV2() {
               </h1>
               <p className="text-sm text-gray-600">
                 {collaboration.isInRoom
-                  ? `${collaboration.otherParticipants.length + 1} participants`
+                  ? pusherCollab.isConnected
+                    ? "Real-time collaboration active"
+                    : "Connecting to collaboration..."
                   : "Private conversation"}
               </p>
             </div>
@@ -183,7 +233,7 @@ export function ChatInterfaceV2() {
                 <p className="mb-6 text-gray-600">
                   Start a conversation or{" "}
                   {collaboration.isInRoom
-                    ? "collaborate with your team"
+                    ? "collaborate with your team in real-time"
                     : "ask me anything"}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
@@ -227,36 +277,14 @@ export function ChatInterfaceV2() {
                     className={`max-w-[70%] rounded-lg p-4 ${
                       message.role === "user"
                         ? "bg-blue-600 text-white"
-                        : "border border-gray-200 bg-white text-gray-800"
+                        : "bg-white shadow-sm"
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    <div className="text-sm">{message.content}</div>
                   </div>
                 </div>
               ))
             )}
-
-            {isGenerating && (
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-600 text-sm font-medium text-white">
-                  AI
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-4">
-                  <div className="flex items-center gap-1">
-                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-400"></div>
-                    <div
-                      className="h-2 w-2 animate-bounce rounded-full bg-gray-400"
-                      style={{ animationDelay: "0.1s" }}
-                    ></div>
-                    <div
-                      className="h-2 w-2 animate-bounce rounded-full bg-gray-400"
-                      style={{ animationDelay: "0.2s" }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div ref={messagesEndRef} />
           </div>
         </div>

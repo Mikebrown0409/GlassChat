@@ -53,3 +53,25 @@ export interface JoinRoomResponse {
   room?: Room;
   error?: string;
 }
+
+// Pusher-specific types for real-time messaging
+export interface CollaborationMessage {
+  type: string;
+  content: string;
+  sender: string;
+  timestamp: number;
+}
+
+export interface MessageSyncEvent {
+  messageId: string;
+  content: string;
+  sender: string;
+  timestamp: number;
+  roomId: string;
+}
+
+export interface RoomStateEvent {
+  roomId: string;
+  participants: Participant[];
+  lastActivity: number;
+}

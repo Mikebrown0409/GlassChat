@@ -30,6 +30,12 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_URL: z.string().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
+    // Pusher (for real-time collaboration)
+    PUSHER_APP_ID: z.string().optional(),
+    PUSHER_KEY: z.string().optional(),
+    PUSHER_SECRET: z.string().optional(),
+    PUSHER_CLUSTER: z.string().optional(),
+
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -41,7 +47,9 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    // Pusher public keys for client-side
+    NEXT_PUBLIC_PUSHER_KEY: z.string().optional(),
+    NEXT_PUBLIC_PUSHER_CLUSTER: z.string().optional(),
   },
 
   /**
@@ -60,6 +68,12 @@ export const env = createEnv({
     GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+    PUSHER_APP_ID: process.env.PUSHER_APP_ID,
+    PUSHER_KEY: process.env.PUSHER_KEY,
+    PUSHER_SECRET: process.env.PUSHER_SECRET,
+    PUSHER_CLUSTER: process.env.PUSHER_CLUSTER,
+    NEXT_PUBLIC_PUSHER_KEY: process.env.NEXT_PUBLIC_PUSHER_KEY,
+    NEXT_PUBLIC_PUSHER_CLUSTER: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**
