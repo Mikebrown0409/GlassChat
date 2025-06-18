@@ -122,7 +122,7 @@ export function CollaborationPanel({
       !autoCreateAttempted
     ) {
       // Try to auto-create user from authenticated session, show setup if it fails
-      const userName = session?.user?.name || session?.user?.email;
+      const userName = session?.user?.name ?? session?.user?.email;
       if (userName) {
         setAutoCreateAttempted(true);
         void collaboration
@@ -218,7 +218,7 @@ export function CollaborationPanel({
       try {
         // Get user name from session or use a default
         const userName =
-          session?.user?.name || session?.user?.email || `User-${Date.now()}`;
+          session?.user?.name ?? session?.user?.email ?? `User-${Date.now()}`;
         await collaboration.createUser(userName);
       } catch (error) {
         console.error("Failed to create collaboration user:", error);

@@ -25,7 +25,7 @@ export function useCollaboration(
         console.log("[CollabV2] Successfully joined room");
         setHasAttemptedJoin(true); // Prevent further join attempts
         // Refresh the room data to show the new participant
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: ["collaborationV2", "room", roomId],
         });
       } else {
@@ -62,7 +62,7 @@ export function useCollaboration(
   const sendMessageMutation = api.collaborationV2.sendMessage.useMutation({
     onSuccess: (data) => {
       // Always refresh messages after sending
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ["collaborationV2", "messages", roomId],
       });
 
@@ -71,7 +71,7 @@ export function useCollaboration(
         console.log(
           "[CollabV2] Message sent successfully, refreshing data for other updates",
         );
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: ["collaborationV2", "room", roomId],
         });
       }
@@ -83,7 +83,7 @@ export function useCollaboration(
     api.collaborationV2.sendMessageToAI.useMutation({
       onSuccess: (data) => {
         // Always refresh messages after AI response
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: ["collaborationV2", "messages", roomId],
         });
 
@@ -92,7 +92,7 @@ export function useCollaboration(
           console.log(
             "[CollabV2] AI message sent successfully, refreshing data for other updates",
           );
-          queryClient.invalidateQueries({
+          void queryClient.invalidateQueries({
             queryKey: ["collaborationV2", "room", roomId],
           });
         }
@@ -123,11 +123,11 @@ export function useCollaboration(
         update.type === "participant_joined" ||
         update.type === "participant_left"
       ) {
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: ["collaborationV2", "room", roomId],
         });
       } else if (update.type === "message_sent") {
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: ["collaborationV2", "messages", roomId],
         });
       }

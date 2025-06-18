@@ -34,7 +34,7 @@ export function SimpleCollabPanel({
     if (!collaboration.currentRoom) return;
 
     const shareUrl = `${window.location.origin}/test-collab-v2?room=${collaboration.currentRoom.id}`;
-    navigator.clipboard.writeText(shareUrl);
+    void navigator.clipboard.writeText(shareUrl);
 
     // Simple notification
     const notification = document.createElement("div");

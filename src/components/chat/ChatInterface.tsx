@@ -143,7 +143,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   useEffect(() => {
     // Prevent multiple simultaneous join attempts
     const maxFailures = 3; // Stop trying after 3 failures
-    const currentFailures = joinFailureCount[roomIdFromUrl || ""] || 0;
+    const currentFailures = joinFailureCount[roomIdFromUrl ?? ""] ?? 0;
 
     if (
       !roomIdFromUrl ||
@@ -195,7 +195,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
               console.log("📝 Creating new shared chat for room:", roomChatId);
               await syncManager.createChatWithId(
                 roomChatId,
-                joinResult.room.name || "Shared Room",
+                joinResult.room.name ?? "Shared Room",
               );
             }
 
@@ -214,7 +214,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         } else {
           console.error(
             "❌ Room join failed:",
-            joinResult.error || "Unknown error",
+            joinResult.error ?? "Unknown error",
           );
 
           // Track failure and decide whether to retry
@@ -258,7 +258,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     };
 
     // Small delay to ensure user is fully initialized
-    const timeoutId = setTimeout(joinRoomFromUrl, 300);
+    const timeoutId = setTimeout(() => void joinRoomFromUrl(), 300);
     return () => clearTimeout(timeoutId);
   }, [
     roomIdFromUrl,

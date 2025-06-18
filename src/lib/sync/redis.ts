@@ -38,9 +38,7 @@ class MockRedis {
 
   async keys(pattern: string): Promise<string[]> {
     const regex = new RegExp(pattern.replace("*", ".*"));
-    return Array.from(this.data.keys()).filter((key) =>
-      regex.test(key as string),
-    );
+    return Array.from(this.data.keys()).filter((key) => regex.test(key));
   }
 
   async sadd(key: string, member: string): Promise<number> {
@@ -82,7 +80,7 @@ class MockRedis {
   }
 
   async lrange(key: string, start: number, stop: number): Promise<string[]> {
-    const list = this.lists.get(key) || [];
+    const list = this.lists.get(key) ?? [];
     return list.slice(start, stop === -1 ? undefined : stop + 1);
   }
 

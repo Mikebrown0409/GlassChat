@@ -5,17 +5,11 @@ import { nanoid } from "nanoid";
 import type { Participant, Room, RoomMessage } from "./types";
 
 // Legacy compatibility types (for storage functions that haven't been migrated)
-interface CollaborationRoom extends Room {
-  // Legacy storage format compatibility
-}
+type CollaborationRoom = Room;
 
-interface CollaborationParticipant extends Participant {
-  // Legacy storage format compatibility
-}
+type CollaborationParticipant = Participant;
 
-interface CollaborationMessage extends RoomMessage {
-  // Legacy storage format compatibility
-}
+type CollaborationMessage = RoomMessage;
 
 // In-memory storage
 const rooms = new Map<string, Room>();
