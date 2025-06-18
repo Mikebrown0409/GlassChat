@@ -33,11 +33,8 @@ export async function middleware(req: NextRequest) {
   // Attempt to decode the NextAuth JWT (does NOT hit DB)
   let token: object | null = null;
   try {
-    // Explicitly reference the secret so the env var is included in the edge
-    // bundle. Without this reference the variable is omitted and the runtime
-    // sees `undefined`, causing the cookie to be rejected. We also pass it
-    // directly to getToken for clarity.
-    const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+    // Use the same secret priority as NextAuth config: AUTH_SECRET first, then NEXTAUTH_SECRET
+    const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
     token = await getToken({ req, secret });
 
     console.log(`[EDGE] Token decoded: ${!!token}`);

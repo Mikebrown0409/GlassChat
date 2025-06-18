@@ -5,7 +5,8 @@ import { NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
   try {
     const cookieHeader = req.headers.get("cookie");
-    const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+    // Use the same secret priority as NextAuth config: AUTH_SECRET first, then NEXTAUTH_SECRET
+    const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
 
     // Try to get the token
     let token = null;
@@ -53,6 +54,12 @@ export async function GET(req: NextRequest) {
         AUTH_SECRET: process.env.AUTH_SECRET ? "SET" : "NOT SET",
         NODE_ENV: process.env.NODE_ENV,
         NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
+        secretUsed: secret ? "SET" : "NOT SET",
+        secretSource: process.env.AUTH_SECRET
+          ? "AUTH_SECRET"
+          : process.env.NEXTAUTH_SECRET
+            ? "NEXTAUTH_SECRET"
+            : "NONE",
       },
       token: token ? "VALID" : "NULL",
       tokenError,
