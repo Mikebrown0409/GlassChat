@@ -12,47 +12,30 @@ export default function RoomPage() {
   const [userName, setUserName] = useState("");
   const [isJoining, setIsJoining] = useState(false);
 
-  const collaboration = useCollaboration();
+  const collaboration = useCollaboration(roomId, userName);
 
-  // If roomId is not available, redirect to home
-  if (!roomId) {
-    router.push("/");
-    return null;
-  }
-
-  // Auto-redirect if already in a room
+  // Auto-redirect effects
   useEffect(() => {
-    if (collaboration.isInRoom && collaboration.currentRoom) {
-      const currentRoomId = collaboration.currentRoom.id;
-      if (currentRoomId === roomId) {
-        // Already in this room, redirect to main chat with room context
-        router.push(`/?room=${roomId}`);
-      } else {
-        // In a different room, ask if they want to switch
-        const switchRoom = confirm(
-          `You're currently in "${collaboration.currentRoom.name}". Switch to this room?`,
-        );
-        if (switchRoom) {
-          collaboration.leaveRoom().then(() => {
-            // Will re-trigger this effect and show join form
-          });
-        } else {
-          router.push(`/?room=${currentRoomId}`);
-        }
-      }
+    // If roomId is not available, redirect to home
+    if (!roomId) {
+      router.push("/");
+      return;
     }
-  }, [collaboration.isInRoom, collaboration.currentRoom, roomId, router]);
 
-  const handleJoinRoom = async () => {
-    if (!userName.trim()) return;
+    // If we have successfully joined a room, redirect to main chat
+    if (collaboration.room && userName.trim()) {
+      router.push(`/?room=${roomId}`);
+    }
+  }, [collaboration.room, roomId, router, userName]);
+
+  const handleJoinRoom = () => {
+    if (!userName.trim() || !roomId) return;
 
     setIsJoining(true);
     try {
-      const room = await collaboration.joinRoom(roomId, userName.trim());
-      if (room) {
-        // Successfully joined, redirect to main chat
-        router.push(`/?room=${roomId}`);
-      }
+      collaboration.joinRoom();
+      // After joining, redirect to main chat
+      router.push(`/?room=${roomId}`);
     } catch (error) {
       console.error("Failed to join room:", error);
     } finally {
@@ -60,8 +43,8 @@ export default function RoomPage() {
     }
   };
 
-  // Don't show anything if already in room (redirect will happen)
-  if (collaboration.isInRoom) {
+  // Show loading if joining
+  if (collaboration.isJoining || (collaboration.room && userName.trim())) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
