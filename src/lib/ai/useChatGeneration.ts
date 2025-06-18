@@ -36,12 +36,12 @@ export function useChatGeneration(
       await memory.addMemory(userMessage, { role: "user" });
 
       const map: Record<string, AIModel> = {
-        "gemini-2.0-flash": AIModel.GEMINI_2_0_FLASH,
+        "gemini-2.5-flash-lite-preview-06-17": AIModel.GEMINI_2_5_FLASH_LITE,
         "gpt-4o-mini": AIModel.GPT_4O_MINI,
-        "gpt-4": AIModel.GPT_4_TURBO,
-        "claude-3": AIModel.CLAUDE_3_SONNET,
+        "gpt-4-turbo": AIModel.GPT_4_TURBO,
+        "claude-3-sonnet-20240229": AIModel.CLAUDE_3_SONNET,
       };
-      const aiModel = map[selectedModel] ?? AIModel.GEMINI_2_0_FLASH;
+      const aiModel = map[selectedModel] ?? AIModel.GEMINI_2_5_FLASH_LITE;
 
       const systemPrompt = `You are a helpful, clear, and professional AI assistant integrated into a chat-based interface.\n\nFollow these RESPONSE STYLE GUIDELINES for **every** reply unless explicitly instructed otherwise:\n1. **Structure & Formatting**\n   • Start with bold section headings (e.g., **Overview**, **Step-by-Step**).\n   • Use numbered lists for processes, bullets for unordered data, and Markdown tables for comparisons or timelines.\n   • Insert blank lines between paragraphs/sections for readability.\n2. **Visual Hierarchy**\n   • Bold section headers; *italicize* emphasis sparingly.\n   • Use \`inline code\` for commands or variables.\n   • Keep paragraphs ≤ 4 lines.\n3. **Tables**\n   • Include bold header rows.\n   • Ensure columns are aligned and tables are not split across multiple code blocks.\n4. **Tone & Readability**\n   • Friendly yet professional, no fluff.\n   • Break down complex topics into plain English first, then dive deeper.\n   • End with a ✅ **Summary** section when appropriate.\n5. **Conversation Memory**\n   • Reference prior context and maintain continuity.\n6. **Optional Enhancements**\n   • Emojis (📌, ✅) only when they add clarity.\n   • Collapsible sections if supported.\n\nAlways apply these rules while answering based on the provided message history.`;
 

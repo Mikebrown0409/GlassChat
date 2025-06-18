@@ -27,44 +27,21 @@ import {
 
 // Mock responses for testing when API keys are not available
 const MOCK_RESPONSES: Record<AIModel, string> = {
-  [AIModel.GPT_4]:
-    "I'm a mock GPT-4 response. This would normally connect to OpenAI's API.",
-  [AIModel.GPT_4_TURBO]:
-    "I'm a mock GPT-4 Turbo response. This would normally connect to OpenAI's API.",
-  [AIModel.GPT_3_5_TURBO]:
-    "I'm a mock GPT-3.5 Turbo response. This would normally connect to OpenAI's API.",
   [AIModel.GPT_4O_MINI]:
     "I'm a mock GPT-4o Mini response. This would normally connect to OpenAI's API.",
-  [AIModel.CLAUDE_3_OPUS]:
-    "I'm a mock Claude 3 Opus response. This would normally connect to Anthropic's API.",
+  [AIModel.GEMINI_2_5_FLASH_LITE]:
+    "I'm a mock Gemini 2.5 Flash-Lite response. This would normally connect to Google's API.",
+  [AIModel.GPT_4_TURBO]:
+    "I'm a mock GPT-4 Turbo response. This would normally connect to OpenAI's API.",
   [AIModel.CLAUDE_3_SONNET]:
     "I'm a mock Claude 3 Sonnet response. This would normally connect to Anthropic's API.",
-  [AIModel.CLAUDE_3_HAIKU]:
-    "I'm a mock Claude 3 Haiku response. This would normally connect to Anthropic's API.",
-  [AIModel.GEMINI_2_0_FLASH]:
-    "I'm a mock Gemini 2.0 Flash response. This would normally connect to Google's API.",
-  [AIModel.GEMINI_1_5_FLASH]:
-    "I'm a mock Gemini 1.5 Flash response. This would normally connect to Google's API.",
-  [AIModel.GEMINI_1_5_PRO]:
-    "I'm a mock Gemini 1.5 Pro response. This would normally connect to Google's API.",
 };
 
 class AIModelManager {
   private retryAttempts = 3;
-  private mockMode = false;
 
   constructor() {
-    // Enable mock mode if no API keys are available
-    this.mockMode =
-      !env.OPENAI_API_KEY &&
-      !env.ANTHROPIC_API_KEY &&
-      !env.GOOGLE_GENERATIVE_AI_API_KEY;
-
-    if (this.mockMode) {
-      console.warn("🤖 AI Mock Mode: No API keys found, using mock responses");
-    } else {
-      console.log("🔑 AI Real Mode: API keys detected");
-    }
+    console.log("🔑 AI Manager initialized with available API keys");
   }
 
   async generateResponse(
@@ -97,10 +74,6 @@ class AIModelManager {
     // Attempt request with retries
     for (let attempt = 0; attempt < this.retryAttempts; attempt++) {
       try {
-        if (this.mockMode) {
-          return await this.generateMockResponse(model, messages, startTime);
-        }
-
         if (stream) {
           return this.generateStreamingResponse(model, messages, modelConfig);
         } else {
@@ -209,13 +182,6 @@ class AIModelManager {
         AIProvider.OPENAI,
       );
     }
-
-    // Debug logging
-    console.log("🔍 OpenAI API Key Debug:");
-    console.log("  - Key present:", !!env.OPENAI_API_KEY);
-    console.log("  - Key length:", env.OPENAI_API_KEY.length);
-    console.log("  - Key prefix:", env.OPENAI_API_KEY.substring(0, 10) + "...");
-    console.log("  - Model:", model);
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -631,9 +597,13 @@ class AIModelManager {
   }
 
   isModelAvailable(model: AIModel): boolean {
-    const provider = DEFAULT_MODEL_CONFIGS[model].provider;
+    // Check if model is marked as available in AI_MODEL_INFO
+    const modelInfo = AI_MODEL_INFO[model];
+    if (!modelInfo.isAvailable) {
+      return false;
+    }
 
-    if (this.mockMode) return true;
+    const provider = DEFAULT_MODEL_CONFIGS[model].provider;
 
     return (
       (provider === AIProvider.OPENAI && !!env.OPENAI_API_KEY) ||

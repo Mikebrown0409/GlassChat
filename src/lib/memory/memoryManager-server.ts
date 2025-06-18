@@ -41,7 +41,9 @@ class MemoryManagerServer {
   async generateSummary(
     chatHistory: string,
   ): Promise<{ summary: string; keywords: string[] }> {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash-lite-preview-06-17",
+    });
     const prompt = `Based on the following chat history, provide a concise one-paragraph summary and a list of up to 5 main keywords (as a comma-separated list).
 
 Chat History:

@@ -56,7 +56,7 @@ export function ChatInput({
 
       // Generate AI response
       const response = await generateResponse.mutateAsync({
-        model: AIModel.GEMINI_2_0_FLASH, // Using Gemini 2.0 Flash as default
+        model: AIModel.GEMINI_2_5_FLASH_LITE, // Using Gemini 2.5 Flash-Lite as default
         messages: [
           // Add system prompt for better formatting
           {

@@ -52,7 +52,9 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   // generateResponse handled inside hook
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
-  const [selectedModelId, setSelectedModelId] = useState("gemini-2.0-flash");
+  const [selectedModelId, setSelectedModelId] = useState(
+    "gemini-2.5-flash-lite-preview-06-17",
+  );
   const {
     isTyping,
     generateResponseIsPending,
@@ -235,8 +237,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   const models = [
     {
-      id: "gemini-2.0-flash",
-      name: "Gemini 2.0 Flash",
+      id: "gemini-2.5-flash-lite-preview-06-17",
+      name: "Gemini 2.5 Flash-Lite",
       description: "Fastest and newest",
       enabled: true,
     },
@@ -247,14 +249,14 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       enabled: true,
     },
     {
-      id: "gpt-4",
+      id: "gpt-4-turbo",
       name: "GPT-4 Turbo",
       description: "Coming soon",
       enabled: false,
     },
     {
-      id: "claude-3",
-      name: "Claude 3",
+      id: "claude-3-sonnet-20240229",
+      name: "Claude 3 Sonnet",
       description: "Coming soon",
       enabled: false,
     },
