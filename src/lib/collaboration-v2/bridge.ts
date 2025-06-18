@@ -51,6 +51,7 @@ export function useCollaborationBridge(roomId: string | null) {
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [isLeavingRoom, setIsLeavingRoom] = useState(false);
+  const [isSendingToAI, setIsSendingToAI] = useState(false);
   const [collaborationMessages, setCollaborationMessages] = useState<
     BridgedMessage[]
   >([]);
@@ -328,9 +329,112 @@ export function useCollaborationBridge(roomId: string | null) {
       // Manual refresh - reload the page for now
       window.location.reload();
     },
-    sendMessageToAI: async (_content: string) => {
-      // Placeholder - AI integration handled by main chat
+    sendMessageToAI: async (content: string) => {
+      if (!bridgedRoom?.chatId) {
+        console.error("Cannot send AI message: no room chatId");
+        return;
+      }
+
+      setIsSendingToAI(true);
+      try {
+        // Import required modules dynamically to avoid circular dependencies
+        const { syncManager } = await import("~/lib/sync");
+        const { AIModel } = await import("~/lib/ai/types");
+
+        const chatId = bridgedRoom.chatId;
+        console.log("🤖 Sending AI message to shared chat:", chatId);
+
+        // Create user message first
+        await syncManager.createMessage(chatId, "user", content);
+
+        // Send collaboration message so other users see the user's message
+        await pusherCollab.sendMessage({
+          type: "chat_message",
+          content: content,
+          sender: participantName,
+          timestamp: Date.now(),
+        });
+
+        // Generate AI response using the same system as regular chat
+        const systemPrompt = `You are a helpful, clear, and professional AI assistant integrated into a shared collaboration room.\n\nFollow these RESPONSE STYLE GUIDELINES for **every** reply unless explicitly instructed otherwise:\n1. **Structure & Formatting**\n   • Start with bold section headings (e.g., **Overview**, **Step-by-Step**).\n   • Use numbered lists for processes, bullets for unordered data, and Markdown tables for comparisons or timelines.\n   • Insert blank lines between paragraphs/sections for readability.\n2. **Visual Hierarchy**\n   • Bold section headers; *italicize* emphasis sparingly.\n   • Use \`inline code\` for commands or variables.\n   • Keep paragraphs ≤ 4 lines.\n3. **Tables**\n   • Include bold header rows.\n   • Ensure columns are aligned and tables are not split across multiple code blocks.\n4. **Tone & Readability**\n   • Friendly yet professional, no fluff.\n   • Break down complex topics into plain English first, then dive deeper.\n   • End with a ✅ **Summary** section when appropriate.\n5. **Conversation Memory**\n   • Reference prior context and maintain continuity.\n6. **Optional Enhancements**\n   • Emojis (📌, ✅) only when they add clarity.\n   • Collapsible sections if supported.\n\nAlways apply these rules while answering based on the provided message history. Remember you are in a shared collaboration room where multiple users can see your responses.`;
+
+        // Get recent messages for context - use simple approach without context for now
+        const preparedMessages = [
+          { role: "system" as const, content: systemPrompt },
+          { role: "user" as const, content: content },
+        ];
+
+        // Use the API directly since we can't use the hook here
+        const response = await fetch("/api/trpc/ai.generateResponse", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            json: {
+              model: AIModel.GEMINI_2_5_FLASH_LITE,
+              messages: preparedMessages,
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status}`);
+        }
+
+        const result = (await response.json()) as {
+          result?: {
+            data?: {
+              json?: {
+                success?: boolean;
+                response?: {
+                  content?: string;
+                };
+              };
+            };
+          };
+        };
+
+        if (
+          result.result?.data?.json?.success &&
+          result.result.data.json.response?.content
+        ) {
+          const assistantContent = result.result.data.json.response.content;
+
+          // Create AI assistant message in the database
+          await syncManager.createMessage(
+            chatId,
+            "assistant",
+            assistantContent,
+          );
+
+          // Send AI response as collaboration message so everyone sees it
+          await pusherCollab.sendMessage({
+            type: "chat_message",
+            content: assistantContent,
+            sender: "AI Assistant",
+            timestamp: Date.now(),
+          });
+
+          console.log("✅ AI response sent successfully");
+        } else {
+          throw new Error("AI response was not successful");
+        }
+      } catch (error) {
+        console.error("Failed to send AI message:", error);
+
+        // Send error message to collaboration
+        await pusherCollab.sendMessage({
+          type: "chat_message",
+          content:
+            "Sorry, I encountered an error while processing your message. Please try again.",
+          sender: "AI Assistant",
+          timestamp: Date.now(),
+        });
+      } finally {
+        setIsSendingToAI(false);
+      }
     },
-    isSendingToAI: false,
+    isSendingToAI,
   };
 }
