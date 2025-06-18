@@ -91,7 +91,7 @@ export function ChatInterfaceV2() {
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    sendToAI(suggestion);
+    void sendToAI(suggestion);
   };
 
   const handleUpdateMessage = (id: string, newContent: string) => {
@@ -164,7 +164,7 @@ export function ChatInterfaceV2() {
             <div>
               <h1 className="text-xl font-semibold text-gray-800">
                 {collaboration.isInRoom
-                  ? `🤝 ${collaboration.currentRoom?.name || "Collaboration Room"}`
+                  ? `🤝 ${collaboration.currentRoom?.name ?? "Collaboration Room"}`
                   : "💬 Personal Chat"}
               </h1>
               <p className="text-sm text-gray-600">
@@ -292,7 +292,7 @@ export function ChatInterfaceV2() {
                     e.preventDefault();
                     const target = e.target as HTMLInputElement;
                     if (target.value.trim()) {
-                      handleSendMessage(target.value);
+                      void handleSendMessage(target.value);
                       target.value = "";
                     }
                   }
@@ -304,7 +304,7 @@ export function ChatInterfaceV2() {
                     'input[type="text"]',
                   ) as HTMLInputElement;
                   if (input?.value.trim()) {
-                    handleSendMessage(input.value);
+                    void handleSendMessage(input.value);
                     input.value = "";
                   }
                 }}

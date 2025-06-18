@@ -788,6 +788,7 @@ export function useCollaboration(roomId: string | null) {
     // User management
     user: user.user,
     createUser: user.createUser,
+    isCreating: user.isCreating, // Legacy alias for isCreatingUser
     isCreatingUser: user.isCreating,
 
     // Room management

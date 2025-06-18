@@ -40,7 +40,7 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
 
   // Check if this is a collaboration message and get sender info
   const isCollabMessage = Boolean(message.metadata?.isCollaborationMessage);
-  const senderName = (message.metadata as any)?.sender as string | undefined;
+  const senderName = message.metadata?.sender;
   const isAIMessage = senderName === "AI Assistant";
 
   // Get current user name from session

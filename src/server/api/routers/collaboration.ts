@@ -332,12 +332,14 @@ export const collaborationRouter = createTRPCRouter({
   checkRoom: publicProcedure.input(CheckRoomSchema).query(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       exists: boolean;
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         const exists = await collaborationManager.roomExists(input.roomId);
         return {
           success: true,
@@ -359,12 +361,14 @@ export const collaborationRouter = createTRPCRouter({
   toggleLiveCodingMode: publicProcedure.input(JoinRoomSchema).mutation(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       isLiveCodingMode?: boolean;
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         const isLiveCodingMode =
           await collaborationManager.toggleLiveCodingMode(input.roomId);
         return {
@@ -387,11 +391,13 @@ export const collaborationRouter = createTRPCRouter({
   updateLiveCode: publicProcedure.input(UpdateLiveCodeSchema).mutation(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         const cursorPosition = input.cursorPosition
           ? {
               userId: collaborationManager.getCurrentUser()?.id ?? "",
@@ -426,12 +432,14 @@ export const collaborationRouter = createTRPCRouter({
   getLiveCodingSession: publicProcedure.input(JoinRoomSchema).query(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       session?: LiveCodingSession;
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         const session = await collaborationManager.getLiveCodingSession(
           input.roomId,
         );
@@ -487,12 +495,14 @@ export const collaborationRouter = createTRPCRouter({
   getMessages: publicProcedure.input(JoinRoomSchema).query(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       messages: CollaborationMessage[];
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         const messages = await collaborationManager.getMessages(input.roomId);
         return {
           success: true,
@@ -514,11 +524,13 @@ export const collaborationRouter = createTRPCRouter({
   startTyping: publicProcedure.input(JoinRoomSchema).mutation(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         await collaborationManager.startTyping(input.roomId);
         return {
           success: true,
@@ -537,11 +549,13 @@ export const collaborationRouter = createTRPCRouter({
   stopTyping: publicProcedure.input(JoinRoomSchema).mutation(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         await collaborationManager.stopTyping(input.roomId);
         return {
           success: true,
@@ -559,8 +573,9 @@ export const collaborationRouter = createTRPCRouter({
 
   getTypingUsers: publicProcedure
     .input(JoinRoomSchema)
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         const typingUsers = await collaborationManager.getTypingUsers(
           input.roomId,
         );
@@ -584,8 +599,9 @@ export const collaborationRouter = createTRPCRouter({
   // Event Polling (for real-time updates)
   pollEvents: publicProcedure
     .input(PollEventsSchema)
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         const events = await collaborationManager.pollEvents(
           input.roomId,
           input.since,
@@ -608,8 +624,9 @@ export const collaborationRouter = createTRPCRouter({
   // Presence
   getOnlineUsers: publicProcedure
     .input(JoinRoomSchema)
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         const onlineUsers = await collaborationManager.getOnlineUsers(
           input.roomId,
         );
@@ -632,11 +649,14 @@ export const collaborationRouter = createTRPCRouter({
 
   // Cleanup
   cleanup: publicProcedure.mutation(
-    async (): Promise<{
+    async ({
+      ctx,
+    }): Promise<{
       success: boolean;
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         await collaborationManager.cleanup();
         return {
           success: true,
@@ -716,12 +736,14 @@ export const collaborationRouter = createTRPCRouter({
   editMessage: publicProcedure.input(EditMessageSchema).mutation(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       message?: CollaborationMessage;
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         const msg = await collaborationManager.editMessage(
           input.roomId,
           input.messageId,
@@ -741,8 +763,9 @@ export const collaborationRouter = createTRPCRouter({
   deleteMessage: publicProcedure
     .input(DeleteMessageSchema)
     .mutation(
-      async ({ input }): Promise<{ success: boolean; error?: string }> => {
+      async ({ input, ctx }): Promise<{ success: boolean; error?: string }> => {
         try {
+          const collaborationManager = getSessionManager(ctx);
           await collaborationManager.deleteMessage(
             input.roomId,
             input.messageId,

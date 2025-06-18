@@ -185,10 +185,8 @@ export const collaborationV2Router = createTRPCRouter({
         );
 
         const message = storage.addMessage(input.roomId, {
-          id: Math.random().toString(36).substr(2, 9),
           sender: input.participantName,
           content: input.content,
-          timestamp: new Date().toISOString(),
           type: "user",
         });
 
@@ -229,10 +227,8 @@ export const collaborationV2Router = createTRPCRouter({
 
         // Add user message first
         const userMessage = storage.addMessage(input.roomId, {
-          id: Math.random().toString(36).substr(2, 9),
           sender: input.participantName,
           content: input.content,
-          timestamp: new Date().toISOString(),
           type: "user",
         });
 
@@ -275,10 +271,8 @@ export const collaborationV2Router = createTRPCRouter({
         if (response?.content) {
           // Add AI response message
           const aiMessage = storage.addMessage(input.roomId, {
-            id: Math.random().toString(36).substr(2, 9),
             sender: "AI Assistant",
             content: response.content,
-            timestamp: new Date().toISOString(),
             type: "ai",
           });
 

@@ -281,9 +281,6 @@ export function useCollaborationBridge(roomId: string | null) {
 
     // Loading states
     isSendingMessage: v2Collaboration.isSending ?? false,
-    isCreating: false, // V2 doesn't have user creation concept
-    isCreatingRoom: false, // V2 rooms are created implicitly
-    isJoiningRoom: v2Collaboration.isJoining ?? false,
     isUpdatingCode: false,
     isTogglingLiveCoding: false,
 

@@ -53,7 +53,9 @@ export function CollabToggle() {
     }
 
     // Return empty cleanup function for when not showing popup
-    return () => {};
+    return () => {
+      // Cleanup function
+    };
   }, [showPopup]);
 
   const handleJoinRoom = () => {
