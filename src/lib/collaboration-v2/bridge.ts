@@ -350,25 +350,17 @@ export function useCollaborationBridge(roomId: string | null) {
         // Create user message first
         await syncManager.createMessage(chatId, "user", content);
 
-        // Add user message to memory BEFORE getting context (fix timing issue)
-        await memoryManagerClient.addMemory(chatId, content, { role: "user" });
-
-        // Send collaboration message so other users see the user's message
-        await pusherCollab.sendMessage({
-          type: "chat_message",
-          content: content,
-          sender: participantName,
-          timestamp: Date.now(),
+        // Add user message to memory immediately
+        await memoryManagerClient.addMemory(chatId, content, {
+          role: "user",
         });
 
-        // Get memory context for the AI AFTER adding current message
+        // Get memory context for system prompt
         let memoryContext = "";
-        let hasMemoryContext = false;
         try {
           const summary = await memoryManagerClient.getSummary(chatId);
           if (summary) {
             memoryContext = `\n\nConversation Context: ${summary.summary}\nKey Topics: ${summary.keywords.join(", ")}\n\n`;
-            hasMemoryContext = true;
             console.log("🧠 Using memory context:", summary.summary);
           } else {
             console.log("🧠 No memory summary found for chatId:", chatId);
@@ -377,7 +369,7 @@ export function useCollaborationBridge(roomId: string | null) {
           console.warn("Failed to get memory context:", memoryError);
         }
 
-        // Use the same clean system prompt as regular chat, but adapted for collaboration
+        // Use the same system prompt as regular chat
         const systemPrompt = `You are a helpful, clear, and professional AI assistant.${memoryContext}
 
 Follow these RESPONSE STYLE GUIDELINES for **every** reply unless explicitly instructed otherwise:
@@ -404,64 +396,49 @@ Follow these RESPONSE STYLE GUIDELINES for **every** reply unless explicitly ins
 
 Always apply these rules while answering based on the provided message history.`;
 
-        // Get recent messages for additional context (especially if no memory summary)
-        let recentMessagesContext = "";
+        // Get recent conversation history directly from database (like regular chat does)
+        let conversationHistory: Array<{
+          role: "user" | "assistant" | "system";
+          content: string;
+        }> = [];
+
         try {
-          const recentMemories = await memoryManagerClient.getMemories(chatId);
-          if (recentMemories.length > 0) {
-            // Get more recent messages if no summary, fewer if we have summary
-            const contextSize = hasMemoryContext ? 4 : 8;
-            const lastFewMemories = recentMemories.slice(-contextSize);
+          // Get recent messages from the database directly
+          const { db } = await import("~/lib/db");
+          const recentMessages = await db.messages
+            .where("chatId")
+            .equals(chatId)
+            .reverse()
+            .limit(20) // Get last 20 messages for context
+            .toArray();
 
-            // Filter out chunked messages to avoid confusion
-            const cleanMemories = lastFewMemories.filter((m) => {
-              const content = m.content;
-              // Skip messages that look like chunks (start with [X/Y])
-              return !/^\[\d+\/\d+\]\s/.exec(content);
-            });
+          // Convert to conversation format (oldest first)
+          conversationHistory = recentMessages
+            .reverse()
+            .filter((msg) => msg.role !== "system") // Skip system messages
+            .map((msg) => ({
+              role: msg.role as "user" | "assistant",
+              content: msg.content,
+            }));
 
-            recentMessagesContext = cleanMemories
-              .map((m) => {
-                const role = (m.metadata as { role?: string })?.role ?? "user";
-                return `${role}: ${m.content}`;
-              })
-              .join("\n");
-            console.log(
-              "🧠 Recent conversation context:",
-              recentMessagesContext,
-            );
-          }
+          console.log(
+            "🧠 Loaded conversation history:",
+            conversationHistory.length,
+            "messages",
+          );
         } catch (error) {
-          console.warn("Failed to get recent memories:", error);
+          console.warn("Failed to load conversation history:", error);
         }
 
-        // Prepare messages - use actual conversation history from memory
+        // Prepare messages exactly like regular chat does
         const preparedMessages: Array<{
           role: "system" | "user" | "assistant";
           content: string;
-        }> = [{ role: "system" as const, content: systemPrompt }];
-
-        // Add recent conversation context if available
-        if (recentMessagesContext) {
-          // Parse recent messages into proper conversation format
-          const recentLines = recentMessagesContext.split("\n");
-          for (const line of recentLines) {
-            if (line.startsWith("user: ")) {
-              preparedMessages.push({
-                role: "user" as const,
-                content: line.substring(6), // Remove "user: " prefix
-              });
-            } else if (line.startsWith("assistant: ")) {
-              preparedMessages.push({
-                role: "assistant" as const,
-                content: line.substring(11), // Remove "assistant: " prefix
-              });
-            }
-          }
-        }
-
-        // Add the current user message (it's already been added to memory above)
-        preparedMessages.push({ role: "user" as const, content: content });
+        }> = [
+          { role: "system" as const, content: systemPrompt },
+          ...conversationHistory,
+          { role: "user" as const, content: content },
+        ];
 
         // Use the API directly since we can't use the hook here
         const response = await fetch("/api/trpc/ai.generateResponse", {
@@ -512,7 +489,7 @@ Always apply these rules while answering based on the provided message history.`
             role: "assistant",
           });
 
-          // Generate summary periodically (after every 2 messages like in regular chat)
+          // Generate summary periodically (like regular chat does)
           try {
             const memories = await memoryManagerClient.getMemories(chatId);
             if (memories.length > 0 && memories.length % 4 === 0) {
@@ -575,94 +552,71 @@ Always apply these rules while answering based on the provided message history.`
             console.warn("Failed to check memory count:", memoryError);
           }
 
-          // Send AI response as collaboration message so everyone sees it
-          // Handle large messages by chunking them if they exceed Pusher's 10KB limit
-          const maxMessageSize = 8000; // Leave some buffer below 10KB limit
+          // Handle large messages with proper table-aware chunking
+          const maxMessageSize = 8000; // Leave buffer below 10KB limit
 
           if (assistantContent.length > maxMessageSize) {
-            // For table-heavy content, try to split at major sections instead of arbitrary lines
+            console.log(
+              "📦 Message is large, chunking for Pusher:",
+              assistantContent.length,
+              "chars",
+            );
+
+            // Improved table-aware chunking
             const chunks = [];
             let currentChunk = "";
-            const lines = assistantContent.split("\n");
-            let inTable = false;
-            let tableBuffer = "";
+            const sections = assistantContent.split(/\n(?=#{1,3}\s)/); // Split on headers
 
-            for (const line of lines) {
-              // Detect table start/end
-              if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
-                if (!inTable) {
-                  inTable = true;
-                  tableBuffer = line;
-                } else {
-                  tableBuffer += "\n" + line;
-                }
-                continue;
-              } else if (inTable && line.trim() === "") {
-                // End of table - add table as a unit
-                inTable = false;
+            for (const section of sections) {
+              // Check if this section contains tables
+              const hasTable =
+                section.includes("|") && /\|.*\|.*\|/.exec(section);
 
-                // Check if adding the table would exceed limit
-                if (
-                  currentChunk.length + tableBuffer.length + 2 >
-                  maxMessageSize
-                ) {
-                  // Save current chunk and start new one with table
+              if (hasTable) {
+                // For sections with tables, try to keep the entire section together
+                if (currentChunk.length + section.length + 2 > maxMessageSize) {
+                  // If current chunk + this section is too big, save current chunk
                   if (currentChunk.trim()) {
                     chunks.push(currentChunk.trim());
                   }
-                  currentChunk = tableBuffer + "\n";
+
+                  // If the section itself is too big, we need to split it carefully
+                  if (section.length > maxMessageSize) {
+                    // Split at paragraph breaks but try to keep tables intact
+                    const paragraphs = section.split(/\n\s*\n/);
+                    let tempChunk = "";
+
+                    for (const paragraph of paragraphs) {
+                      if (
+                        tempChunk.length + paragraph.length + 2 >
+                        maxMessageSize
+                      ) {
+                        if (tempChunk.trim()) {
+                          chunks.push(tempChunk.trim());
+                        }
+                        tempChunk = paragraph;
+                      } else {
+                        tempChunk += (tempChunk ? "\n\n" : "") + paragraph;
+                      }
+                    }
+
+                    currentChunk = tempChunk;
+                  } else {
+                    currentChunk = section;
+                  }
                 } else {
-                  currentChunk +=
-                    (currentChunk ? "\n" : "") + tableBuffer + "\n";
+                  currentChunk += (currentChunk ? "\n" : "") + section;
                 }
-                tableBuffer = "";
-                continue;
-              } else if (inTable) {
-                tableBuffer += "\n" + line;
-                continue;
-              }
-
-              // Regular line processing (not in table)
-              // Try to split at major sections (## headers) when possible
-              const isHeader = line.trim().startsWith("##");
-              const isMajorBreak =
-                line.trim().startsWith("**") && line.trim().endsWith("**");
-
-              if (
-                (isHeader || isMajorBreak) &&
-                currentChunk.length > maxMessageSize * 0.7
-              ) {
-                // If we're near the limit and hit a good break point, split here
-                if (currentChunk.trim()) {
-                  chunks.push(currentChunk.trim());
-                }
-                currentChunk = line;
-              } else if (
-                currentChunk.length + line.length + 1 >
-                maxMessageSize
-              ) {
-                // If adding this line would exceed the limit, save current chunk and start new one
-                if (currentChunk.trim()) {
-                  chunks.push(currentChunk.trim());
-                }
-                currentChunk = line;
               } else {
-                currentChunk += (currentChunk ? "\n" : "") + line;
-              }
-            }
-
-            // Handle any remaining table buffer
-            if (inTable && tableBuffer) {
-              if (
-                currentChunk.length + tableBuffer.length + 1 >
-                maxMessageSize
-              ) {
-                if (currentChunk.trim()) {
-                  chunks.push(currentChunk.trim());
+                // For non-table sections, use regular chunking
+                if (currentChunk.length + section.length + 2 > maxMessageSize) {
+                  if (currentChunk.trim()) {
+                    chunks.push(currentChunk.trim());
+                  }
+                  currentChunk = section;
+                } else {
+                  currentChunk += (currentChunk ? "\n" : "") + section;
                 }
-                currentChunk = tableBuffer;
-              } else {
-                currentChunk += (currentChunk ? "\n" : "") + tableBuffer;
               }
             }
 
@@ -671,7 +625,9 @@ Always apply these rules while answering based on the provided message history.`
               chunks.push(currentChunk.trim());
             }
 
-            // Send chunks with a small delay between them
+            console.log("📦 Split into", chunks.length, "chunks");
+
+            // Send chunks with proper labeling and delays
             for (let i = 0; i < chunks.length; i++) {
               const chunk = chunks[i];
               const isLastChunk = i === chunks.length - 1;
@@ -687,7 +643,7 @@ Always apply these rules while answering based on the provided message history.`
 
               // Small delay between chunks to ensure proper ordering
               if (!isLastChunk) {
-                await new Promise((resolve) => setTimeout(resolve, 100));
+                await new Promise((resolve) => setTimeout(resolve, 150));
               }
             }
           } else {
