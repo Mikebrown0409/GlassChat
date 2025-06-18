@@ -412,7 +412,15 @@ Always apply these rules while answering based on the provided message history.`
             // Get more recent messages if no summary, fewer if we have summary
             const contextSize = hasMemoryContext ? 4 : 8;
             const lastFewMemories = recentMemories.slice(-contextSize);
-            recentMessagesContext = lastFewMemories
+
+            // Filter out chunked messages to avoid confusion
+            const cleanMemories = lastFewMemories.filter((m) => {
+              const content = m.content;
+              // Skip messages that look like chunks (start with [X/Y])
+              return !/^\[\d+\/\d+\]\s/.exec(content);
+            });
+
+            recentMessagesContext = cleanMemories
               .map((m) => {
                 const role = (m.metadata as { role?: string })?.role ?? "user";
                 return `${role}: ${m.content}`;
@@ -572,20 +580,89 @@ Always apply these rules while answering based on the provided message history.`
           const maxMessageSize = 8000; // Leave some buffer below 10KB limit
 
           if (assistantContent.length > maxMessageSize) {
-            // Split large message into chunks
+            // For table-heavy content, try to split at major sections instead of arbitrary lines
             const chunks = [];
             let currentChunk = "";
             const lines = assistantContent.split("\n");
+            let inTable = false;
+            let tableBuffer = "";
 
             for (const line of lines) {
-              // If adding this line would exceed the limit, save current chunk and start new one
-              if (currentChunk.length + line.length + 1 > maxMessageSize) {
+              // Detect table start/end
+              if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+                if (!inTable) {
+                  inTable = true;
+                  tableBuffer = line;
+                } else {
+                  tableBuffer += "\n" + line;
+                }
+                continue;
+              } else if (inTable && line.trim() === "") {
+                // End of table - add table as a unit
+                inTable = false;
+
+                // Check if adding the table would exceed limit
+                if (
+                  currentChunk.length + tableBuffer.length + 2 >
+                  maxMessageSize
+                ) {
+                  // Save current chunk and start new one with table
+                  if (currentChunk.trim()) {
+                    chunks.push(currentChunk.trim());
+                  }
+                  currentChunk = tableBuffer + "\n";
+                } else {
+                  currentChunk +=
+                    (currentChunk ? "\n" : "") + tableBuffer + "\n";
+                }
+                tableBuffer = "";
+                continue;
+              } else if (inTable) {
+                tableBuffer += "\n" + line;
+                continue;
+              }
+
+              // Regular line processing (not in table)
+              // Try to split at major sections (## headers) when possible
+              const isHeader = line.trim().startsWith("##");
+              const isMajorBreak =
+                line.trim().startsWith("**") && line.trim().endsWith("**");
+
+              if (
+                (isHeader || isMajorBreak) &&
+                currentChunk.length > maxMessageSize * 0.7
+              ) {
+                // If we're near the limit and hit a good break point, split here
+                if (currentChunk.trim()) {
+                  chunks.push(currentChunk.trim());
+                }
+                currentChunk = line;
+              } else if (
+                currentChunk.length + line.length + 1 >
+                maxMessageSize
+              ) {
+                // If adding this line would exceed the limit, save current chunk and start new one
                 if (currentChunk.trim()) {
                   chunks.push(currentChunk.trim());
                 }
                 currentChunk = line;
               } else {
                 currentChunk += (currentChunk ? "\n" : "") + line;
+              }
+            }
+
+            // Handle any remaining table buffer
+            if (inTable && tableBuffer) {
+              if (
+                currentChunk.length + tableBuffer.length + 1 >
+                maxMessageSize
+              ) {
+                if (currentChunk.trim()) {
+                  chunks.push(currentChunk.trim());
+                }
+                currentChunk = tableBuffer;
+              } else {
+                currentChunk += (currentChunk ? "\n" : "") + tableBuffer;
               }
             }
 
