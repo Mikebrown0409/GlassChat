@@ -5,6 +5,31 @@ import { NextRequest, NextResponse } from "next/server";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Debug: Log environment variables and request details
+  console.log("[EDGE] Request URL:", req.url);
+  console.log("[EDGE] Host:", req.headers.get("host"));
+  console.log("[EDGE] NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
+  console.log(
+    "[EDGE] NEXTAUTH_SECRET:",
+    process.env.NEXTAUTH_SECRET ? "SET" : "NOT SET",
+  );
+  console.log(
+    "[EDGE] AUTH_SECRET:",
+    process.env.AUTH_SECRET ? "SET" : "NOT SET",
+  );
+
+  // Log all cookies received
+  const cookieHeader = req.headers.get("cookie");
+  console.log("[EDGE] All cookies received:", cookieHeader);
+
+  if (cookieHeader) {
+    const cookies = cookieHeader.split(";").map((c) => c.trim());
+    console.log("[EDGE] Individual cookies:");
+    cookies.forEach((cookie) => {
+      console.log("[EDGE]   ", cookie);
+    });
+  }
+
   // Public routes that don't require auth
   const publicPaths = ["/landing", "/login", "/register", "/api/debug-env"];
   const isPublic =
