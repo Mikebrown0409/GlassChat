@@ -32,10 +32,6 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   selectionMenuRef.current = selectionMenu;
   const [currentChatId, setCurrentChatId] = useState<string | undefined>();
 
-  // Debug currentChatId changes
-  useEffect(() => {
-    console.log("Debug - currentChatId changed to:", currentChatId);
-  }, [currentChatId]);
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [insightsTab, setInsightsTab] = useState<"memory" | "collaboration">(
     "memory",
@@ -182,12 +178,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   const handleNewChat = async () => {
     try {
-      console.log("Debug - Creating new chat...");
       const newChat = await syncManager.createChat("New Conversation");
-      console.log("Debug - Created new chat:", newChat);
-      console.log("Debug - Setting currentChatId to:", newChat.id);
       setCurrentChatId(newChat.id);
-      console.log("Debug - currentChatId state should now be:", newChat.id);
     } catch (error) {
       console.error("Failed to create new chat:", error);
     }

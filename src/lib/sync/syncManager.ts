@@ -223,8 +223,6 @@ class SyncManager {
     };
 
     try {
-      console.info("🔄 Starting sync process...");
-
       // Step 1: Push pending local operations
       await this.pushPendingOperations();
 
@@ -239,7 +237,6 @@ class SyncManager {
       await this.updateSyncMetadata();
 
       stats.syncLatency = Date.now() - startTime;
-      console.info(`✅ Sync completed in ${stats.syncLatency}ms`);
     } catch (error) {
       console.error("❌ Sync failed:", error);
       stats.failedOperations++;

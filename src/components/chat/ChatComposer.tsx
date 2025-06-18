@@ -168,7 +168,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       setAttachments([]);
     };
 
-    console.log("render selectedModel", selectedModel);
     const info = models.find((m) => m.id === selectedModel);
 
     return (
