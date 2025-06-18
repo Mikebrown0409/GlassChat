@@ -51,6 +51,9 @@ export function useCollaborationBridge(roomId: string | null) {
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [isLeavingRoom, setIsLeavingRoom] = useState(false);
+  const [collaborationMessages, setCollaborationMessages] = useState<
+    BridgedMessage[]
+  >([]);
 
   // Get legacy store setters
   const { setCurrentRoomId, setOnlineUsers } = useCollaborationStore();
@@ -63,6 +66,29 @@ export function useCollaborationBridge(roomId: string | null) {
     userId: participantName,
     onMessageSync: (event) => {
       console.log("📨 [Bridge] Message sync:", event);
+
+      // Convert Pusher message to bridge format and add to messages
+      // For now, just assume all events are chat messages since that's what we're sending
+      if (roomId) {
+        const bridgedMessage: BridgedMessage = {
+          id: `${event.timestamp}-${event.sender}`,
+          content: event.content,
+          sender: event.sender,
+          timestamp: new Date(event.timestamp).toISOString(),
+          roomId: roomId,
+        };
+
+        setCollaborationMessages((prev) => {
+          // Avoid duplicates
+          if (prev.some((msg) => msg.id === bridgedMessage.id)) {
+            return prev;
+          }
+          return [...prev, bridgedMessage].sort(
+            (a, b) =>
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+          );
+        });
+      }
     },
     onRoomStateUpdate: (event) => {
       console.log("🏠 [Bridge] Room state update:", event);
@@ -72,6 +98,8 @@ export function useCollaborationBridge(roomId: string | null) {
   // Update legacy store when room data changes
   useEffect(() => {
     setCurrentRoomId(roomId);
+    // Clear messages when switching rooms
+    setCollaborationMessages([]);
   }, [roomId, setCurrentRoomId]);
 
   // Convert Pusher participants to legacy UserPresence format and update store
@@ -129,13 +157,8 @@ export function useCollaborationBridge(roomId: string | null) {
     };
   }, [roomId, pusherCollab.isConnected, participantName, session?.user?.email]);
 
-  // For Pusher, we'll use a simple message list
-  // The actual messages will be handled by the main chat system
-  const bridgedMessages: BridgedMessage[] = useMemo(() => {
-    // Pusher system doesn't maintain a message history in this simple setup
-    // Messages are handled by the main chat interface
-    return [];
-  }, []);
+  // Return the collaboration messages received via Pusher
+  const bridgedMessages: BridgedMessage[] = collaborationMessages;
 
   // Create room function (bridges to V2)
   const createRoom = useCallback(
