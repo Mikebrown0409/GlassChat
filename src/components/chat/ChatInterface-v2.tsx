@@ -300,8 +300,11 @@ export function ChatInterfaceV2() {
               />
               <button
                 onClick={() => {
-                  const input = document.querySelector('input[type="text"]')!;
-                  if (input?.value.trim()) {
+                  const input =
+                    document.querySelector<HTMLInputElement>(
+                      'input[type="text"]',
+                    );
+                  if (input && input.value.trim()) {
                     void handleSendMessage(input.value);
                     input.value = "";
                   }
