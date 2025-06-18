@@ -148,8 +148,8 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                   <MarkdownContent
                     content={message.content}
                     role={message.role}
-                    messageId={message.id}
-                    onUpdateMessage={(newContent) =>
+                    _messageId={message.id}
+                    _onUpdateMessage={(newContent) =>
                       onUpdateMessage?.(message.id, newContent)
                     }
                   />
