@@ -194,7 +194,7 @@ export function useCollaboration(
         const result = await sendMessageMutation.mutateAsync({
           roomId,
           content,
-          sender: participantName,
+          participantName, // Fixed to match server expectation
         });
 
         // Refresh data after sending
@@ -213,14 +213,22 @@ export function useCollaboration(
   // Helper function to send message to AI
   const sendMessageToAI = useCallback(
     async (content: string) => {
-      if (!roomId || !participantName) return;
+      if (!roomId) {
+        console.error("Cannot send AI message: no roomId");
+        return;
+      }
+
+      if (!participantName) {
+        console.error("Cannot send AI message: no participantName");
+        return;
+      }
 
       try {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const result = await sendMessageToAIMutation.mutateAsync({
           roomId,
           content,
-          sender: participantName,
+          participantName, // Fixed: was 'sender', now matches server expectation
         });
 
         // Refresh data after sending

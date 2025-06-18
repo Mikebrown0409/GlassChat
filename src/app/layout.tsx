@@ -6,7 +6,6 @@ import { type Metadata } from "next";
 import Analytics from "~/components/AnalyticsClient";
 import { AuthSessionProvider } from "~/components/AuthSessionProvider";
 import { ThemeProvider } from "~/components/ui/ThemeProvider";
-import { ThemeSwitcher } from "~/components/ui/ThemeSwitcher";
 import { UserCacheIsolator } from "~/components/UserCacheIsolator";
 import { CollabModeProvider } from "~/context/CollabModeContext";
 import { auth } from "~/server/auth";
@@ -56,9 +55,10 @@ export default async function RootLayout({
       <body className="font-sans antialiased" suppressHydrationWarning>
         <AuthSessionProvider session={session}>
           <ThemeProvider storageKey="glasschat-theme">
-            <div className="absolute top-4 right-4">
+            {/* TEMPORARILY REMOVED - this was overlaying the header */}
+            {/* <div className="absolute top-4 right-4">
               <ThemeSwitcher />
-            </div>
+            </div> */}
             <CollabModeProvider>
               <UserCacheIsolator userId={session?.user.id ?? null} />
               <TRPCReactProvider>{children}</TRPCReactProvider>

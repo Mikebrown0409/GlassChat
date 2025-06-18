@@ -30,8 +30,10 @@ export interface ChatComposerHandle {
 
 interface ChatComposerProps {
   isTyping: boolean;
-  /** Called when the user triggers send (Enter or click) */
+  /** Called when the user sends a team message (user-to-user) */
   onSubmit: (text: string) => void;
+  /** Called when the user sends to AI */
+  onSubmitToAI: (text: string) => void;
   onStop: () => void;
   selectedModel: string;
   setSelectedModel: (v: string) => void;
@@ -40,6 +42,11 @@ interface ChatComposerProps {
   models: ModelOption[];
   /** External ref for the dropdown element so parent can detect outside clicks */
   dropdownRef: RefObject<HTMLDivElement | null>;
+
+  // NEW: Collaboration support props (optional)
+  isCollaborationMode?: boolean;
+  isSendingToAI?: boolean;
+  disabled?: boolean;
 }
 
 // Utility regex once to test image extension
@@ -50,6 +57,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     {
       isTyping,
       onSubmit,
+      onSubmitToAI,
       onStop,
       selectedModel,
       setSelectedModel,
@@ -57,6 +65,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       setModelDropdownOpen,
       models,
       dropdownRef,
+
+      // NEW: Collaboration support props (optional)
+      isCollaborationMode,
+      isSendingToAI,
+      disabled,
     }: ChatComposerProps,
     ref,
   ) => {
@@ -64,6 +77,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     const [input, setInput] = useState("");
     const [attachments, setAttachments] = useState<File[]>([]);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // NEW: Chat mode state (AI vs Team chat)
+    const [chatMode, setChatMode] = useState<"ai" | "team">("ai");
 
     // Expose imperative methods to parent
     useImperativeHandle(ref, () => ({
@@ -163,7 +179,15 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
         .filter(Boolean)
         .join("\n\n");
 
-      onSubmit(finalContent);
+      // NEW: Route to appropriate handler based on mode
+      if (isCollaborationMode && chatMode === "team") {
+        // Send as team message (user-to-user)
+        onSubmit(finalContent);
+      } else {
+        // Send to AI (either collaboration AI mode or solo mode)
+        onSubmitToAI(finalContent);
+      }
+
       setInput("");
       setAttachments([]);
     };
@@ -180,9 +204,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!input.trim()) return;
-                onSubmit(input);
-                setInput("");
+                void handleSend();
               }}
               className="relative"
             >
@@ -197,7 +219,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                       void handleSend();
                     }
                   }}
-                  placeholder="Type a message..."
+                  placeholder={
+                    isCollaborationMode && chatMode === "team"
+                      ? "Send a message to the team..."
+                      : isCollaborationMode && chatMode === "ai"
+                        ? "Ask AI a question..."
+                        : "Type a message..."
+                  }
                   className="text-surface-1 placeholder:text-surface-1/50 flex-1 resize-none border-none bg-transparent px-4 py-2 text-base focus:ring-0 focus:ring-offset-0 focus:outline-none focus-visible:outline-none"
                   style={{
                     height: `${Math.min(textareaRef.current?.scrollHeight ?? 0, 200)}px`,
@@ -224,6 +252,34 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                     }
                   />
                 </div>
+
+                {/* Center: Collaboration mode toggle */}
+                {isCollaborationMode && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setChatMode("ai")}
+                      className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${
+                        chatMode === "ai"
+                          ? "bg-purple-600 text-white"
+                          : "text-gray-400 hover:text-gray-300"
+                      }`}
+                    >
+                      AI
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChatMode("team")}
+                      className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${
+                        chatMode === "team"
+                          ? "bg-blue-600 text-white"
+                          : "text-gray-400 hover:text-gray-300"
+                      }`}
+                    >
+                      Team
+                    </button>
+                  </div>
+                )}
 
                 {/* Right cluster */}
                 <div className="flex items-center gap-2">
@@ -291,13 +347,15 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   </div>
 
                   {/* Send / Stop */}
-                  {isTyping ? (
+                  {isTyping || isSendingToAI || disabled ? (
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={onStop}
                       aria-label="Stop response generation"
-                      className="bg-surface-0 text-primary ring-border-subtle flex h-5 w-5 animate-pulse items-center justify-center rounded-full ring-1"
+                      className={`bg-surface-0 text-primary ring-border-subtle flex h-5 w-5 items-center justify-center rounded-full ring-1 ${
+                        isTyping || isSendingToAI ? "animate-pulse" : ""
+                      }`}
                       style={{ animationDuration: "2.5s" }}
                     >
                       <Square size={9} />
@@ -308,7 +366,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                       variant="primary"
                       size="icon"
                       onClick={() => void handleSend()}
-                      disabled={!input.trim() && attachments.length === 0}
+                      disabled={
+                        (!input.trim() && attachments.length === 0) || disabled
+                      }
                       className="h-5 w-5"
                     >
                       <ArrowUp size={11} strokeWidth={2.5} />

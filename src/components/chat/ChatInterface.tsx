@@ -9,13 +9,11 @@ import { db } from "~/lib/db";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 
-import { clsx } from "clsx";
-import { useCollabMode } from "~/context/CollabModeContext";
 import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { useCollaborationStore } from "~/lib/collaboration/store";
-import { InsightsDrawer } from "../insights/InsightsDrawer";
-import { ChatComposerV2, type ChatComposerHandle } from "./ChatComposerV2";
-import { ChatHeaderV2 } from "./ChatHeaderV2";
+// Removed InsightsDrawer - using main chat interface for all interactions
+import { ChatComposer, type ChatComposerHandle } from "./ChatComposer";
+import { ChatHeader } from "./ChatHeader";
 import { ChatMessages } from "./ChatMessages";
 import { ChatSidebar } from "./ChatSidebar";
 
@@ -39,15 +37,15 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   selectionMenuRef.current = selectionMenu;
   const [currentChatId, setCurrentChatId] = useState<string | undefined>();
 
-  const [insightsOpen, setInsightsOpen] = useState(false);
-  const [insightsTab, setInsightsTab] = useState<"memory" | "collaboration">(
-    "memory",
-  );
+  // Removed insights panel state - no longer needed
 
   const chats = useLiveChats();
 
   // Collaboration integration - UPDATED TO USE V2 BRIDGE
   const currentRoomIdFromStore = useCollaborationStore((s) => s.currentRoomId);
+
+  // Debug logging for room state (removed effectiveChatId - defined later)
+
   const collaboration = useCollaborationBridge(currentRoomIdFromStore);
   const setCurrentRoomIdGlobal = useCollaborationStore(
     (s) => s.setCurrentRoomId,
@@ -84,6 +82,17 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     }
   }, [effectiveChatId]);
 
+  // Reduced debug logging for room state - only log significant changes
+  useEffect(() => {
+    if (roomIdFromUrl || currentRoomIdFromStore) {
+      console.log("🏠 ChatInterface room state:", {
+        roomIdFromUrl,
+        currentRoomIdFromStore,
+        effectiveChatId,
+      });
+    }
+  }, [roomIdFromUrl, currentRoomIdFromStore]);
+
   // Debug logging for collaboration state changes (reduced frequency)
   useEffect(() => {
     if (currentRoomIdFromStore && collaboration.room?.id) {
@@ -97,7 +106,26 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   // Load messages from the effective chat ID (shared room chat or personal chat)
   const rawMessages = useLiveMessages(effectiveChatId ?? "");
-  const messages = rawMessages ?? [];
+
+  // COLLABORATION FIX: In collaboration mode, use collaboration messages instead of regular messages
+  const messages =
+    collaboration.room && collaboration.messages.length > 0
+      ? collaboration.messages.map((msg) => ({
+          id: msg.id,
+          content: msg.content,
+          chatId: collaboration.room?.chatId || effectiveChatId || "",
+          role:
+            msg.sender === "AI Assistant"
+              ? ("assistant" as const)
+              : ("user" as const),
+          createdAt: new Date(msg.timestamp).toISOString(),
+          updatedAt: new Date(msg.timestamp).toISOString(),
+          metadata: {
+            sender: msg.sender,
+            isCollaborationMessage: true,
+          },
+        }))
+      : (rawMessages ?? []);
 
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -107,17 +135,29 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   // Track URL room join attempts to prevent infinite loops
   const [urlRoomJoined, setUrlRoomJoined] = useState<string | null>(null);
   const [isJoiningFromUrl, setIsJoiningFromUrl] = useState(false);
+  const [joinFailureCount, setJoinFailureCount] = useState<
+    Record<string, number>
+  >({});
 
   // IMPROVED: Auto-join room from URL parameter with better error handling
   useEffect(() => {
     // Prevent multiple simultaneous join attempts
+    const maxFailures = 3; // Stop trying after 3 failures
+    const currentFailures = joinFailureCount[roomIdFromUrl || ""] || 0;
+
     if (
       !roomIdFromUrl ||
       !collaboration.user ||
       urlRoomJoined === roomIdFromUrl ||
       isJoiningFromUrl ||
-      currentRoomIdFromStore === roomIdFromUrl // Already in the room
+      currentRoomIdFromStore === roomIdFromUrl || // Already in the room
+      currentFailures >= maxFailures // Too many failures
     ) {
+      if (currentFailures >= maxFailures) {
+        console.warn(
+          `❌ Stopped trying to join room ${roomIdFromUrl} after ${maxFailures} failures`,
+        );
+      }
       return;
     }
 
@@ -168,9 +208,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
             setCurrentChatId(roomChatId);
           }
 
-          // Open collaboration panel to show the room
-          setInsightsOpen(true);
-          setInsightsTab("collaboration");
+          // Room joined successfully - collaboration features now available in main chat
 
           console.log("🎉 Successfully joined and configured room from URL");
         } else {
@@ -178,13 +216,42 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
             "❌ Room join failed:",
             joinResult.error || "Unknown error",
           );
-          setUrlRoomJoined(null); // Reset for retry
-          setCurrentRoomIdGlobal(null); // Clear room state
+
+          // Track failure and decide whether to retry
+          const newFailureCount = currentFailures + 1;
+          setJoinFailureCount((prev) => ({
+            ...prev,
+            [roomIdFromUrl]: newFailureCount,
+          }));
+
+          if (newFailureCount < maxFailures) {
+            setUrlRoomJoined(null); // Reset for retry
+            setCurrentRoomIdGlobal(null); // Clear room state
+          } else {
+            console.warn(
+              `❌ Giving up on room ${roomIdFromUrl} after ${newFailureCount} failures`,
+            );
+            // Keep urlRoomJoined set to prevent further attempts
+          }
         }
       } catch (error) {
         console.error("❌ Failed to join room from URL:", error);
-        setUrlRoomJoined(null); // Reset so it can be retried
-        setCurrentRoomIdGlobal(null); // Clear room state
+
+        // Track failure
+        const newFailureCount = currentFailures + 1;
+        setJoinFailureCount((prev) => ({
+          ...prev,
+          [roomIdFromUrl]: newFailureCount,
+        }));
+
+        if (newFailureCount < maxFailures) {
+          setUrlRoomJoined(null); // Reset so it can be retried
+          setCurrentRoomIdGlobal(null); // Clear room state
+        } else {
+          console.warn(
+            `❌ Giving up on room ${roomIdFromUrl} after ${newFailureCount} failures`,
+          );
+        }
       } finally {
         setIsJoiningFromUrl(false);
       }
@@ -200,7 +267,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     setCurrentRoomIdGlobal,
     urlRoomJoined,
     isJoiningFromUrl,
-    currentRoomIdFromStore,
+    joinFailureCount,
+    // Removed currentRoomIdFromStore to prevent infinite loop
   ]);
 
   // IMPROVED: Auto-create collaboration user if authenticated but no collab user exists
@@ -504,25 +572,9 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     }
   };
 
-  const handleToggleMemory = () => {
-    setInsightsTab("memory");
-    setInsightsOpen(true);
-  };
+  // Removed handleToggleMemory - memory functionality still works in background
 
-  const { toggle, mode } = useCollabMode();
-  const currentRoomIdStore = useCollaborationStore((s) => s.currentRoomId);
-
-  const handleToggleCollab = () => {
-    toggle();
-    if (mode === "solo") {
-      // entering collab: just open drawer; user can create/join via UI
-      setInsightsTab("collaboration");
-      setInsightsOpen(true);
-    } else {
-      // leaving collab
-      setInsightsOpen(false);
-    }
-  };
+  // Collaboration is now handled by room state, not mode toggle
 
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
@@ -573,25 +625,12 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       {/* Main Content with dynamic margin for sidebar */}
       <main
         data-chat-root
-        className={clsx(
-          "relative flex h-full min-w-0 flex-1 flex-col transition-all duration-300",
-          insightsOpen && isDesktop && "mr-80",
-        )}
+        className="relative flex h-full min-w-0 flex-1 flex-col"
       >
         {/* Top Bar */}
-        <ChatHeaderV2
-          title={
-            collaboration.room
-              ? `Room: ${collaboration.room.name || collaboration.room.id}`
-              : "Chat"
-          }
-          isCollaborationMode={!!collaboration.room}
-          collaborationRoom={collaboration.room}
-          isWsConnected={collaboration.isWsConnected}
-          onRefreshData={collaboration.refreshData}
-          onToggleSidebar={() => setSidebarOpen(true)}
-          onToggleInsights={() => setInsightsOpen(!insightsOpen)}
-          insightsOpen={insightsOpen}
+        <ChatHeader
+          sidebarOpen={sidebarOpen}
+          onOpenSidebar={() => setSidebarOpen(true)}
         />
 
         {/* Messages Area */}
@@ -607,21 +646,24 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         />
 
         {/* Input Area (Composer) */}
-        <ChatComposerV2
+        <ChatComposer
           ref={composerRef}
-          onSendMessage={
+          isTyping={isTyping}
+          onSubmit={handleCollaborationMessage}
+          onSubmitToAI={
             !!collaboration.room
-              ? handleCollaborationMessage
+              ? handleCollaborationAIMessage
               : handleComposerSubmit
           }
-          onSendToAI={
-            collaboration.room ? handleCollaborationAIMessage : undefined
-          }
-          isSendingMessage={
-            collaboration.room ? collaboration.isSendingMessage : isTyping
-          }
-          isSendingToAI={collaboration.isSendingToAI}
+          onStop={handleStop}
+          selectedModel={selectedModelId}
+          setSelectedModel={setSelectedModelId}
+          modelDropdownOpen={modelDropdownOpen}
+          setModelDropdownOpen={setModelDropdownOpen}
+          models={models}
+          dropdownRef={dropdownRef}
           isCollaborationMode={!!collaboration.room}
+          isSendingToAI={collaboration.isSendingToAI}
           disabled={
             isTyping ||
             collaboration.isSendingMessage ||
@@ -629,16 +671,6 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           }
         />
       </main>
-
-      {/* Insights Drawer */}
-      <InsightsDrawer
-        open={insightsOpen}
-        tab={insightsTab}
-        setTab={setInsightsTab}
-        onClose={() => setInsightsOpen(false)}
-        currentChatId={effectiveChatId ?? null}
-        memoryHook={memory}
-      />
     </div>
   );
 }

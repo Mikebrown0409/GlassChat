@@ -84,26 +84,22 @@ export const collaborationV2Router = createTRPCRouter({
         }
 
         // Add participant to room
-        const updatedRoom = storage.addParticipant(input.roomId, {
-          id: `${input.userName}-${Date.now()}`,
-          name: input.userName,
-          joinedAt: new Date().toISOString(),
-        });
+        const participant = storage.addParticipant(
+          input.roomId,
+          input.userName,
+        );
+        const updatedRoom = storage.getRoom(input.roomId);
 
-        if (updatedRoom) {
+        if (updatedRoom && participant) {
           console.log(
-            `[CollabV2] Successfully joined room: ${input.roomId}, participants: ${updatedRoom.participants.length}`,
+            `[CollabV2] Successfully joined room: ${input.roomId}, participants: ${updatedRoom.participants?.length ?? 0}`,
           );
 
           // Broadcast participant joined via WebSocket
           wsGateway.broadcastV2Message(input.roomId, {
             type: "participant_joined",
             roomId: input.roomId,
-            participant: {
-              id: `${input.userName}-${Date.now()}`,
-              name: input.userName,
-              joinedAt: new Date().toISOString(),
-            },
+            participant: participant,
           });
 
           return { success: true, room: updatedRoom };

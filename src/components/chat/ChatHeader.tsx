@@ -20,22 +20,18 @@ import {
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import { CollabToggle } from "../ui/CollabToggle";
-import { InsightsToggle } from "../ui/InsightsToggle";
+// Removed InsightsToggle - no longer needed without the insights panel
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 
 interface ChatHeaderProps {
   sidebarOpen: boolean;
   onOpenSidebar: () => void;
-  onToggleMemory: () => void;
-  onToggleCollab: () => void;
   className?: string;
 }
 
 export function ChatHeader({
   sidebarOpen,
   onOpenSidebar,
-  onToggleMemory,
-  onToggleCollab,
   className,
 }: ChatHeaderProps) {
   // Global collaboration state
@@ -111,8 +107,7 @@ export function ChatHeader({
               )}
             </div>
           )}
-          <InsightsToggle onClick={onToggleMemory} />
-          <CollabToggle onClick={onToggleCollab} />
+          <CollabToggle />
           <ThemeSwitcher />
 
           {/* User dropdown */}
