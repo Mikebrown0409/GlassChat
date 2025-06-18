@@ -207,8 +207,9 @@ export function CollaborationPanel({
     if (!currentChatId) return;
 
     if (!collaboration.user.user) {
-      // create ephemeral user
-      await collaboration.user.createUser("Guest");
+      // create ephemeral user with unique ID
+      const guestId = `Guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      await collaboration.user.createUser(guestId);
     }
 
     try {
@@ -218,8 +219,11 @@ export function CollaborationPanel({
       );
       if (room.success && room.room) {
         setCurrentRoomId(room.room.id);
-        // Trigger a refetch to update the rooms list
-        await collaboration.rooms.refetch();
+        // Trigger refetch of both rooms and messages data to get latest presence
+        await Promise.all([
+          collaboration.rooms.refetch(),
+          collaboration.messages.refetch(),
+        ]);
       }
     } catch (error) {
       console.error("Failed to create room:", error);

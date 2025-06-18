@@ -116,7 +116,9 @@ export const collaborationRouter = createTRPCRouter({
     }> => {
       try {
         if (!collaborationManager.getCurrentUser()) {
-          await collaborationManager.createUser("Guest");
+          // Create a unique guest user for each session
+          const guestId = `Guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          await collaborationManager.createUser(guestId);
         }
         const room = await collaborationManager.createRoom(
           input.chatId,
@@ -147,7 +149,9 @@ export const collaborationRouter = createTRPCRouter({
     }> => {
       try {
         if (!collaborationManager.getCurrentUser()) {
-          await collaborationManager.createUser("Guest");
+          // Create a unique guest user for each session
+          const guestId = `Guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          await collaborationManager.createUser(guestId);
         }
         const room = await collaborationManager.joinRoom(input.roomId);
         return {

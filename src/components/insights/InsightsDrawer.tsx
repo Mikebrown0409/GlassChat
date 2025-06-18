@@ -61,7 +61,7 @@ export function InsightsDrawer({
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ duration: 0.3, ease: EASE }}
-          className="bg-surface-0/90 fixed inset-y-0 right-0 z-40 flex w-80 max-w-full flex-col shadow-xl backdrop-blur-lg"
+          className="glass-effect fixed inset-y-0 right-0 z-40 flex w-80 max-w-full flex-col border-l border-white/10 bg-zinc-900/40 shadow-xl backdrop-blur-xl"
         >
           <div className="border-border-subtle flex items-center justify-between border-b p-4">
             <div className="flex gap-2">
