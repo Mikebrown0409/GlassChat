@@ -1,6 +1,7 @@
 import { Copy, LogOut, Plus, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useCollaboration } from "~/lib/collaboration-v2/hooks";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import { Button } from "./Button";
 
@@ -18,6 +19,9 @@ export function CollabToggle() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Get collaboration status to check WebSocket connection
+  const collaboration = useCollaboration(currentRoomId, "User");
 
   // Collaboration is active when we're actually in a room
   const isInRoom = !!currentRoomId;
@@ -166,7 +170,11 @@ export function CollabToggle() {
               <span className={`mr-1 ${isRefreshing ? "animate-spin" : ""}`}>
                 🔄
               </span>
-              {isRefreshing ? "Refreshing..." : "Refresh (Dev Mode)"}
+              {isRefreshing
+                ? "Refreshing..."
+                : collaboration?.isWebSocketConnected
+                  ? "Refresh Room"
+                  : "Refresh (WebSocket Unavailable)"}
             </Button>
 
             <Button
