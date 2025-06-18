@@ -27,6 +27,18 @@ export function usePusherCollaboration({
   const channelRef = useRef<Channel | null>(null);
   const pusherRef = useRef(getPusherClient());
 
+  // Keep latest callback references without re-subscribing every render
+  const onMessageSyncRef = useRef<typeof onMessageSync | null>(null);
+  const onRoomStateUpdateRef = useRef<typeof onRoomStateUpdate | null>(null);
+
+  useEffect(() => {
+    onMessageSyncRef.current = onMessageSync;
+  }, [onMessageSync]);
+
+  useEffect(() => {
+    onRoomStateUpdateRef.current = onRoomStateUpdate;
+  }, [onRoomStateUpdate]);
+
   // Connect to room channel
   useEffect(() => {
     if (!roomId || !userId) return;
@@ -55,12 +67,12 @@ export function usePusherCollaboration({
       // Collaboration events
       channel.bind("message-sync", (data: MessageSyncEvent) => {
         console.log(`📨 [Pusher] Message sync:`, data);
-        onMessageSync?.(data);
+        onMessageSyncRef.current?.(data);
       });
 
       channel.bind("room-state-update", (data: RoomStateEvent) => {
         console.log(`🏠 [Pusher] Room state update:`, data);
-        onRoomStateUpdate?.(data);
+        onRoomStateUpdateRef.current?.(data);
       });
 
       channel.bind(
@@ -91,7 +103,7 @@ export function usePusherCollaboration({
       }
       setIsConnected(false);
     };
-  }, [roomId, userId, onMessageSync, onRoomStateUpdate]);
+  }, [roomId, userId]);
 
   // Send collaboration message via API
   const sendMessage = useCallback(
