@@ -350,6 +350,14 @@ export function useCollaborationBridge(roomId: string | null) {
         // Create user message first
         await syncManager.createMessage(chatId, "user", content);
 
+        // Send user message to collaboration room so other users can see it
+        await pusherCollab.sendMessage({
+          type: "chat_message",
+          content: content,
+          sender: participantName,
+          timestamp: Date.now(),
+        });
+
         // Add user message to memory immediately
         await memoryManagerClient.addMemory(chatId, content, {
           role: "user",
@@ -562,61 +570,122 @@ Always apply these rules while answering based on the provided message history.`
               "chars",
             );
 
-            // Improved table-aware chunking
+            // Improved table-aware chunking that preserves markdown structure
             const chunks = [];
             let currentChunk = "";
-            const sections = assistantContent.split(/\n(?=#{1,3}\s)/); // Split on headers
 
-            for (const section of sections) {
-              // Check if this section contains tables
-              const hasTable =
-                section.includes("|") && /\|.*\|.*\|/.exec(section);
+            // First, try to split at major section boundaries (headers)
+            const majorSections = assistantContent.split(/(?=\n#{1,3}\s)/);
 
-              if (hasTable) {
-                // For sections with tables, try to keep the entire section together
-                if (currentChunk.length + section.length + 2 > maxMessageSize) {
-                  // If current chunk + this section is too big, save current chunk
-                  if (currentChunk.trim()) {
-                    chunks.push(currentChunk.trim());
-                  }
+            for (const section of majorSections) {
+              // Check if this section would fit in current chunk
+              if (currentChunk.length + section.length + 2 <= maxMessageSize) {
+                currentChunk += (currentChunk ? "\n" : "") + section;
+                continue;
+              }
 
-                  // If the section itself is too big, we need to split it carefully
-                  if (section.length > maxMessageSize) {
-                    // Split at paragraph breaks but try to keep tables intact
-                    const paragraphs = section.split(/\n\s*\n/);
-                    let tempChunk = "";
+              // Current chunk + section is too big, save current chunk if it exists
+              if (currentChunk.trim()) {
+                chunks.push(currentChunk.trim());
+                currentChunk = "";
+              }
 
-                    for (const paragraph of paragraphs) {
+              // If the section itself is too big, we need to split it more carefully
+              if (section.length > maxMessageSize) {
+                // Check if this section contains tables
+                const hasTable =
+                  section.includes("|") && /\|.*\|.*\|/m.exec(section);
+
+                if (hasTable) {
+                  // For table sections, split at paragraph boundaries but keep tables intact
+                  const paragraphs = section.split(/\n\s*\n/);
+                  let tempChunk = "";
+                  let currentTable = "";
+                  let inTable = false;
+
+                  for (const paragraph of paragraphs) {
+                    // Check if this paragraph is part of a table
+                    const isTablePart =
+                      paragraph.includes("|") && /\|.*\|/m.exec(paragraph);
+
+                    if (isTablePart) {
+                      if (!inTable) {
+                        inTable = true;
+                        currentTable = paragraph;
+                      } else {
+                        currentTable += "\n\n" + paragraph;
+                      }
+                    } else {
+                      // Not a table part
+                      if (inTable) {
+                        // End of table, try to add the complete table
+                        if (
+                          tempChunk.length + currentTable.length + 4 <=
+                          maxMessageSize
+                        ) {
+                          tempChunk += (tempChunk ? "\n\n" : "") + currentTable;
+                        } else {
+                          // Table is too big for current chunk, save current and start new
+                          if (tempChunk.trim()) {
+                            chunks.push(tempChunk.trim());
+                          }
+                          tempChunk = currentTable;
+                        }
+                        currentTable = "";
+                        inTable = false;
+                      }
+
+                      // Add regular paragraph
                       if (
-                        tempChunk.length + paragraph.length + 2 >
+                        tempChunk.length + paragraph.length + 4 <=
                         maxMessageSize
                       ) {
+                        tempChunk += (tempChunk ? "\n\n" : "") + paragraph;
+                      } else {
                         if (tempChunk.trim()) {
                           chunks.push(tempChunk.trim());
                         }
                         tempChunk = paragraph;
-                      } else {
-                        tempChunk += (tempChunk ? "\n\n" : "") + paragraph;
                       }
                     }
-
-                    currentChunk = tempChunk;
-                  } else {
-                    currentChunk = section;
                   }
+
+                  // Handle any remaining table
+                  if (inTable && currentTable) {
+                    if (
+                      tempChunk.length + currentTable.length + 4 <=
+                      maxMessageSize
+                    ) {
+                      tempChunk += (tempChunk ? "\n\n" : "") + currentTable;
+                    } else {
+                      if (tempChunk.trim()) {
+                        chunks.push(tempChunk.trim());
+                      }
+                      tempChunk = currentTable;
+                    }
+                  }
+
+                  currentChunk = tempChunk;
                 } else {
-                  currentChunk += (currentChunk ? "\n" : "") + section;
+                  // No tables, use simpler paragraph-based splitting
+                  const paragraphs = section.split(/\n\s*\n/);
+                  for (const paragraph of paragraphs) {
+                    if (
+                      currentChunk.length + paragraph.length + 4 >
+                      maxMessageSize
+                    ) {
+                      if (currentChunk.trim()) {
+                        chunks.push(currentChunk.trim());
+                      }
+                      currentChunk = paragraph;
+                    } else {
+                      currentChunk += (currentChunk ? "\n\n" : "") + paragraph;
+                    }
+                  }
                 }
               } else {
-                // For non-table sections, use regular chunking
-                if (currentChunk.length + section.length + 2 > maxMessageSize) {
-                  if (currentChunk.trim()) {
-                    chunks.push(currentChunk.trim());
-                  }
-                  currentChunk = section;
-                } else {
-                  currentChunk += (currentChunk ? "\n" : "") + section;
-                }
+                // Section fits, use it as current chunk
+                currentChunk = section;
               }
             }
 
