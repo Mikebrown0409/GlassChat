@@ -2,7 +2,7 @@
 // Provides room management, live coding, and messaging features
 
 import { z } from "zod";
-import { collaborationManager } from "~/lib/collaboration/collaborationManager";
+import { getCollaborationManager } from "~/lib/collaboration/collaborationManager";
 import {
   type CollaborationEvent,
   type CollaborationMessage,
@@ -12,7 +12,7 @@ import {
   type TypingIndicator,
   type UserPresence,
 } from "~/lib/collaboration/types";
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, publicProcedure } from "../trpc";
 
 // Input validation schemas
 const CreateUserSchema = z.object({
@@ -26,6 +26,10 @@ const CreateRoomSchema = z.object({
 });
 
 const JoinRoomSchema = z.object({
+  roomId: z.string().min(1),
+});
+
+const CheckRoomSchema = z.object({
   roomId: z.string().min(1),
 });
 
@@ -62,27 +66,64 @@ const DeleteMessageSchema = z.object({
   messageId: z.string().min(1),
 });
 
+// Helper to get session-specific collaboration manager
+function getSessionManager(ctx: any) {
+  // Use session user ID if available, otherwise use IP + user agent for anonymous sessions
+  const sessionId =
+    ctx.session?.user?.id ??
+    `anonymous-${ctx.req?.ip ?? "unknown"}-${ctx.req?.headers?.["user-agent"]?.slice(0, 50) ?? "unknown"}`;
+  return getCollaborationManager(sessionId);
+}
+
 export const collaborationRouter = createTRPCRouter({
   // User Management
   createUser: publicProcedure.input(CreateUserSchema).mutation(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       user?: CollaborationUser;
       error?: string;
     }> => {
       try {
+        // Validate input first
+        if (!input?.name || typeof input.name !== "string") {
+          return {
+            success: false,
+            error: "Name is required and must be a string",
+          };
+        }
+
+        // Use authenticated user's info if available, otherwise use input
+        let userName = input.name;
+        let avatarUrl = input.avatarUrl;
+
+        if (ctx.session?.user) {
+          const authUser = ctx.session.user;
+          userName = input.name ?? authUser.name ?? authUser.email ?? "User";
+          avatarUrl = input.avatarUrl ?? authUser.image ?? undefined;
+        }
+
+        const collaborationManager = getSessionManager(ctx);
         const user = await collaborationManager.createUser(
-          input.name,
-          input.avatarUrl,
+          userName || "User",
+          avatarUrl,
         );
+
+        if (!user) {
+          return {
+            success: false,
+            error: "Failed to create user - no user returned",
+          };
+        }
+
         return {
           success: true,
           user,
         };
       } catch (error) {
-        console.error("Error creating user:", error);
+        console.error("Error creating collaboration user:", error);
         return {
           success: false,
           error:
@@ -93,15 +134,52 @@ export const collaborationRouter = createTRPCRouter({
   ),
 
   getCurrentUser: publicProcedure.query(
-    async (): Promise<{
+    async ({
+      ctx,
+    }): Promise<{
       success: boolean;
       user?: CollaborationUser;
+      error?: string;
     }> => {
-      const user = collaborationManager.getCurrentUser();
-      return {
-        success: true,
-        user: user ?? undefined,
-      };
+      try {
+        const collaborationManager = getSessionManager(ctx);
+        let user = collaborationManager.getCurrentUser();
+
+        // If no collaboration user exists and we have session, create one from authenticated user
+        if (!user && ctx.session?.user) {
+          const authUser = ctx.session.user;
+          const userName = authUser.name ?? authUser.email ?? "User";
+          const avatarUrl = authUser.image ?? undefined;
+
+          try {
+            console.log(
+              "Auto-creating collaboration user from session:",
+              userName,
+            );
+            user = await collaborationManager.createUser(userName, avatarUrl);
+          } catch (error) {
+            console.error("Failed to auto-create collaboration user:", error);
+            return {
+              success: false,
+              error: "Failed to create collaboration user from session",
+            };
+          }
+        }
+
+        return {
+          success: true,
+          user: user ?? undefined,
+        };
+      } catch (error) {
+        console.error("Error getting current user:", error);
+        return {
+          success: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to get current user",
+        };
+      }
     },
   ),
 
@@ -109,17 +187,33 @@ export const collaborationRouter = createTRPCRouter({
   createRoom: publicProcedure.input(CreateRoomSchema).mutation(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       room?: CollaborationRoom;
       error?: string;
     }> => {
       try {
-        if (!collaborationManager.getCurrentUser()) {
-          // Create a unique guest user for each session
-          const guestId = `Guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          await collaborationManager.createUser(guestId);
+        const collaborationManager = getSessionManager(ctx);
+        let currentUser = collaborationManager.getCurrentUser();
+
+        if (!currentUser) {
+          // Create user from authenticated session if available, otherwise guest
+          if (ctx.session?.user) {
+            const authUser = ctx.session.user;
+            const userName = authUser.name ?? authUser.email ?? "User";
+            const avatarUrl = authUser.image ?? undefined;
+            currentUser = await collaborationManager.createUser(
+              userName,
+              avatarUrl,
+            );
+          } else {
+            // Fallback to guest user for unauthenticated sessions
+            const guestId = `Guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            currentUser = await collaborationManager.createUser(guestId);
+          }
         }
+
         const room = await collaborationManager.createRoom(
           input.chatId,
           input.name,
@@ -142,17 +236,33 @@ export const collaborationRouter = createTRPCRouter({
   joinRoom: publicProcedure.input(JoinRoomSchema).mutation(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       room?: CollaborationRoom;
       error?: string;
     }> => {
       try {
-        if (!collaborationManager.getCurrentUser()) {
-          // Create a unique guest user for each session
-          const guestId = `Guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          await collaborationManager.createUser(guestId);
+        const collaborationManager = getSessionManager(ctx);
+        let currentUser = collaborationManager.getCurrentUser();
+
+        if (!currentUser) {
+          // Create user from authenticated session if available, otherwise guest
+          if (ctx.session?.user) {
+            const authUser = ctx.session.user;
+            const userName = authUser.name ?? authUser.email ?? "User";
+            const avatarUrl = authUser.image ?? undefined;
+            currentUser = await collaborationManager.createUser(
+              userName,
+              avatarUrl,
+            );
+          } else {
+            // Fallback to guest user for unauthenticated sessions
+            const guestId = `Guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            currentUser = await collaborationManager.createUser(guestId);
+          }
         }
+
         const room = await collaborationManager.joinRoom(input.roomId);
         return {
           success: true,
@@ -171,11 +281,13 @@ export const collaborationRouter = createTRPCRouter({
   leaveRoom: publicProcedure.input(JoinRoomSchema).mutation(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         await collaborationManager.leaveRoom(input.roomId);
         return {
           success: true,
@@ -192,12 +304,15 @@ export const collaborationRouter = createTRPCRouter({
   ),
 
   getRooms: publicProcedure.query(
-    async (): Promise<{
+    async ({
+      ctx,
+    }): Promise<{
       success: boolean;
       rooms: CollaborationRoom[];
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         const rooms = await collaborationManager.getRooms();
         return {
           success: true,
@@ -209,6 +324,32 @@ export const collaborationRouter = createTRPCRouter({
           success: false,
           rooms: [],
           error: error instanceof Error ? error.message : "Failed to get rooms",
+        };
+      }
+    },
+  ),
+
+  checkRoom: publicProcedure.input(CheckRoomSchema).query(
+    async ({
+      input,
+    }): Promise<{
+      success: boolean;
+      exists: boolean;
+      error?: string;
+    }> => {
+      try {
+        const exists = await collaborationManager.roomExists(input.roomId);
+        return {
+          success: true,
+          exists,
+        };
+      } catch (error) {
+        console.error("Error checking room:", error);
+        return {
+          success: false,
+          exists: false,
+          error:
+            error instanceof Error ? error.message : "Failed to check room",
         };
       }
     },
@@ -315,12 +456,14 @@ export const collaborationRouter = createTRPCRouter({
   sendMessage: publicProcedure.input(SendMessageSchema).mutation(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       message?: CollaborationMessage;
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
         const message = await collaborationManager.sendMessage(
           input.roomId,
           input.content,
@@ -512,6 +655,7 @@ export const collaborationRouter = createTRPCRouter({
   getRoomData: publicProcedure.input(JoinRoomSchema).query(
     async ({
       input,
+      ctx,
     }): Promise<{
       success: boolean;
       data?: {
@@ -525,6 +669,8 @@ export const collaborationRouter = createTRPCRouter({
       error?: string;
     }> => {
       try {
+        const collaborationManager = getSessionManager(ctx);
+
         // Fetch all data in parallel for maximum efficiency
         const [
           roomsResult,

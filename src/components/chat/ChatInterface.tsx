@@ -1,7 +1,10 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useChatGeneration } from "~/lib/ai/useChatGeneration";
+import { useCollaboration } from "~/lib/collaboration/hooks";
 import { db } from "~/lib/db";
 import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
@@ -21,6 +24,10 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ className: _className }: ChatInterfaceProps) {
+  const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const roomIdFromUrl = searchParams?.get("room");
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectionMenu, setSelectionMenu] = useState<{
     position: { top: number; left: number };
@@ -38,13 +45,191 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   );
 
   const chats = useLiveChats();
-  const rawMessages = useLiveMessages(currentChatId ?? "");
-  const messages = useMemo(() => rawMessages ?? [], [rawMessages]);
+
+  // Collaboration integration - MOVED UP to fix initialization order
+  const currentRoomIdFromStore = useCollaborationStore((s) => s.currentRoomId);
+  const collaboration = useCollaboration(currentRoomIdFromStore);
+  const setCurrentRoomIdGlobal = useCollaborationStore(
+    (s) => s.setCurrentRoomId,
+  );
+
+  // **SHARED LLM CHAT**: Use room's chatId when in collaboration room, otherwise use regular chatId
+  const effectiveChatId = useMemo(() => {
+    // Only switch to shared room chat if we have both room ID and room data
+    if (
+      currentRoomIdFromStore &&
+      collaboration.room?.chatId &&
+      collaboration.room.id === currentRoomIdFromStore
+    ) {
+      console.log(
+        "🤝 Using shared room chatId for LLM:",
+        collaboration.room.chatId,
+      );
+      return collaboration.room.chatId;
+    }
+
+    console.log("👤 Using personal chatId:", currentChatId);
+    return currentChatId;
+  }, [
+    currentRoomIdFromStore,
+    collaboration.room?.chatId,
+    collaboration.room?.id,
+    currentChatId,
+  ]);
+
+  // Add debug logging for when effectiveChatId changes (reduced frequency)
+  useEffect(() => {
+    if (effectiveChatId) {
+      console.log("📱 effectiveChatId changed to:", effectiveChatId);
+    }
+  }, [effectiveChatId]);
+
+  // Debug logging for collaboration state changes (reduced frequency)
+  useEffect(() => {
+    if (currentRoomIdFromStore && collaboration.room?.id) {
+      console.log("🏠 Collaboration room active:", {
+        roomId: collaboration.room.id,
+        chatId: collaboration.room.chatId,
+        users: collaboration.room.users?.length,
+      });
+    }
+  }, [currentRoomIdFromStore, collaboration.room?.id]);
+
+  // Load messages from the effective chat ID (shared room chat or personal chat)
+  const rawMessages = useLiveMessages(effectiveChatId ?? "");
+  const messages = rawMessages ?? [];
 
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
-  const memory = useMemory(currentChatId ?? null, messages);
+  const memory = useMemory(effectiveChatId ?? null, messages);
+
+  // Track URL room join attempts to prevent infinite loops
+  const [urlRoomJoined, setUrlRoomJoined] = useState<string | null>(null);
+  const [isJoiningFromUrl, setIsJoiningFromUrl] = useState(false);
+
+  // IMPROVED: Auto-join room from URL parameter with better error handling
+  useEffect(() => {
+    // Prevent multiple simultaneous join attempts
+    if (
+      !roomIdFromUrl ||
+      !collaboration.user ||
+      urlRoomJoined === roomIdFromUrl ||
+      isJoiningFromUrl ||
+      currentRoomIdFromStore === roomIdFromUrl // Already in the room
+    ) {
+      return;
+    }
+
+    const joinRoomFromUrl = async () => {
+      setIsJoiningFromUrl(true);
+      try {
+        setUrlRoomJoined(roomIdFromUrl); // Mark as attempted
+
+        console.log("🔗 Joining room from URL:", roomIdFromUrl);
+
+        // Set room in global state first to prevent race conditions
+        setCurrentRoomIdGlobal(roomIdFromUrl);
+
+        // Join the room and get the room data
+        const joinResult = await collaboration.joinRoom(roomIdFromUrl);
+
+        if (joinResult.success && joinResult.room) {
+          const roomChatId = joinResult.room.chatId;
+
+          console.log("✅ Room joined successfully:", {
+            roomId: joinResult.room.id,
+            roomName: joinResult.room.name,
+            roomChatId,
+            roomUsers: joinResult.room.users.length,
+          });
+
+          // **CRITICAL FIX**: Switch chat context to the room's chatId
+          try {
+            const existingChats = await syncManager.getChats();
+            const chatExists = existingChats.some(
+              (chat) => chat.id === roomChatId,
+            );
+
+            if (!chatExists) {
+              console.log("📝 Creating new shared chat for room:", roomChatId);
+              await syncManager.createChatWithId(
+                roomChatId,
+                joinResult.room.name || "Shared Room",
+              );
+            }
+
+            // Switch to the room's chat - this will be used by effectiveChatId
+            setCurrentChatId(roomChatId);
+            console.log("🔄 Switched to shared room chat:", roomChatId);
+          } catch (error) {
+            console.error("❌ Failed to handle room chat creation:", error);
+            // Fallback: still switch to the chatId even if creation failed
+            setCurrentChatId(roomChatId);
+          }
+
+          // Open collaboration panel to show the room
+          setInsightsOpen(true);
+          setInsightsTab("collaboration");
+
+          console.log("🎉 Successfully joined and configured room from URL");
+        } else {
+          console.error(
+            "❌ Room join failed:",
+            joinResult.error || "Unknown error",
+          );
+          setUrlRoomJoined(null); // Reset for retry
+          setCurrentRoomIdGlobal(null); // Clear room state
+        }
+      } catch (error) {
+        console.error("❌ Failed to join room from URL:", error);
+        setUrlRoomJoined(null); // Reset so it can be retried
+        setCurrentRoomIdGlobal(null); // Clear room state
+      } finally {
+        setIsJoiningFromUrl(false);
+      }
+    };
+
+    // Small delay to ensure user is fully initialized
+    const timeoutId = setTimeout(joinRoomFromUrl, 300);
+    return () => clearTimeout(timeoutId);
+  }, [
+    roomIdFromUrl,
+    collaboration.user,
+    collaboration.joinRoom,
+    setCurrentRoomIdGlobal,
+    urlRoomJoined,
+    isJoiningFromUrl,
+    currentRoomIdFromStore,
+  ]);
+
+  // IMPROVED: Auto-create collaboration user if authenticated but no collab user exists
+  const [hasAttemptedUserCreation, setHasAttemptedUserCreation] =
+    useState(false);
+
+  useEffect(() => {
+    if (
+      !collaboration.user &&
+      !collaboration.isCreating &&
+      session?.user &&
+      !hasAttemptedUserCreation
+    ) {
+      const userName =
+        session.user.name ?? session.user.email ?? `User-${Date.now()}`;
+
+      setHasAttemptedUserCreation(true);
+      void collaboration.createUser(userName).catch((error) => {
+        console.error("Failed to auto-create collaboration user:", error);
+        setHasAttemptedUserCreation(false); // Allow retry on error
+      });
+    }
+  }, [
+    collaboration.user,
+    collaboration.isCreating,
+    collaboration.createUser,
+    session,
+    hasAttemptedUserCreation,
+  ]);
 
   // generateResponse handled inside hook
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -56,7 +241,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     generateResponseIsPending,
     handleSubmit: handleSubmitFromHook,
     handleStop,
-  } = useChatGeneration(currentChatId, messages, selectedModelId);
+  } = useChatGeneration(effectiveChatId, messages, selectedModelId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -293,6 +478,9 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   }, []);
 
   const handleComposerSubmit = (text: string) => {
+    // **ALWAYS SEND TO LLM**: Main chat is always for LLM interaction
+    // When in collaboration room, this creates shared LLM conversation via effectiveChatId
+    // The collaboration panel has separate user-to-user chat
     void handleSubmitFromHook(text, () => composerRef.current?.setInput(""));
   };
 
@@ -303,9 +491,6 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   const { toggle, mode } = useCollabMode();
   const currentRoomIdStore = useCollaborationStore((s) => s.currentRoomId);
-  const session = undefined as unknown as
-    | { user?: { name?: string; image?: string } }
-    | undefined;
 
   const handleToggleCollab = () => {
     toggle();
@@ -358,7 +543,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       <ChatSidebar
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
-        currentChatId={currentChatId}
+        currentChatId={effectiveChatId}
         onSelectChat={handleChatSelect}
         onDeleteChat={handleDeleteChat}
         onRenameChat={handleRenameChat}
@@ -414,7 +599,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         tab={insightsTab}
         setTab={setInsightsTab}
         onClose={() => setInsightsOpen(false)}
-        currentChatId={currentChatId ?? null}
+        currentChatId={effectiveChatId ?? null}
         memoryHook={memory}
       />
     </div>

@@ -96,10 +96,12 @@ export interface CollaborationMessage {
 
 export interface UserPresence {
   userId: string;
+  userName?: string; // User's display name
   roomId: string;
   isOnline: boolean;
   lastSeen: number;
   isTyping: boolean;
+  color?: string; // User's assigned color for UI display
 }
 
 // Configuration for collaboration features

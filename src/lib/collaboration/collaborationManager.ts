@@ -116,11 +116,62 @@ class CollaborationManager {
 
     // Get room from Redis
     const roomData = await redis.get(`collaboration:room:${roomId}`);
-    if (!roomData || typeof roomData !== "string") {
-      throw new Error("Room not found");
-    }
+    let room: CollaborationRoom;
 
-    const room: CollaborationRoom = JSON.parse(roomData) as CollaborationRoom;
+    if (!roomData || typeof roomData !== "string") {
+      // Check if we're already trying to create this room to prevent race conditions
+      const lockKey = `collaboration:room:lock:${roomId}`;
+      const existingLock = await redis.get(lockKey);
+
+      if (existingLock) {
+        // Another process is creating the room, wait and try again
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const retryRoomData = await redis.get(`collaboration:room:${roomId}`);
+        if (retryRoomData && typeof retryRoomData === "string") {
+          room = JSON.parse(retryRoomData) as CollaborationRoom;
+        } else {
+          throw new Error("Room not found and could not be created");
+        }
+      } else {
+        // Set a lock to prevent multiple creation attempts
+        await redis.set(lockKey, "creating", { ex: 10 }); // 10 second expiration
+
+        try {
+          // In development with MockRedis, rooms might not persist across sessions
+          // Create a placeholder room so users can still collaborate
+          console.warn(
+            `Room ${roomId} not found, creating placeholder room for development`,
+          );
+
+          room = {
+            id: roomId,
+            chatId: `shared-${roomId}`, // Use consistent shared chat ID pattern
+            name: "Shared Room",
+            ownerId: this.currentUser.id,
+            users: [this.currentUser],
+            isLiveCodingMode: false,
+            createdAt: Date.now(),
+            lastActivity: Date.now(),
+          };
+
+          // Store the placeholder room
+          await redis.set(`collaboration:room:${roomId}`, JSON.stringify(room));
+          await redis.sadd("collaboration:rooms", roomId);
+
+          // Send a system message explaining the placeholder room
+          await this.sendMessage(
+            roomId,
+            `🔗 Welcome to this shared collaboration room! This room was created from a shared link. You can now chat and collaborate with others who join via the same link.`,
+            "system",
+          );
+        } finally {
+          // Release the lock
+          await redis.del(lockKey);
+        }
+      }
+    } else {
+      room = JSON.parse(roomData) as CollaborationRoom;
+    }
 
     // Check room capacity
     if (room.users.length >= this.config.maxUsersPerRoom) {
@@ -139,15 +190,18 @@ class CollaborationManager {
 
     this.currentRoom = roomId;
 
-    // Start presence heartbeat
+    // Start presence heartbeat immediately
     this.startPresenceHeartbeat(roomId);
+
+    // Give a moment for presence to be established
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Publish join event
     await this.publishEvent({
       type: CollaborationEventType.USER_JOINED,
       roomId,
       userId: this.currentUser.id,
-      data: { user: this.currentUser },
+      data: { user: this.currentUser, room },
       timestamp: Date.now(),
     });
 
@@ -209,6 +263,11 @@ class CollaborationManager {
     }
 
     return rooms.sort((a, b) => b.lastActivity - a.lastActivity);
+  }
+
+  async roomExists(roomId: string): Promise<boolean> {
+    const roomData = await redis.get(`collaboration:room:${roomId}`);
+    return !!(roomData && typeof roomData === "string");
   }
 
   // Live Coding Mode
@@ -447,7 +506,9 @@ class CollaborationManager {
           return null;
         }
       })
-      .filter((m): m is CollaborationMessage => !!m)
+      .filter(
+        (m: CollaborationMessage | null): m is CollaborationMessage => !!m,
+      )
       .reverse();
   }
 
@@ -464,7 +525,9 @@ class CollaborationManager {
       0,
       -1,
     );
-    const msgs: CollaborationMessage[] = msgsData.map((m) => JSON.parse(m));
+    const msgs: CollaborationMessage[] = msgsData.map((m: string) =>
+      JSON.parse(m),
+    );
     const idx = msgs.findIndex((m) => m.id === messageId);
     if (idx === -1) throw new Error("Message not found");
     const msg = msgs[idx]!;
@@ -506,7 +569,9 @@ class CollaborationManager {
       0,
       -1,
     );
-    const msgs: CollaborationMessage[] = msgsData.map((m) => JSON.parse(m));
+    const msgs: CollaborationMessage[] = msgsData.map((m: string) =>
+      JSON.parse(m),
+    );
     const idx = msgs.findIndex((m) => m.id === messageId);
     if (idx === -1) throw new Error("Message not found");
     const msg = msgs[idx]!;
@@ -526,7 +591,7 @@ class CollaborationManager {
       // Recreate list with newest-first ordering using RPUSH on reversed array
       await redis.rpush(
         `collaboration:messages:${roomId}`,
-        ...msgs.map((m) => JSON.stringify(m)),
+        ...msgs.map((m: CollaborationMessage) => JSON.stringify(m)),
       );
       await redis.ltrim(`collaboration:messages:${roomId}`, -100, -1);
     }
@@ -580,7 +645,10 @@ class CollaborationManager {
           return null;
         }
       })
-      .filter((event): event is CollaborationEvent => !!event)
+      .filter(
+        (event: CollaborationEvent | null): event is CollaborationEvent =>
+          !!event,
+      )
       .filter((event: CollaborationEvent) => event.timestamp > since)
       .reverse(); // Get chronological order
   }
@@ -608,20 +676,23 @@ class CollaborationManager {
 
       const presence: UserPresence = {
         userId: this.currentUser.id,
+        userName: this.currentUser.name,
         roomId,
         isOnline: true,
         lastSeen: Date.now(),
         isTyping: false,
+        color: this.currentUser.color,
       };
 
       await redis.set(
         `collaboration:presence:${roomId}:${this.currentUser.id}`,
         JSON.stringify(presence),
-        { ex: Math.ceil(this.config.presenceHeartbeatInterval / 1000) * 2 }, // 2x heartbeat interval
+        "EX",
+        Math.ceil(this.config.presenceHeartbeatInterval / 1000) * 2, // 2x heartbeat interval
       );
     };
 
-    // Send initial heartbeat
+    // Send initial heartbeat immediately
     void sendHeartbeat();
 
     // Set up interval
@@ -642,10 +713,40 @@ class CollaborationManager {
     const keys = await redis.keys(pattern);
     const presence: UserPresence[] = [];
 
+    // Get room data once for user info lookup
+    const roomData = await redis.get(`collaboration:room:${roomId}`);
+    let room: CollaborationRoom | null = null;
+    if (roomData && typeof roomData === "string") {
+      try {
+        room = JSON.parse(roomData) as CollaborationRoom;
+      } catch (error) {
+        console.error("Failed to parse room data:", error);
+      }
+    }
+
     for (const key of keys) {
       const data = await redis.get(key);
       if (data && typeof data === "string") {
-        presence.push(JSON.parse(data) as UserPresence);
+        try {
+          const presenceData = JSON.parse(data) as UserPresence;
+
+          // Ensure color and userName are included - fallback to room user data if missing
+          if (room) {
+            const user = room.users.find((u) => u.id === presenceData.userId);
+            if (user) {
+              if (!presenceData.color) {
+                presenceData.color = user.color;
+              }
+              if (!presenceData.userName) {
+                presenceData.userName = user.name;
+              }
+            }
+          }
+
+          presence.push(presenceData);
+        } catch (error) {
+          console.error("Failed to parse presence data:", error);
+        }
       }
     }
 
@@ -667,8 +768,31 @@ class CollaborationManager {
   }
 }
 
-// Create singleton instance
-export const collaborationManager = new CollaborationManager();
+// Session-specific collaboration managers
+const sessionManagers = new Map<string, CollaborationManager>();
+
+export function getCollaborationManager(
+  sessionId: string,
+): CollaborationManager {
+  let manager = sessionManagers.get(sessionId);
+  if (!manager) {
+    manager = new CollaborationManager();
+    sessionManagers.set(sessionId, manager);
+
+    // Clean up old sessions periodically (1 hour)
+    setTimeout(
+      () => {
+        const oldManager = sessionManagers.get(sessionId);
+        if (oldManager) {
+          void oldManager.cleanup();
+          sessionManagers.delete(sessionId);
+        }
+      },
+      60 * 60 * 1000,
+    );
+  }
+  return manager;
+}
 
 // Export manager and types
 export * from "./types";

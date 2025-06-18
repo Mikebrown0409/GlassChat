@@ -575,6 +575,23 @@ class SyncManager {
     return chat;
   }
 
+  // New method for creating chats with specific IDs (for collaboration rooms)
+  async createChatWithId(chatId: string, title: string): Promise<Chat> {
+    const chat = await db.createSyncableEntity(db.chats, {
+      id: chatId,
+      title,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    } as Omit<Chat, keyof SyncableEntity>);
+
+    // Debounced sync
+    if (this.isOnline) {
+      this.debouncedSync();
+    }
+
+    return chat;
+  }
+
   async createMessage(
     chatId: string,
     role: "user" | "assistant" | "system",
@@ -644,6 +661,11 @@ class SyncManager {
       isOnline: this.isOnline,
       syncLatency: 0,
     };
+  }
+
+  // Helper method to get chats (used in ChatInterface)
+  async getChats(): Promise<Chat[]> {
+    return await db.chats.orderBy("updatedAt").reverse().toArray();
   }
 
   // Cleanup

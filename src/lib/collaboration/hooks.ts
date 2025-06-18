@@ -15,6 +15,27 @@ import type {
 } from "./types";
 import { CollaborationWSClient } from "./wsClient";
 
+// Global state to prevent multiple user creation attempts across components
+let globalUserCreationState = {
+  isCreating: false,
+  user: null as CollaborationUser | null,
+  sessionId: null as string | null,
+};
+
+// Helper to get consistent session ID
+function getSessionId(): string {
+  if (typeof window === "undefined") return "ssr-session";
+
+  // Use a combination of factors for session identification
+  const userAgent = navigator.userAgent.slice(0, 50);
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substr(2, 9);
+
+  return `session-${userAgent}-${timestamp}-${random}`;
+}
+
+// Server-side collaboration now handles all presence management
+
 // *** NEW UNIFIED COLLABORATION HOOK - Replaces all individual hooks ***
 export function useUnifiedCollaboration(roomId: string | null) {
   const [allData, setAllData] = useState<{
@@ -44,8 +65,10 @@ export function useUnifiedCollaboration(roomId: string | null) {
     { roomId: (roomId || "skip") as string },
     {
       enabled: !!roomId && roomId.length > 0 && !isUserTyping,
-      refetchInterval: isUserTyping ? false : 15000,
-      staleTime: 5000,
+      refetchInterval: isUserTyping ? false : 10000, // Reduced polling frequency
+      staleTime: 5000, // Consider data fresh for longer
+      refetchOnWindowFocus: false, // Prevent unnecessary refetches
+      refetchOnReconnect: false, // Prevent refetch on reconnect
     },
   );
 
@@ -102,7 +125,7 @@ export function useUnifiedCollaboration(roomId: string | null) {
           }
         });
 
-        return {
+        const result = {
           room: newData.room,
           messages: mergedMessages,
           typingUsers: newData.typingUsers || [],
@@ -110,6 +133,8 @@ export function useUnifiedCollaboration(roomId: string | null) {
           liveCodingSession: newData.liveCodingSession,
           events: newData.events || [],
         };
+
+        return result;
       });
 
       // Update local content only if different and not typing
@@ -120,11 +145,14 @@ export function useUnifiedCollaboration(roomId: string | null) {
         setLocalContent(newData.liveCodingSession.content);
       }
     }
-  }, [roomData, isUserTyping, localContent]);
+  }, [roomData, isUserTyping, localContent, roomId]);
 
   // Mutation hooks (these still need individual calls)
   const sendMessageMutation = api.collaboration.sendMessage.useMutation({
-    onSuccess: () => void refetch(),
+    onSuccess: () => {
+      // Immediate refetch for messages
+      void refetch();
+    },
   });
 
   const updateCodeMutation = api.collaboration.updateLiveCode.useMutation({
@@ -137,7 +165,10 @@ export function useUnifiedCollaboration(roomId: string | null) {
 
   const toggleLiveCodingMutation =
     api.collaboration.toggleLiveCodingMode.useMutation({
-      onSuccess: () => void refetch(),
+      onSuccess: () => {
+        // Immediate refetch for mode changes
+        void refetch();
+      },
     });
 
   const startTypingMutation = api.collaboration.startTyping.useMutation();
@@ -185,190 +216,295 @@ export function useUnifiedCollaboration(roomId: string | null) {
         return Promise.resolve();
       }
 
-      // ---- Legacy HTTP fallback ----
       setLocalContent(content);
-
-      if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
       setIsUserTyping(true);
 
-      updateTimeoutRef.current = setTimeout(() => {
-        updateCodeMutation
-          .mutateAsync({ roomId, content, cursorPosition })
-          .finally(() => {
-            typingTimeoutRef.current = setTimeout(() => {
-              setIsUserTyping(false);
-            }, 1000);
-          });
-      }, 2000);
+      // Clear existing timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
 
-      return Promise.resolve();
+      return new Promise<void>((resolve, reject) => {
+        updateTimeoutRef.current = setTimeout(() => {
+          setIsUserTyping(false);
+          updateCodeMutation
+            .mutateAsync({
+              roomId,
+              content,
+              cursorPosition,
+            })
+            .then(() => resolve())
+            .catch(reject);
+        }, 500); // 500ms debounce
+      });
     },
-    [roomId, updateCodeMutation, wsClient],
+    [roomId, wsClient, updateCodeMutation],
   );
 
   const sendMessage = useCallback(
-    (content: string, type: "text" | "system" | "code" = "text") => {
-      if (!roomId) return Promise.reject(new Error("No room selected"));
-      const currentUserId = "";
-      const tempId = "temp-" + Math.random().toString(36).slice(2, 9);
+    async (content: string, type: "text" | "system" | "code" = "text") => {
+      if (!roomId) throw new Error("No room selected");
+
+      // Create optimistic message
       const tempMsg: CollaborationMessage = {
-        id: tempId,
+        id: `temp-${Date.now()}`,
         roomId,
-        userId: currentUserId,
+        userId: "current", // Will be replaced by server
         content,
         timestamp: Date.now(),
         type,
-      } as CollaborationMessage;
+      };
       optimisticAdd(tempMsg);
-      return sendMessageMutation
-        .mutateAsync({ roomId, content, type })
-        .then((res) => {
-          if (res.success && res.message) {
-            // replace temp message or push if not found
-            setAllData((prev) => ({
-              ...prev,
-              messages: [
-                ...prev.messages.filter((m) => m.id !== tempId),
-                res.message!,
-              ],
-            }));
-          }
-        });
+
+      try {
+        await sendMessageMutation.mutateAsync({ roomId, content, type });
+      } catch (error) {
+        // Remove optimistic message on error
+        optimisticRemove(tempMsg.id);
+        throw error;
+      }
     },
     [roomId, sendMessageMutation],
   );
 
   const editMessage = useCallback(
-    (messageId: string, newContent: string) => {
-      if (!roomId) return Promise.reject(new Error("No room selected"));
+    async (messageId: string, newContent: string) => {
+      if (!roomId) throw new Error("No room selected");
+
       optimisticEdit(messageId, newContent);
-      return editMessageMutation.mutateAsync({ roomId, messageId, newContent });
+      try {
+        await editMessageMutation.mutateAsync({
+          roomId,
+          messageId,
+          newContent,
+        });
+      } catch (error) {
+        // Revert optimistic edit - would need original content
+        throw error;
+      }
     },
     [roomId, editMessageMutation],
   );
 
   const deleteMessage = useCallback(
-    (messageId: string) => {
-      if (!roomId) return Promise.reject(new Error("No room selected"));
+    async (messageId: string) => {
+      if (!roomId) throw new Error("No room selected");
+
       optimisticRemove(messageId);
-      return deleteMessageMutation.mutateAsync({ roomId, messageId });
+      try {
+        await deleteMessageMutation.mutateAsync({ roomId, messageId });
+      } catch (error) {
+        // Would need to restore the message on error
+        throw error;
+      }
     },
     [roomId, deleteMessageMutation],
   );
 
-  const toggleLiveCodingMode = useCallback(() => {
-    if (!roomId) return Promise.reject(new Error("No room selected"));
+  const toggleLiveCodingMode = useCallback(async () => {
+    if (!roomId) throw new Error("No room selected");
     return toggleLiveCodingMutation.mutateAsync({ roomId });
   }, [roomId, toggleLiveCodingMutation]);
 
-  const startTyping = useCallback(() => {
+  const startTyping = useCallback(async () => {
     if (!roomId) return;
-    void startTypingMutation.mutateAsync({ roomId });
-  }, [roomId, startTypingMutation]);
 
-  const stopTyping = useCallback(() => {
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    await startTypingMutation.mutateAsync({ roomId });
+
+    // Auto-stop typing after 3 seconds
+    typingTimeoutRef.current = setTimeout(() => {
+      void stopTypingMutation.mutateAsync({ roomId });
+    }, 3000);
+  }, [roomId, startTypingMutation, stopTypingMutation]);
+
+  const stopTyping = useCallback(async () => {
     if (!roomId) return;
-    void stopTypingMutation.mutateAsync({ roomId });
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
+    await stopTypingMutation.mutateAsync({ roomId });
   }, [roomId, stopTypingMutation]);
 
-  // Cleanup timeouts
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
-      if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     };
   }, []);
 
-  // after roomId change, setup ws if enabled
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_ENABLE_WS !== "true") return;
-    if (!roomId) return;
-    const client = new CollaborationWSClient(roomId);
-    client.connect();
-    setWsClient(client);
-    client.onUpdate(() => {
-      // For now, sync live coding content
-      const txt = client.getText();
-      setLocalContent(txt.toString());
-    });
-    // set initial value
-    setLocalContent(client.getText().toString());
-    return () => {
-      setWsClient(null);
-    };
-  }, [roomId]);
-
   return {
-    // All data in one object
-    ...allData,
-
-    // Live coding specific
+    // Data
+    room: allData.room,
+    messages: allData.messages,
+    typingUsers: allData.typingUsers,
+    onlineUsers: allData.onlineUsers,
+    liveCodingSession: allData.liveCodingSession,
+    events: allData.events,
     localContent,
-    isLiveCodingMode: !!allData.liveCodingSession,
+    lastSyncTime,
+
+    // Computed
+    isLiveCodingMode: allData.room?.isLiveCodingMode ?? false,
 
     // Actions
-    updateCode,
     sendMessage,
     editMessage,
     deleteMessage,
+    updateCode,
     toggleLiveCodingMode,
     startTyping,
     stopTyping,
+    refetch,
 
-    // Status
-    isUpdating: updateCodeMutation.isPending,
+    // Loading states
     isSending: sendMessageMutation.isPending,
     isEditing: editMessageMutation.isPending,
     isDeleting: deleteMessageMutation.isPending,
+    isUpdating: updateCodeMutation.isPending,
     isToggling: toggleLiveCodingMutation.isPending,
-    lastSyncTime,
-
-    // Manual refresh (rarely needed)
-    refetch,
   };
 }
 
-// Simplified hook for just user management (no polling)
+// IMPROVED: Centralized user management with global state
 export function useCollaborationUser() {
-  const [user, setUser] = useState<CollaborationUser | null>(null);
-
-  // Try load from localStorage first
-  const stored =
-    typeof window !== "undefined" ? localStorage.getItem("collab_user") : null;
-  if (stored && !user) {
-    try {
-      const parsed = JSON.parse(stored) as CollaborationUser;
-      setUser(parsed);
-    } catch {}
-  }
-
-  const { data: userData } = api.collaboration.getCurrentUser.useQuery(
-    undefined,
-    { enabled: !stored },
+  const [user, setUser] = useState<CollaborationUser | null>(
+    globalUserCreationState.user,
+  );
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(
+    globalUserCreationState.isCreating,
   );
 
+  // Try load from localStorage first
+  useEffect(() => {
+    if (typeof window === "undefined" || hasInitialized) return;
+
+    const stored = localStorage.getItem("collab_user");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as CollaborationUser;
+
+        // Check if stored user is stale (older than 1 hour)
+        const isStale =
+          parsed.lastSeen && Date.now() - parsed.lastSeen > 60 * 60 * 1000;
+
+        if (isStale) {
+          console.log("Clearing stale localStorage user data");
+          localStorage.removeItem("collab_user");
+        } else {
+          setUser(parsed);
+          globalUserCreationState.user = parsed;
+          console.log("User loaded from localStorage:", parsed.name);
+        }
+      } catch {
+        // Clear invalid stored data
+        localStorage.removeItem("collab_user");
+      }
+    }
+    setHasInitialized(true);
+  }, [hasInitialized]);
+
+  const { data: userData, error: getUserError } =
+    api.collaboration.getCurrentUser.useQuery(undefined, {
+      enabled: hasInitialized && !user && !isCreatingUser,
+      retry: 1, // Reduce retries to prevent spam
+      staleTime: 30000, // Cache for 30 seconds
+      refetchOnWindowFocus: false,
+    });
+
+  // Handle getUserError separately
+  useEffect(() => {
+    if (getUserError) {
+      console.error("Failed to get current collaboration user:", getUserError);
+    }
+  }, [getUserError]);
+
   const createUserMutation = api.collaboration.createUser.useMutation({
-    onSuccess: (data) => {
+    onMutate: () => {
+      setIsCreatingUser(true);
+      globalUserCreationState.isCreating = true;
+    },
+    onSuccess: async (data) => {
+      setIsCreatingUser(false);
+      globalUserCreationState.isCreating = false;
+
       if (data.success && data.user) {
         setUser(data.user);
+        globalUserCreationState.user = data.user;
         try {
           localStorage.setItem("collab_user", JSON.stringify(data.user));
-        } catch {}
+        } catch {
+          // Ignore localStorage errors
+        }
+        console.log(
+          "✅ Collaboration user created successfully:",
+          data.user.name,
+        );
+      } else if (data.error) {
+        console.error("Failed to create collaboration user:", data.error);
       }
+    },
+    onError: (error) => {
+      setIsCreatingUser(false);
+      globalUserCreationState.isCreating = false;
+      console.error(
+        "Failed to create collaboration user (mutation error):",
+        error,
+      );
     },
   });
 
   useEffect(() => {
     if (userData?.user) {
       setUser(userData.user);
+      globalUserCreationState.user = userData.user;
+      try {
+        localStorage.setItem("collab_user", JSON.stringify(userData.user));
+      } catch {
+        // Ignore localStorage errors
+      }
     }
   }, [userData]);
 
   const createUser = useCallback(
     (name: string, avatarUrl?: string) => {
-      return createUserMutation.mutateAsync({ name, avatarUrl });
+      // CRITICAL FIX: Check global state to prevent duplicates across components
+      if (globalUserCreationState.user || globalUserCreationState.isCreating) {
+        console.log(
+          "🔄 User already exists or being created globally, skipping duplicate:",
+          globalUserCreationState.user?.name || "creating...",
+        );
+        return Promise.resolve({
+          success: true,
+          user: globalUserCreationState.user,
+        });
+      }
+
+      // Validate input
+      if (!name || typeof name !== "string" || name.trim().length === 0) {
+        return Promise.reject(
+          new Error("Name is required and must be a non-empty string"),
+        );
+      }
+
+      console.log("🆕 Creating new collaboration user:", name.trim());
+      return createUserMutation.mutateAsync({
+        name: name.trim(),
+        avatarUrl: avatarUrl || undefined,
+      });
     },
     [createUserMutation],
   );
@@ -376,29 +512,43 @@ export function useCollaborationUser() {
   return {
     user,
     createUser,
-    isCreating: createUserMutation.isPending,
+    isCreating: createUserMutation.isPending || isCreatingUser,
   };
 }
 
-// Simplified hook for room management (less frequent polling)
+// IMPROVED: Room management with better state tracking
 export function useCollaborationRooms() {
   const [rooms, setRooms] = useState<CollaborationRoom[]>([]);
+  const [joinAttempts, setJoinAttempts] = useState<Set<string>>(new Set());
 
   const { data: roomsData, refetch } = api.collaboration.getRooms.useQuery(
     undefined,
     {
-      refetchInterval: 30000, // Much slower: 30 seconds
+      refetchInterval: 20000, // Even less frequent: 20 seconds
       staleTime: 10000, // Consider data fresh for 10 seconds
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     },
   );
 
   const createRoomMutation = api.collaboration.createRoom.useMutation({
-    onSuccess: () => void refetch(),
+    onSuccess: () => {
+      // Immediate refetch for created rooms
+      setTimeout(() => void refetch(), 500);
+    },
   });
 
-  const joinRoomMutation = api.collaboration.joinRoom.useMutation();
+  const joinRoomMutation = api.collaboration.joinRoom.useMutation({
+    onSuccess: () => {
+      // Immediate refetch when user joins
+      setTimeout(() => void refetch(), 500);
+    },
+  });
+
   const leaveRoomMutation = api.collaboration.leaveRoom.useMutation({
-    onSuccess: () => void refetch(),
+    onSuccess: () => {
+      setTimeout(() => void refetch(), 500);
+    },
   });
 
   useEffect(() => {
@@ -409,21 +559,52 @@ export function useCollaborationRooms() {
 
   const createRoom = useCallback(
     (chatId: string, name: string) => {
+      console.log("🏗️ Creating collaboration room:", name);
       return createRoomMutation.mutateAsync({ chatId, name });
     },
     [createRoomMutation],
   );
 
   const joinRoom = useCallback(
-    (roomId: string) => {
-      return joinRoomMutation.mutateAsync({ roomId });
+    async (roomId: string) => {
+      // Prevent duplicate join attempts
+      if (joinAttempts.has(roomId)) {
+        console.log("🔄 Join already in progress for room:", roomId);
+        return { success: false, error: "Join already in progress" };
+      }
+
+      setJoinAttempts((prev) => new Set([...prev, roomId]));
+
+      try {
+        console.log("🚪 Joining room via server:", roomId);
+        const result = await joinRoomMutation.mutateAsync({ roomId });
+        console.log("✅ Successfully joined room:", roomId);
+        return result;
+      } finally {
+        // Clear join attempt after completion
+        setJoinAttempts((prev) => {
+          const next = new Set(prev);
+          next.delete(roomId);
+          return next;
+        });
+      }
     },
-    [joinRoomMutation],
+    [joinRoomMutation, joinAttempts],
   );
 
   const leaveRoom = useCallback(
-    (roomId: string) => {
-      return leaveRoomMutation.mutateAsync({ roomId });
+    async (roomId: string) => {
+      console.log("🚪 Leaving room:", roomId);
+      const result = await leaveRoomMutation.mutateAsync({ roomId });
+
+      // Clear any join attempts for this room
+      setJoinAttempts((prev) => {
+        const next = new Set(prev);
+        next.delete(roomId);
+        return next;
+      });
+
+      return result;
     },
     [leaveRoomMutation],
   );
@@ -527,75 +708,123 @@ export function useDebouncedLiveCoding(roomId: string | null) {
   return useLiveCoding(roomId); // Already debounced in unified hook
 }
 
-// Main hook that components should use
+// IMPROVED: Main hook with better join logic and state management
 export function useCollaboration(roomId: string | null) {
   const user = useCollaborationUser();
   const rooms = useCollaborationRooms();
   const unified = useUnifiedCollaboration(roomId);
+  const [hasJoinedRoom, setHasJoinedRoom] = useState<string | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
 
-  // Create event handlers with proper error handling
-  const addEventListener = useCallback(
-    (
-      eventType: CollaborationEventType,
-      _handler: (event: CollaborationEvent) => void,
-    ) => {
-      console.log("Event listener added for:", eventType);
-      // For now, just log - in a full implementation you'd store and process these
-      return; // Explicitly return to prevent any issues
+  // Clear join state when room changes
+  useEffect(() => {
+    if (hasJoinedRoom && hasJoinedRoom !== roomId) {
+      setHasJoinedRoom(null);
+    }
+  }, [roomId, hasJoinedRoom]);
+
+  // Join room on server when user and room are available
+  const joinRoomMutation = api.collaboration.joinRoom.useMutation({
+    onSuccess: () => {
+      // Trigger immediate refetch of unified collaboration data
+      setTimeout(() => void unified.refetch(), 300);
     },
-    [],
-  );
+  });
 
-  const removeEventListener = useCallback(
-    (
-      eventType: CollaborationEventType,
-      _handler: (event: CollaborationEvent) => void,
-    ) => {
-      console.log("Event listener removed for:", eventType);
-      return; // Explicitly return to prevent any issues
-    },
-    [],
-  );
+  useEffect(() => {
+    // Don't auto-join if conditions aren't met
+    if (!roomId || !user.user || hasJoinedRoom === roomId || isJoining) {
+      return;
+    }
 
-  // Create a properly structured events object that matches the expected interface
-  const events = {
-    events: unified.events,
-    addEventListener,
-    removeEventListener,
-  };
+    // Don't join if we already have room data for this room (already joined)
+    if (unified.room?.id === roomId) {
+      setHasJoinedRoom(roomId);
+      console.log("🏠 Room already joined:", roomId);
+      return;
+    }
+
+    // Only auto-join if this is likely a programmatic join (not user initiated)
+    // This prevents excessive auto-joining when components re-render
+    const shouldAutoJoin = !hasJoinedRoom || hasJoinedRoom !== roomId;
+
+    if (!shouldAutoJoin) {
+      return;
+    }
+
+    const joinRoom = async () => {
+      setIsJoining(true);
+      try {
+        console.log("🔧 Auto-joining room:", roomId);
+        await joinRoomMutation.mutateAsync({ roomId });
+        setHasJoinedRoom(roomId);
+        console.log("✅ Auto-joined room successfully:", roomId);
+      } catch (error) {
+        console.error("❌ Failed to auto-join room:", error);
+        // Reset join state on error so it can be retried later
+        setHasJoinedRoom(null);
+      } finally {
+        setIsJoining(false);
+      }
+    };
+
+    // Longer delay to reduce aggressive auto-joining
+    const timeoutId = setTimeout(joinRoom, 500);
+    return () => clearTimeout(timeoutId);
+  }, [
+    roomId,
+    user.user,
+    hasJoinedRoom,
+    isJoining,
+    unified.room?.id,
+    joinRoomMutation,
+  ]);
+
+  // Get online users from server data only
+  const onlineUsers = unified.onlineUsers || [];
+  const onlineUsersCount = onlineUsers.length;
 
   return {
-    user,
-    rooms,
-    messages: {
-      messages: unified.messages,
-      sendMessage: unified.sendMessage,
-      editMessage: unified.editMessage,
-      deleteMessage: unified.deleteMessage,
-      isSending: unified.isSending,
-      isEditing: unified.isEditing,
-      isDeleting: unified.isDeleting,
-      refetch: unified.refetch,
-    },
-    typing: {
-      typingUsers: unified.typingUsers,
-      startTyping: unified.startTyping,
-      stopTyping: unified.stopTyping,
-    },
-    liveCoding: {
-      session: unified.liveCodingSession,
-      localContent: unified.localContent,
-      isLiveCodingMode: unified.isLiveCodingMode,
-      toggleLiveCodingMode: unified.toggleLiveCodingMode,
-      updateCode: unified.updateCode,
-      isToggling: unified.isToggling,
-      isUpdating: unified.isUpdating,
-      lastSyncTime: unified.lastSyncTime,
-    },
-    presence: {
-      onlineUsers: unified.onlineUsers,
-      onlineCount: unified.onlineUsers.length,
-    },
-    events,
+    // User management
+    user: user.user,
+    createUser: user.createUser,
+    isCreatingUser: user.isCreating,
+
+    // Room management
+    rooms: rooms.rooms,
+    isLoadingRooms: false, // No loading state in rooms hook
+    createRoom: rooms.createRoom,
+    joinRoom: rooms.joinRoom,
+    leaveRoom: rooms.leaveRoom,
+    isCreatingRoom: rooms.isCreating,
+    isJoiningRoom: rooms.isJoining,
+    isLeavingRoom: rooms.isLeaving,
+
+    // Current room data
+    room: unified.room,
+    messages: unified.messages,
+    typingUsers: unified.typingUsers,
+    onlineUsers,
+    onlineUsersCount,
+    liveCodingSession: unified.liveCodingSession,
+    events: unified.events,
+
+    // Message operations
+    sendMessage: unified.sendMessage,
+    editMessage: unified.editMessage,
+    deleteMessage: unified.deleteMessage,
+
+    // Live coding
+    updateCode: unified.updateCode,
+    localContent: unified.localContent,
+    toggleLiveCoding: unified.toggleLiveCodingMode,
+    startTyping: unified.startTyping,
+    stopTyping: unified.stopTyping,
+    lastSyncTime: unified.lastSyncTime,
+
+    // Loading states
+    isSendingMessage: unified.isSending,
+    isUpdatingCode: unified.isUpdating,
+    isTogglingLiveCoding: unified.isToggling,
   };
 }

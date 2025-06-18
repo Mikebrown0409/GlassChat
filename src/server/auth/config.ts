@@ -1,5 +1,6 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { type DefaultSession, type NextAuthConfig } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 import DiscordProvider from "next-auth/providers/discord";
 import GoogleProvider from "next-auth/providers/google";
 
@@ -33,6 +34,70 @@ declare module "next-auth" {
  */
 export const authConfig = {
   providers: [
+    // Development-only credentials provider (allows creating test users)
+    ...(process.env.NODE_ENV === "development"
+      ? [
+          CredentialsProvider({
+            id: "test-user",
+            name: "Test User",
+            credentials: {
+              name: { label: "Name", type: "text", placeholder: "Test User" },
+              email: {
+                label: "Email",
+                type: "email",
+                placeholder: "test@example.com",
+              },
+            },
+            async authorize(credentials) {
+              try {
+                if (!credentials?.name || !credentials?.email) {
+                  console.error("Missing credentials:", {
+                    name: !!credentials?.name,
+                    email: !!credentials?.email,
+                  });
+                  return null;
+                }
+
+                const name = credentials.name as string;
+                const email = credentials.email as string;
+
+                // Validate email format
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                  console.error("Invalid email format:", email);
+                  return null;
+                }
+
+                // Create or find user in database
+                let user = await db.user.findUnique({
+                  where: { email },
+                });
+
+                if (!user) {
+                  user = await db.user.create({
+                    data: {
+                      name,
+                      email,
+                      image: null,
+                    },
+                  });
+                }
+
+                return {
+                  id: user.id,
+                  name: user.name,
+                  email: user.email,
+                  image: user.image,
+                };
+              } catch (error) {
+                console.error("Error in credentials authorize:", error);
+                return null;
+              }
+            },
+          }),
+        ]
+      : []),
+
     // Discord OAuth (only if credentials are provided)
     ...(process.env.AUTH_DISCORD_ID && process.env.AUTH_DISCORD_SECRET
       ? [

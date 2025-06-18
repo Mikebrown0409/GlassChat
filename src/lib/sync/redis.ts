@@ -1,6 +1,6 @@
 import { Redis } from "@upstash/redis";
 
-// Local mock Redis client for development
+// Local mock Redis client for development/fallback
 class MockRedis {
   private data = new Map<string, unknown>();
   private lists = new Map<string, string[]>();
@@ -18,7 +18,6 @@ class MockRedis {
     options?: { ex?: number },
   ): Promise<string> {
     this.data.set(key, value);
-    // Mock expiration with setTimeout if needed
     if (options?.ex) {
       const timer = setTimeout(() => {
         this.data.delete(key);
@@ -29,12 +28,101 @@ class MockRedis {
     return "OK";
   }
 
-  async publish(channel: string, message: unknown): Promise<number> {
-    const subs = this.subscribers.get(channel);
-    if (subs) {
-      subs.forEach((callback) => callback(message));
+  async del(key: string): Promise<number> {
+    return this.data.delete(key) ? 1 : 0;
+  }
+
+  async exists(key: string): Promise<number> {
+    return this.data.has(key) ? 1 : 0;
+  }
+
+  async keys(pattern: string): Promise<string[]> {
+    const regex = new RegExp(pattern.replace("*", ".*"));
+    return Array.from(this.data.keys()).filter((key) =>
+      regex.test(key as string),
+    );
+  }
+
+  async sadd(key: string, member: string): Promise<number> {
+    if (!this.sets.has(key)) {
+      this.sets.set(key, new Set());
     }
-    return subs?.size ?? 0;
+    const set = this.sets.get(key)!;
+    const sizeBefore = set.size;
+    set.add(member);
+    return set.size - sizeBefore;
+  }
+
+  async smembers(key: string): Promise<string[]> {
+    const set = this.sets.get(key);
+    return set ? Array.from(set) : [];
+  }
+
+  async srem(key: string, member: string): Promise<number> {
+    const set = this.sets.get(key);
+    return set?.delete(member) ? 1 : 0;
+  }
+
+  async lpush(key: string, ...values: string[]): Promise<number> {
+    if (!this.lists.has(key)) {
+      this.lists.set(key, []);
+    }
+    const list = this.lists.get(key)!;
+    list.unshift(...values);
+    return list.length;
+  }
+
+  async rpush(key: string, ...values: string[]): Promise<number> {
+    if (!this.lists.has(key)) {
+      this.lists.set(key, []);
+    }
+    const list = this.lists.get(key)!;
+    list.push(...values);
+    return list.length;
+  }
+
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    const list = this.lists.get(key) || [];
+    return list.slice(start, stop === -1 ? undefined : stop + 1);
+  }
+
+  async ltrim(key: string, start: number, stop: number): Promise<string> {
+    const list = this.lists.get(key);
+    if (list) {
+      const trimmed = list.slice(start, stop === -1 ? undefined : stop + 1);
+      this.lists.set(key, trimmed);
+    }
+    return "OK";
+  }
+
+  async expire(key: string, seconds: number): Promise<number> {
+    if (this.data.has(key)) {
+      const timer = setTimeout(() => {
+        this.data.delete(key);
+        this.timers.delete(timer);
+      }, seconds * 1000);
+      this.timers.add(timer);
+      return 1;
+    }
+    return 0;
+  }
+
+  async ttl(key: string): Promise<number> {
+    // In MockRedis, we don't track expiration time precisely
+    // Return -1 for keys without expiration, -2 for non-existent keys
+    if (!this.data.has(key)) {
+      return -2;
+    }
+    return -1; // Assume no expiration for simplicity
+  }
+
+  async publish(channel: string, message: unknown): Promise<number> {
+    const callbacks = this.subscribers.get(channel);
+    if (callbacks) {
+      callbacks.forEach((callback) => callback(message));
+      return callbacks.size;
+    }
+    return 0;
   }
 
   async subscribe(
@@ -47,99 +135,7 @@ class MockRedis {
     this.subscribers.get(channel)!.add(callback);
   }
 
-  async del(key: string): Promise<number> {
-    const deleted = this.data.delete(key) ? 1 : 0;
-    this.lists.delete(key);
-    this.sets.delete(key);
-    return deleted;
-  }
-
-  // List operations
-  async lpush(key: string, ...values: string[]): Promise<number> {
-    if (!this.lists.has(key)) {
-      this.lists.set(key, []);
-    }
-    const list = this.lists.get(key)!;
-    list.unshift(...values);
-    return list.length;
-  }
-
-  async lrange(key: string, start: number, stop: number): Promise<string[]> {
-    const list = this.lists.get(key) ?? [];
-    if (stop === -1) stop = list.length - 1;
-    return list.slice(start, stop + 1);
-  }
-
-  async ltrim(key: string, start: number, stop: number): Promise<string> {
-    const list = this.lists.get(key) ?? [];
-    if (stop === -1) stop = list.length - 1;
-    const trimmed = list.slice(start, stop + 1);
-    this.lists.set(key, trimmed);
-    return "OK";
-  }
-
-  // Set operations
-  async sadd(key: string, ...members: string[]): Promise<number> {
-    if (!this.sets.has(key)) {
-      this.sets.set(key, new Set());
-    }
-    const set = this.sets.get(key)!;
-    let added = 0;
-    members.forEach((member) => {
-      if (!set.has(member)) {
-        set.add(member);
-        added++;
-      }
-    });
-    return added;
-  }
-
-  async srem(key: string, ...members: string[]): Promise<number> {
-    const set = this.sets.get(key);
-    if (!set) return 0;
-    let removed = 0;
-    members.forEach((member) => {
-      if (set.has(member)) {
-        set.delete(member);
-        removed++;
-      }
-    });
-    return removed;
-  }
-
-  async smembers(key: string): Promise<string[]> {
-    const set = this.sets.get(key) ?? new Set();
-    return Array.from(set);
-  }
-
-  // Utility operations
-  async keys(pattern: string): Promise<string[]> {
-    // Simple pattern matching for mock
-    const regex = new RegExp(pattern.replace(/\*/g, ".*"));
-    const allKeys = [
-      ...this.data.keys(),
-      ...this.lists.keys(),
-      ...this.sets.keys(),
-    ];
-    return allKeys.filter((key) => regex.test(key)).map(String);
-  }
-
-  async expire(key: string, seconds: number): Promise<number> {
-    if (this.data.has(key) || this.lists.has(key) || this.sets.has(key)) {
-      const timer = setTimeout(() => {
-        this.data.delete(key);
-        this.lists.delete(key);
-        this.sets.delete(key);
-        this.timers.delete(timer);
-      }, seconds * 1000);
-      this.timers.add(timer);
-      return 1;
-    }
-    return 0;
-  }
-
-  // Cleanup method to clear all timers
-  cleanup(): void {
+  async cleanup(): Promise<void> {
     this.timers.forEach((timer) => clearTimeout(timer));
     this.timers.clear();
     this.data.clear();
@@ -147,47 +143,53 @@ class MockRedis {
     this.sets.clear();
     this.subscribers.clear();
   }
-
-  async rpush(key: string, ...values: string[]): Promise<number> {
-    if (!this.lists.has(key)) {
-      this.lists.set(key, []);
-    }
-    const list = this.lists.get(key)!;
-    list.push(...values);
-    return list.length;
-  }
-
-  async lset(key: string, index: number, value: string): Promise<string> {
-    const list = this.lists.get(key) ?? [];
-    if (index < 0 || index >= list.length) {
-      throw new Error("Index out of bounds");
-    }
-    list[index] = value;
-    this.lists.set(key, list);
-    return "OK";
-  }
-
-  async ttl(_key: string): Promise<number> {
-    // TTL management isn't fully simulated; return -1 to indicate no expiration
-    return -1;
-  }
-
-  async persist(_key: string): Promise<number> {
-    // Persistence is always guaranteed in the mock; return 1 to indicate success
-    return 1;
-  }
 }
 
-// Ensure a single MockRedis instance across the entire dev process
+// Production-safe Redis client creation
+function createRedisClient() {
+  // Development override: Always use local Redis in development for easier testing
+  if (process.env.NODE_ENV === "development" && typeof window === "undefined") {
+    try {
+      // Only import ioredis in development and server-side
+      const IORedis = require("ioredis").Redis;
+      console.log("🔧 Using local Redis (development override)");
+      return new IORedis({
+        host: "localhost",
+        port: 6379,
+        maxRetriesPerRequest: 3,
+        retryDelayOnFailover: 100,
+        lazyConnect: true,
+      });
+    } catch (error) {
+      console.warn("Failed to connect to local Redis in development:", error);
+      console.log("🔧 Falling back to MockRedis");
+      return new MockRedis();
+    }
+  }
+
+  // Production: Use Upstash Redis if configured
+  if (
+    process.env.UPSTASH_REDIS_REST_URL &&
+    process.env.UPSTASH_REDIS_REST_TOKEN
+  ) {
+    console.log("🔧 Using Upstash Redis");
+    return new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+
+  // Fallback: Use MockRedis for client-side or when Redis is unavailable
+  console.log("🔧 Using MockRedis (fallback)");
+  return new MockRedis();
+}
+
 const globalForRedis = globalThis as unknown as {
-  mockRedis?: MockRedis;
+  redisClient: ReturnType<typeof createRedisClient> | undefined;
 };
 
-export const redis = process.env.UPSTASH_REDIS_REST_URL
-  ? new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-    })
-  : (globalForRedis.mockRedis ?? (globalForRedis.mockRedis = new MockRedis()));
+export const redis =
+  globalForRedis.redisClient ??
+  (globalForRedis.redisClient = createRedisClient());
 
 export type RedisClient = typeof redis;

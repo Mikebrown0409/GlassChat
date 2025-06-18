@@ -2,6 +2,7 @@ import { postRouter } from "~/server/api/routers/post";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { aiRouter } from "./routers/ai";
 import { collaborationRouter } from "./routers/collaboration";
+import { collaborationV2Router } from "./routers/collaborationV2";
 import { memoryRouter } from "./routers/memory";
 
 /**
@@ -13,6 +14,7 @@ export const appRouter = createTRPCRouter({
   post: postRouter,
   ai: aiRouter,
   collaboration: collaborationRouter,
+  collaborationV2: collaborationV2Router,
   memory: memoryRouter,
 });
 

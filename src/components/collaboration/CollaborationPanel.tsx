@@ -17,6 +17,7 @@ import {
   Wifi,
   X,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { memo, useDeferredValue, useEffect, useState } from "react";
 import {
   DropdownMenu,
@@ -27,7 +28,6 @@ import {
 import { useCollaboration } from "~/lib/collaboration/hooks";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import {
-  CollaborationEventType,
   Role,
   type CollaborationEvent,
   type CollaborationMessage,
@@ -52,6 +52,7 @@ export function CollaborationPanel({
   onToggle,
   embedded = false,
 }: CollaborationPanelProps) {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<"rooms" | "messages" | "users">(
     "rooms",
   );
@@ -83,16 +84,14 @@ export function CollaborationPanel({
 
   // Update global online users when data changes
   useEffect(() => {
-    setOnlineUsersGlobal(collaboration.presence?.onlineUsers ?? []);
-  }, [collaboration.presence?.onlineUsers, setOnlineUsersGlobal]);
+    setOnlineUsersGlobal(collaboration.onlineUsers ?? []);
+  }, [collaboration.onlineUsers, setOnlineUsersGlobal]);
 
   // Derive online users from room data if presence array empty
   useEffect(() => {
     if (!currentRoomId) return;
-    if (collaboration.presence.onlineUsers.length === 0) {
-      const room = collaboration.rooms.rooms.find(
-        (r) => r.id === currentRoomId,
-      );
+    if (collaboration.onlineUsers.length === 0) {
+      const room = collaboration.rooms.find((r) => r.id === currentRoomId);
       if (room) {
         const derived = room.users.map((u) => ({
           userId: u.id,
@@ -100,23 +99,68 @@ export function CollaborationPanel({
           isOnline: true,
           lastSeen: Date.now(),
           isTyping: false,
+          color: u.color,
         }));
         setOnlineUsersGlobal(derived);
       }
     }
   }, [
-    collaboration.presence.onlineUsers.length,
-    collaboration.rooms.rooms,
+    collaboration.onlineUsers.length,
+    collaboration.rooms,
     currentRoomId,
     setOnlineUsersGlobal,
   ]);
 
-  // Auto-create user if not exists
+  // IMPROVED: Auto-create user if not exists (with duplicate prevention)
+  const [autoCreateAttempted, setAutoCreateAttempted] = useState(false);
+
   useEffect(() => {
-    if (!collaboration.user.user && !showUserSetup) {
-      setShowUserSetup(true);
+    if (
+      !collaboration.user &&
+      !collaboration.isCreating &&
+      !showUserSetup &&
+      !autoCreateAttempted
+    ) {
+      // Try to auto-create user from authenticated session, show setup if it fails
+      const userName = session?.user?.name || session?.user?.email;
+      if (userName) {
+        setAutoCreateAttempted(true);
+        void collaboration
+          .createUser(userName)
+          .then(() => {
+            console.log("✅ Auto-created collaboration user in panel");
+          })
+          .catch((error) => {
+            console.error("❌ Auto-creation failed in panel:", error);
+            // If auto-creation fails, show setup for manual user creation
+            setShowUserSetup(true);
+            setAutoCreateAttempted(false); // Allow retry
+          });
+      } else {
+        // No session data available, show setup for manual user creation
+        setShowUserSetup(true);
+      }
     }
-  }, [collaboration.user.user, showUserSetup]);
+  }, [
+    collaboration.user,
+    collaboration.isCreating,
+    showUserSetup,
+    collaboration.createUser,
+    session,
+    autoCreateAttempted,
+  ]);
+
+  // Track join attempts to prevent infinite loops
+  const [joinAttempts, setJoinAttempts] = useState<Set<string>>(new Set());
+
+  // DISABLED: Auto rejoin logic moved to main useCollaboration hook to prevent duplicate joins
+  // This was causing infinite loops and duplicate mutations
+  useEffect(() => {
+    // Just ensure we don't have stale join attempts
+    if (!currentRoomId && joinAttempts.size > 0) {
+      setJoinAttempts(new Set());
+    }
+  }, [currentRoomId, joinAttempts.size]);
 
   // Listen for collaboration events
   useEffect(() => {
@@ -140,87 +184,25 @@ export function CollaborationPanel({
       );
     };
 
-    // Defensive programming - check if functions exist before calling
-    if (
-      collaboration.events &&
-      typeof collaboration.events.addEventListener === "function"
-    ) {
-      collaboration.events.addEventListener(
-        CollaborationEventType.USER_JOINED,
-        handleUserJoined,
-      );
-      collaboration.events.addEventListener(
-        CollaborationEventType.USER_LEFT,
-        handleUserLeft,
-      );
-      collaboration.events.addEventListener(
-        CollaborationEventType.MODE_SWITCHED,
-        handleModeSwitch,
-      );
+    // Events are now handled through polling in the collaboration hook
+    // Disabled excessive event logging for performance
+    // if (collaboration.events && collaboration.events.length > 0) {
+    //   console.log("Recent collaboration events:", collaboration.events);
+    // }
 
-      return () => {
-        if (
-          collaboration.events &&
-          typeof collaboration.events.removeEventListener === "function"
-        ) {
-          collaboration.events.removeEventListener(
-            CollaborationEventType.USER_JOINED,
-            handleUserJoined,
-          );
-          collaboration.events.removeEventListener(
-            CollaborationEventType.USER_LEFT,
-            handleUserLeft,
-          );
-          collaboration.events.removeEventListener(
-            CollaborationEventType.MODE_SWITCHED,
-            handleModeSwitch,
-          );
-        }
-      };
-    } else {
-      console.error(
-        "addEventListener function not found on collaboration.events:",
-        collaboration.events,
-      );
-      return;
-    }
+    // No cleanup needed since we're not using event listeners anymore
+    return undefined;
   }, [currentRoomId, collaboration.events]);
-
-  // Auto rejoin room if state says we have currentRoomId but collaboration hook hasn't joined yet
-  useEffect(() => {
-    // Add a small delay to avoid race conditions with room creation
-    const timeoutId = setTimeout(() => {
-      if (
-        currentRoomId &&
-        collaboration.rooms.rooms.length > 0 && // Only auto-join if we have rooms data
-        !collaboration.rooms.rooms.find((r) => r.id === currentRoomId)
-      ) {
-        void collaboration.rooms
-          .joinRoom(currentRoomId)
-          .then(() => {
-            // After successful join fetch latest messages
-            void collaboration.messages.refetch();
-          })
-          .catch((err) => {
-            console.error("Auto-join failed", err);
-            setCurrentRoomId(null);
-            localStorage.removeItem("collabRoomId");
-          });
-      }
-    }, 1000); // 1 second delay to allow room creation to complete
-
-    return () => clearTimeout(timeoutId);
-  }, [currentRoomId, collaboration.rooms.rooms]);
 
   const handleCreateUser = async () => {
     if (!userName.trim()) return;
 
     try {
-      await collaboration.user.createUser(userName.trim());
+      await collaboration.createUser(userName.trim());
       setShowUserSetup(false);
 
       // Auto-create or join a room for the current chat
-      if (currentChatId && collaboration.rooms.rooms.length === 0) {
+      if (currentChatId && collaboration.rooms.length === 0) {
         void handleCreateRoom();
       }
     } catch (error: unknown) {
@@ -231,34 +213,49 @@ export function CollaborationPanel({
   const handleCreateRoom = async () => {
     if (!currentChatId) return;
 
-    if (!collaboration.user.user) {
-      // create ephemeral user with unique ID
-      const guestId = `Guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      await collaboration.user.createUser(guestId);
+    // Ensure we have a collaboration user before creating room
+    if (!collaboration.user && !collaboration.isCreating) {
+      try {
+        // Get user name from session or use a default
+        const userName =
+          session?.user?.name || session?.user?.email || `User-${Date.now()}`;
+        await collaboration.createUser(userName);
+      } catch (error) {
+        console.error("Failed to create collaboration user:", error);
+        return;
+      }
+    } else if (collaboration.isCreating) {
+      // Wait for user creation to complete
+      console.log("Waiting for user creation to complete...");
+      return;
     }
 
     try {
-      const room = await collaboration.rooms.createRoom(
-        currentChatId,
-        `Chat Room`,
-      );
+      // Use a predictable chatId pattern that matches invite-created rooms
+      const roomChatId = `shared-room-${Date.now()}`;
+      const room = await collaboration.createRoom(roomChatId, `Chat Room`);
       if (room.success && room.room) {
         setCurrentRoomId(room.room.id);
-        // Trigger refetch of both rooms and messages data to get latest presence
-        await Promise.all([
-          collaboration.rooms.refetch(),
-          collaboration.messages.refetch(),
-        ]);
+
+        // Wait a moment for presence to establish
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
         console.log("Room created successfully:", room.room.id);
-        // Push users to global store immediately for UI
+
+        // Set initial users immediately from room data
         const initialUsers = (room.room?.users ?? []).map((u) => ({
           userId: u.id,
+          userName: u.name,
           roomId: room.room?.id ?? "",
           isOnline: true,
           lastSeen: Date.now(),
           isTyping: false,
+          color: u.color,
         }));
         setOnlineUsersGlobal(initialUsers);
+
+        // Set active tab to show users
+        setActiveTab("users");
       }
     } catch (error) {
       console.error("Failed to create room:", error);
@@ -267,17 +264,27 @@ export function CollaborationPanel({
 
   const handleJoinRoom = async (roomId: string) => {
     try {
-      const joinRes = await collaboration.rooms.joinRoom(roomId);
+      const joinRes = await collaboration.joinRoom(roomId);
       setCurrentRoomId(roomId);
+
       if (joinRes.success && joinRes.room) {
+        // Immediately set users from join response
         const users = joinRes.room.users.map((u) => ({
           userId: u.id,
+          userName: u.name,
           roomId,
           isOnline: true,
           lastSeen: Date.now(),
           isTyping: false,
+          color: u.color,
         }));
         setOnlineUsersGlobal(users);
+
+        // Wait for presence to establish
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Switch to users tab to show the icons
+        setActiveTab("users");
       }
     } catch (error: unknown) {
       console.error("Failed to join room:", error);
@@ -288,8 +295,10 @@ export function CollaborationPanel({
     if (!currentRoomId) return;
 
     try {
-      await collaboration.rooms.leaveRoom(currentRoomId);
+      await collaboration.leaveRoom(currentRoomId);
       setCurrentRoomId(null);
+      localStorage.removeItem("collabRoomId");
+      setOnlineUsersGlobal([]);
     } catch (error: unknown) {
       console.error("Failed to leave room:", error);
     }
@@ -299,7 +308,7 @@ export function CollaborationPanel({
     if (!messageInput.trim() || !currentRoomId) return;
 
     try {
-      await collaboration.messages.sendMessage(messageInput.trim(), "text");
+      await collaboration.sendMessage(messageInput.trim(), "text");
       setMessageInput("");
     } catch (error: unknown) {
       console.error("Failed to send message:", error);
@@ -311,7 +320,7 @@ export function CollaborationPanel({
 
     const shareUrl =
       typeof window !== "undefined"
-        ? `${window.location.origin}/collaborate?room=${currentRoomId}`
+        ? `${window.location.origin}/room/${currentRoomId}`
         : "";
 
     try {
@@ -326,7 +335,7 @@ export function CollaborationPanel({
   const handleEditMessage = async (messageId: string, newContent: string) => {
     if (!currentRoomId) return;
     try {
-      await collaboration.messages.editMessage(messageId, newContent);
+      await collaboration.editMessage(messageId, newContent);
     } catch (err) {
       console.error("Edit failed", err);
     }
@@ -335,7 +344,7 @@ export function CollaborationPanel({
   const handleDeleteMessage = async (messageId: string) => {
     if (!currentRoomId) return;
     try {
-      await collaboration.messages.deleteMessage(messageId);
+      await collaboration.deleteMessage(messageId);
     } catch (err) {
       console.error("Delete failed", err);
     }
@@ -358,16 +367,16 @@ export function CollaborationPanel({
         </div>
 
         {/* User Info */}
-        {collaboration.user.user && (
+        {collaboration.user && (
           <div className="mt-3 flex items-center gap-3">
             <div
               className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium text-white"
-              style={{ backgroundColor: collaboration.user.user.color }}
+              style={{ backgroundColor: collaboration.user.color }}
             >
-              {collaboration.user.user.name[0]?.toUpperCase()}
+              {collaboration.user.name[0]?.toUpperCase()}
             </div>
             <span className="text-primary/80 text-sm">
-              {collaboration.user.user.name}
+              {collaboration.user.name}
             </span>
           </div>
         )}
@@ -402,14 +411,14 @@ export function CollaborationPanel({
       <div className="flex-1 overflow-y-auto p-4">
         {activeTab === "rooms" && (
           <MemoRoomsTab
-            rooms={collaboration.rooms.rooms}
+            rooms={collaboration.rooms}
             currentRoomId={currentRoomId}
             onCreateRoom={handleCreateRoom}
             onJoinRoom={handleJoinRoom}
             onLeaveRoom={handleLeaveRoom}
             onShareRoom={handleShareRoom}
-            isCreating={collaboration.rooms.isCreating}
-            isJoining={collaboration.rooms.isJoining}
+            isCreating={collaboration.isCreatingRoom}
+            isJoining={collaboration.isJoiningRoom}
             copied={copied}
           />
         )}
@@ -417,15 +426,15 @@ export function CollaborationPanel({
         {activeTab === "messages" && currentRoomId && (
           <MemoChatTab
             _roomId={currentRoomId}
-            room={collaboration.rooms.rooms.find((r) => r.id === currentRoomId)}
-            messages={collaboration.messages.messages}
+            room={collaboration.rooms.find((r) => r.id === currentRoomId)}
+            messages={collaboration.messages}
             messageInput={messageInput}
             onMessageInputChange={setMessageInput}
             onSendMessage={handleSendMessage}
             onEditMessage={handleEditMessage}
             onDeleteMessage={handleDeleteMessage}
-            currentUser={collaboration.user.user}
-            typingUsers={collaboration.typing.typingUsers}
+            currentUser={collaboration.user}
+            typingUsers={collaboration.typingUsers}
           />
         )}
 
@@ -450,8 +459,8 @@ export function CollaborationPanel({
         {activeTab === "users" && (
           <MemoUsersTab
             _roomId={currentRoomId ?? ""}
-            onlineUsers={collaboration.presence.onlineUsers}
-            typingUsers={collaboration.typing.typingUsers}
+            onlineUsers={collaboration.onlineUsers}
+            typingUsers={collaboration.typingUsers}
           />
         )}
       </div>
@@ -814,9 +823,17 @@ function UsersTab({
                 <div className="h-2 w-2 rounded-full bg-green-400"></div>
                 <Wifi size={14} className="text-green-400" />
               </div>
-              <span className="text-sm text-slate-300">
-                User {user.userId.slice(0, 8)}
-              </span>
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium text-white"
+                  style={{ backgroundColor: user.color }}
+                >
+                  {user.userName?.[0]?.toUpperCase() ?? "?"}
+                </div>
+                <span className="text-sm text-slate-300">
+                  {user.userName ?? `User ${user.userId.slice(0, 8)}`}
+                </span>
+              </div>
             </div>
           ))}
         </div>

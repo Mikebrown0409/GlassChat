@@ -28,7 +28,29 @@ const config = {
       fs: false,
       net: false,
       tls: false,
+      dns: false,
+      child_process: false,
+      cluster: false,
     };
+
+    // Exclude server-only modules from client bundles
+    if (!isServer) {
+      config.externals = config.externals || [];
+
+      // In production, exclude all Redis dependencies from client
+      if (!dev) {
+        config.externals.push({
+          ioredis: "commonjs ioredis",
+          redis: "commonjs redis",
+        });
+      } else {
+        // In development, allow dynamic requires for local testing
+        config.externals.push({
+          ioredis: "ioredis",
+          redis: "redis",
+        });
+      }
+    }
 
     return config;
   },

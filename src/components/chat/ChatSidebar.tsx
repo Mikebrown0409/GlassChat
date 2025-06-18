@@ -9,7 +9,7 @@ import {
   Plus,
   Settings as SettingsIcon,
 } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { memo, useCallback, useMemo, useState } from "react";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
@@ -55,6 +55,7 @@ export function ChatSidebar({
   const [renamingChat, setRenamingChat] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const router = useRouter();
+  const { data: session } = useSession();
 
   const chats = useLiveChats();
   // Collaboration store — determine if we are in a room and who is online
@@ -101,14 +102,16 @@ export function ChatSidebar({
             <div
               className={cn(
                 "group grid w-full grid-cols-[1fr_auto] items-center overflow-hidden rounded-md px-3 py-1",
-                currentChatId === chat.id ? "bg-zinc-800" : "hover:bg-zinc-800",
+                currentChatId === chat.id
+                  ? "bg-zinc-800/70"
+                  : "hover:bg-zinc-800",
               )}
             >
               <button
                 type="button"
                 className={cn(
                   "min-w-0 cursor-pointer truncate text-left text-sm text-zinc-300 focus:outline-none",
-                  currentChatId === chat.id && "text-white",
+                  currentChatId === chat.id && "font-medium text-white",
                 )}
                 onClick={() => onSelectChat(chat.id)}
                 title={chat.title}
@@ -230,17 +233,25 @@ export function ChatSidebar({
                 Team
               </div>
               <div className="mt-2 flex flex-wrap gap-2 px-2">
-                {onlineUsers.map((u) => (
-                  <Avatar
-                    key={u.userId}
-                    className="border-surface-0 h-7 w-7 border-2 bg-zinc-700"
-                    title={u.userId}
-                  >
-                    <AvatarFallback className="text-[10px]">
-                      {u.userId.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
+                {onlineUsers.map((u, index) => {
+                  const userName = u.userName || u.userId;
+                  const displayChar = userName.charAt(0).toUpperCase();
+
+                  return (
+                    <Avatar
+                      key={`${u.userId}-${index}`}
+                      className="border-surface-0 h-7 w-7 border-2"
+                      style={{
+                        backgroundColor: u.color ?? "#444",
+                      }}
+                      title={userName}
+                    >
+                      <AvatarFallback className="text-[10px]">
+                        {displayChar}
+                      </AvatarFallback>
+                    </Avatar>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -250,7 +261,9 @@ export function ChatSidebar({
       {/* Bottom user/settings section */}
       <div className="flex items-center justify-between gap-2 border-t border-zinc-800 p-4">
         <Avatar>
-          <AvatarFallback>U</AvatarFallback>
+          <AvatarFallback>
+            {session?.user?.name?.charAt(0).toUpperCase() || "U"}
+          </AvatarFallback>
         </Avatar>
 
         <DropdownMenu>
