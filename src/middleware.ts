@@ -36,6 +36,14 @@ export async function middleware(req: NextRequest) {
     // If there's a JWT error, clear all auth cookies
     const response = NextResponse.next();
     const cookieNames = [
+      // NextAuth v5 cookie names
+      "authjs.session-token",
+      "__Secure-authjs.session-token",
+      "authjs.csrf-token",
+      "__Host-authjs.csrf-token",
+      "authjs.callback-url",
+      "__Secure-authjs.callback-url",
+      // Keep v4 names for backward compatibility
       "next-auth.session-token",
       "__Secure-next-auth.session-token",
       "next-auth.csrf-token",
