@@ -350,7 +350,7 @@ export function useCollaborationBridge(roomId: string | null) {
         // Create user message first
         await syncManager.createMessage(chatId, "user", content);
 
-        // Add user message to memory
+        // Add user message to memory BEFORE getting context (fix timing issue)
         await memoryManagerClient.addMemory(chatId, content, { role: "user" });
 
         // Send collaboration message so other users see the user's message
@@ -361,12 +361,14 @@ export function useCollaborationBridge(roomId: string | null) {
           timestamp: Date.now(),
         });
 
-        // Get memory context for the AI
+        // Get memory context for the AI AFTER adding current message
         let memoryContext = "";
+        let hasMemoryContext = false;
         try {
           const summary = await memoryManagerClient.getSummary(chatId);
           if (summary) {
-            memoryContext = `\n\n**CONVERSATION MEMORY:**\nSummary: ${summary.summary}\nKey topics: ${summary.keywords.join(", ")}\n\n`;
+            memoryContext = `\n\nConversation Context: ${summary.summary}\nKey Topics: ${summary.keywords.join(", ")}\n\n`;
+            hasMemoryContext = true;
             console.log("🧠 Using memory context:", summary.summary);
           } else {
             console.log("🧠 No memory summary found for chatId:", chatId);
@@ -375,15 +377,41 @@ export function useCollaborationBridge(roomId: string | null) {
           console.warn("Failed to get memory context:", memoryError);
         }
 
-        // Generate AI response using the same system as regular chat
-        const systemPrompt = `You are a helpful, clear, and professional AI assistant integrated into a shared collaboration room.${memoryContext}Follow these RESPONSE STYLE GUIDELINES for **every** reply unless explicitly instructed otherwise:\n1. **Structure & Formatting**\n   • Start with bold section headings (e.g., **Overview**, **Step-by-Step**).\n   • Use numbered lists for processes, bullets for unordered data, and Markdown tables for comparisons or timelines.\n   • Insert blank lines between paragraphs/sections for readability.\n2. **Visual Hierarchy**\n   • Bold section headers; *italicize* emphasis sparingly.\n   • Use \`inline code\` for commands or variables.\n   • Keep paragraphs ≤ 4 lines.\n3. **Tables**\n   • Include bold header rows.\n   • Ensure columns are aligned and tables are not split across multiple code blocks.\n4. **Tone & Readability**\n   • Friendly yet professional, no fluff.\n   • Break down complex topics into plain English first, then dive deeper.\n   • End with a ✅ **Summary** section when appropriate.\n5. **Conversation Memory**\n   • Reference prior context and maintain continuity.\n   • Use the conversation memory above to provide personalized responses.\n6. **Optional Enhancements**\n   • Emojis (📌, ✅) only when they add clarity.\n   • Collapsible sections if supported.\n\nAlways apply these rules while answering based on the provided message history and conversation memory. Remember you are in a shared collaboration room where multiple users can see your responses.`;
+        // Use the same clean system prompt as regular chat, but adapted for collaboration
+        const systemPrompt = `You are a helpful, clear, and professional AI assistant.${memoryContext}
 
-        // Get recent messages for additional context
+Follow these RESPONSE STYLE GUIDELINES for **every** reply unless explicitly instructed otherwise:
+1. **Structure & Formatting**
+   • Start with bold section headings (e.g., **Overview**, **Step-by-Step**).
+   • Use numbered lists for processes, bullets for unordered data, and Markdown tables for comparisons or timelines.
+   • Insert blank lines between paragraphs/sections for readability.
+2. **Visual Hierarchy**
+   • Bold section headers; *italicize* emphasis sparingly.
+   • Use \`inline code\` for commands or variables.
+   • Keep paragraphs ≤ 4 lines.
+3. **Tables**
+   • Include bold header rows.
+   • Ensure columns are aligned and tables are not split across multiple code blocks.
+4. **Tone & Readability**
+   • Friendly yet professional, no fluff.
+   • Break down complex topics into plain English first, then dive deeper.
+   • End with a ✅ **Summary** section when appropriate.
+5. **Conversation Memory**
+   • Reference prior context and maintain continuity.
+6. **Optional Enhancements**
+   • Emojis (📌, ✅) only when they add clarity.
+   • Collapsible sections if supported.
+
+Always apply these rules while answering based on the provided message history.`;
+
+        // Get recent messages for additional context (especially if no memory summary)
         let recentMessagesContext = "";
         try {
           const recentMemories = await memoryManagerClient.getMemories(chatId);
           if (recentMemories.length > 0) {
-            const lastFewMemories = recentMemories.slice(-6); // Last 6 memories
+            // Get more recent messages if no summary, fewer if we have summary
+            const contextSize = hasMemoryContext ? 4 : 8;
+            const lastFewMemories = recentMemories.slice(-contextSize);
             recentMessagesContext = lastFewMemories
               .map((m) => {
                 const role = (m.metadata as { role?: string })?.role ?? "user";
@@ -399,7 +427,7 @@ export function useCollaborationBridge(roomId: string | null) {
           console.warn("Failed to get recent memories:", error);
         }
 
-        // Prepare messages with recent context if no summary available
+        // Prepare messages - use actual conversation history from memory
         const preparedMessages: Array<{
           role: "system" | "user" | "assistant";
           content: string;
@@ -407,12 +435,24 @@ export function useCollaborationBridge(roomId: string | null) {
 
         // Add recent conversation context if available
         if (recentMessagesContext) {
-          preparedMessages.push({
-            role: "system" as const,
-            content: `Recent conversation context:\n${recentMessagesContext}`,
-          });
+          // Parse recent messages into proper conversation format
+          const recentLines = recentMessagesContext.split("\n");
+          for (const line of recentLines) {
+            if (line.startsWith("user: ")) {
+              preparedMessages.push({
+                role: "user" as const,
+                content: line.substring(6), // Remove "user: " prefix
+              });
+            } else if (line.startsWith("assistant: ")) {
+              preparedMessages.push({
+                role: "assistant" as const,
+                content: line.substring(11), // Remove "assistant: " prefix
+              });
+            }
+          }
         }
 
+        // Add the current user message (it's already been added to memory above)
         preparedMessages.push({ role: "user" as const, content: content });
 
         // Use the API directly since we can't use the hook here
