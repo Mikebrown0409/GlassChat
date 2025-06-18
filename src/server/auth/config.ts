@@ -75,44 +75,4 @@ export const authConfig = {
   },
   // Trust any host when NEXTAUTH_URL is not explicitly set (e.g. Vercel preview URLs)
   trustHost: true,
-  // Explicit cookie configuration for Vercel deployment
-  cookies: {
-    sessionToken: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-authjs.session-token"
-          : "authjs.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        // Don't set domain explicitly - let the browser handle it
-      },
-    },
-    csrfToken: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Host-authjs.csrf-token"
-          : "authjs.csrf-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      },
-    },
-    callbackUrl: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-authjs.callback-url"
-          : "authjs.callback-url",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      },
-    },
-  },
 } satisfies NextAuthConfig;

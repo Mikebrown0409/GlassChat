@@ -1,34 +1,19 @@
 import { getToken } from "next-auth/jwt";
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 // Edge middleware: redirects unauthenticated users to /landing
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Debug: Log environment variables and request details
-  console.log("[EDGE] Request URL:", req.url);
-  console.log("[EDGE] Host:", req.headers.get("host"));
-  console.log("[EDGE] NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
-  console.log(
-    "[EDGE] NEXTAUTH_SECRET:",
-    process.env.NEXTAUTH_SECRET ? "SET" : "NOT SET",
-  );
-  console.log(
-    "[EDGE] AUTH_SECRET:",
-    process.env.AUTH_SECRET ? "SET" : "NOT SET",
-  );
-
-  // Log all cookies received
+  // Debug: Check if session cookie is present
   const cookieHeader = req.headers.get("cookie");
-  console.log("[EDGE] All cookies received:", cookieHeader);
+  const hasSessionToken = cookieHeader?.includes("authjs.session-token");
 
-  if (cookieHeader) {
-    const cookies = cookieHeader.split(";").map((c) => c.trim());
-    console.log("[EDGE] Individual cookies:");
-    cookies.forEach((cookie) => {
-      console.log("[EDGE]   ", cookie);
-    });
-  }
+  console.log(
+    `[EDGE] ${pathname} - Session cookie present: ${hasSessionToken}`,
+  );
+  console.log(`[EDGE] Cookies: ${cookieHeader?.slice(0, 200) ?? "none"}`);
 
   // Public routes that don't require auth
   const publicPaths = ["/landing", "/login", "/register", "/api/debug-env"];
@@ -49,12 +34,7 @@ export async function middleware(req: NextRequest) {
     const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
     token = await getToken({ req, secret });
 
-    console.log(
-      "[EDGE] token:",
-      !!token,
-      "cookie sent:",
-      (req.headers.get("cookie") ?? "").slice(0, 120),
-    );
+    console.log(`[EDGE] Token decoded: ${!!token}`);
   } catch (error) {
     console.error("[EDGE] JWT error", error);
 
