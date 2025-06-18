@@ -1,4 +1,4 @@
-import { ChatInterfaceV2 } from "@/components/chat/ChatInterface-v2";
+import { ChatInterface } from "@/components/chat/ChatInterface";
 
 export const dynamic = "force-dynamic";
 
@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 // user to sign in on first API call.
 
 export default function HomePage() {
-  return <ChatInterfaceV2 />;
+  return <ChatInterface />;
 }

@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import { USER_COLORS, type UserPresence } from "~/lib/collaboration/types";
-import { useCollaboration as useCollaborationV2 } from "./hooks";
+import { usePusherCollaboration } from "./pusherHooks";
 
 // Bridge types that match the legacy interface
 interface BridgedUser {
@@ -55,35 +55,47 @@ export function useCollaborationBridge(roomId: string | null) {
   // Get legacy store setters
   const { setCurrentRoomId, setOnlineUsers } = useCollaborationStore();
 
-  // Use the V2 collaboration system with the current user's name
+  // Use Pusher collaboration system with the current user's name
   const participantName =
     session?.user?.name ?? session?.user?.email ?? "Anonymous";
-  const v2Collaboration = useCollaborationV2(roomId, participantName);
+  const pusherCollab = usePusherCollaboration({
+    roomId: roomId ?? undefined,
+    userId: participantName,
+    onMessageSync: (event) => {
+      console.log("📨 [Bridge] Message sync:", event);
+    },
+    onRoomStateUpdate: (event) => {
+      console.log("🏠 [Bridge] Room state update:", event);
+    },
+  });
 
   // Update legacy store when room data changes
   useEffect(() => {
     setCurrentRoomId(roomId);
   }, [roomId, setCurrentRoomId]);
 
-  // Convert V2 participants to legacy UserPresence format and update store
+  // Convert Pusher participants to legacy UserPresence format and update store
   useEffect(() => {
-    if (v2Collaboration.room?.participants) {
-      const userPresences: UserPresence[] =
-        v2Collaboration.room.participants.map((participant, index) => ({
-          userId: participant.id,
-          userName: participant.name,
-          roomId: v2Collaboration.room!.id,
+    if (roomId && pusherCollab.isConnected) {
+      // For now, create a simple presence list with just the current user
+      // Pusher system doesn't provide participant list in the simple setup
+      const userPresences: UserPresence[] = [
+        {
+          userId: participantName,
+          userName: participantName,
+          roomId: roomId,
           isOnline: true,
           lastSeen: Date.now(),
           isTyping: false,
-          color: USER_COLORS[index % USER_COLORS.length],
-        }));
+          color: USER_COLORS[0],
+        },
+      ];
 
       setOnlineUsers(userPresences);
     } else {
       setOnlineUsers([]);
     }
-  }, [v2Collaboration.room?.participants, setOnlineUsers]);
+  }, [roomId, pusherCollab.isConnected, participantName, setOnlineUsers]);
 
   // Create bridged user object
   const bridgedUser: BridgedUser | null = useMemo(() => {
@@ -97,38 +109,33 @@ export function useCollaborationBridge(roomId: string | null) {
     };
   }, [session?.user, participantName]);
 
-  // Transform V2 room to legacy format
+  // Transform Pusher room to legacy format
   const bridgedRoom: BridgedRoom | undefined = useMemo(() => {
-    if (!v2Collaboration.room) return undefined;
+    if (!roomId || !pusherCollab.isConnected) return undefined;
 
-    const room = v2Collaboration.room;
     return {
-      id: room.id,
-      name: room.name ?? `Room ${room.id}`,
-      chatId: room.chatId ?? `shared-room-${room.id}`, // Use consistent chatId
-      users:
-        room.participants?.map((p) => ({
-          id: p.id,
-          name: p.name,
-          email: undefined,
-          sessionId: `session-${p.id}`,
-        })) ?? [],
-      createdAt: room.createdAt ?? new Date().toISOString(),
+      id: roomId,
+      name: `Room ${roomId}`,
+      chatId: `shared-room-${roomId}`, // Use consistent chatId
+      users: [
+        {
+          id: participantName,
+          name: participantName,
+          email: session?.user?.email ?? undefined,
+          sessionId: `session-${participantName}`,
+        },
+      ],
+      createdAt: new Date().toISOString(),
     };
-  }, [v2Collaboration.room]);
+  }, [roomId, pusherCollab.isConnected, participantName, session?.user?.email]);
 
-  // Transform V2 messages to legacy format
+  // For Pusher, we'll use a simple message list
+  // The actual messages will be handled by the main chat system
   const bridgedMessages: BridgedMessage[] = useMemo(() => {
-    if (!v2Collaboration.messages || !roomId) return [];
-
-    return v2Collaboration.messages.map((msg) => ({
-      id: msg.id,
-      content: msg.content,
-      sender: msg.sender,
-      timestamp: msg.timestamp,
-      roomId: roomId,
-    }));
-  }, [v2Collaboration.messages, roomId]);
+    // Pusher system doesn't maintain a message history in this simple setup
+    // Messages are handled by the main chat interface
+    return [];
+  }, []);
 
   // Create room function (bridges to V2)
   const createRoom = useCallback(
@@ -162,17 +169,13 @@ export function useCollaborationBridge(roomId: string | null) {
     [],
   );
 
-  // Join room function (bridges to V2)
+  // Join room function (uses Pusher)
   const joinRoom = useCallback(
     async (targetRoomId: string): Promise<JoinRoomResult> => {
       setIsJoiningRoom(true);
       try {
-        // In V2, joining happens automatically when we set roomId and participantName
-        // Wait for the room state to actually update or timeout after 5 seconds
-
-        // Since the V2 system handles joining asynchronously via HTTP,
-        // and we can see it works in the logs, just return success
-        // The UI state will update when the V2 hook refreshes
+        // Join the room via Pusher
+        await pusherCollab.joinRoom(targetRoomId);
 
         return {
           success: true,
@@ -180,7 +183,14 @@ export function useCollaborationBridge(roomId: string | null) {
             id: targetRoomId,
             name: `Room ${targetRoomId}`,
             chatId: `shared-room-${targetRoomId}`,
-            users: [],
+            users: [
+              {
+                id: participantName,
+                name: participantName,
+                email: session?.user?.email ?? undefined,
+                sessionId: `session-${participantName}`,
+              },
+            ],
             createdAt: new Date().toISOString(),
           },
         };
@@ -193,7 +203,7 @@ export function useCollaborationBridge(roomId: string | null) {
         setIsJoiningRoom(false);
       }
     },
-    [v2Collaboration.room, v2Collaboration.error, bridgedRoom],
+    [pusherCollab, participantName, session?.user?.email],
   );
 
   // Leave room function (bridges to V2)
@@ -215,13 +225,18 @@ export function useCollaborationBridge(roomId: string | null) {
     }
   }, []);
 
-  // Send message function (bridges to V2)
+  // Send message function (uses Pusher)
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!v2Collaboration.sendMessage) return;
-      await v2Collaboration.sendMessage(content);
+      if (!roomId) return;
+      await pusherCollab.sendMessage({
+        type: "chat_message",
+        content: content,
+        sender: participantName,
+        timestamp: Date.now(),
+      });
     },
-    [v2Collaboration.sendMessage],
+    [pusherCollab, roomId, participantName],
   );
 
   // Edit message function (placeholder for legacy compatibility)
@@ -280,14 +295,19 @@ export function useCollaborationBridge(roomId: string | null) {
     lastSyncTime: 0,
 
     // Loading states
-    isSendingMessage: v2Collaboration.isSending ?? false,
+    isSendingMessage: false,
     isUpdatingCode: false,
     isTogglingLiveCoding: false,
 
-    // V2 specific features (additional)
-    isWsConnected: v2Collaboration.isWebSocketConnected ?? false,
-    refreshData: v2Collaboration.refreshData,
-    sendMessageToAI: v2Collaboration.sendMessageToAI,
-    isSendingToAI: v2Collaboration.isSendingToAI ?? false,
+    // Pusher specific features
+    isWsConnected: pusherCollab.isConnected,
+    refreshData: () => {
+      // Manual refresh - reload the page for now
+      window.location.reload();
+    },
+    sendMessageToAI: async (_content: string) => {
+      // Placeholder - AI integration handled by main chat
+    },
+    isSendingToAI: false,
   };
 }
