@@ -38,7 +38,6 @@ export function ChatInterfaceV2() {
     messages,
     sendMessage: sendToAI,
     isLoading: isGenerating,
-    _cancelGeneration,
   } = useChatGeneration(effectiveChatId);
 
   // Handle room joining from URL
