@@ -6,24 +6,8 @@ import { auth } from "~/server/auth";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Debug: Check if session cookie is present
-  const cookieHeader = req.headers.get("cookie");
-  const hasSessionToken = cookieHeader?.includes("authjs.session-token");
-
-  console.log(
-    `[EDGE] ${pathname} - Session cookie present: ${hasSessionToken}`,
-  );
-  console.log(`[EDGE] Cookies: ${cookieHeader?.slice(0, 200) ?? "none"}`);
-
   // Public routes that don't require auth
-  const publicPaths = [
-    "/landing",
-    "/login",
-    "/register",
-    "/api/debug-env",
-    "/api/debug-cookies",
-    "/api/debug-edge",
-  ];
+  const publicPaths = ["/landing", "/login", "/register", "/api/debug-env"];
   const isPublic =
     publicPaths.includes(pathname) ||
     pathname.startsWith("/api/auth") ||
@@ -35,7 +19,6 @@ export async function middleware(req: NextRequest) {
   let session = null;
   try {
     session = await auth();
-    console.log(`[EDGE] Session found: ${!!session}`);
   } catch (error) {
     console.error("[EDGE] Auth error", error);
 
