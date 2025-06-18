@@ -340,12 +340,18 @@ export function useCollaborationBridge(roomId: string | null) {
         // Import required modules dynamically to avoid circular dependencies
         const { syncManager } = await import("~/lib/sync");
         const { AIModel } = await import("~/lib/ai/types");
+        const { memoryManagerClient } = await import(
+          "~/lib/memory/memoryManager-client"
+        );
 
         const chatId = bridgedRoom.chatId;
         console.log("🤖 Sending AI message to shared chat:", chatId);
 
         // Create user message first
         await syncManager.createMessage(chatId, "user", content);
+
+        // Add user message to memory
+        await memoryManagerClient.addMemory(chatId, content, { role: "user" });
 
         // Send collaboration message so other users see the user's message
         await pusherCollab.sendMessage({
@@ -355,10 +361,21 @@ export function useCollaborationBridge(roomId: string | null) {
           timestamp: Date.now(),
         });
 
-        // Generate AI response using the same system as regular chat
-        const systemPrompt = `You are a helpful, clear, and professional AI assistant integrated into a shared collaboration room.\n\nFollow these RESPONSE STYLE GUIDELINES for **every** reply unless explicitly instructed otherwise:\n1. **Structure & Formatting**\n   • Start with bold section headings (e.g., **Overview**, **Step-by-Step**).\n   • Use numbered lists for processes, bullets for unordered data, and Markdown tables for comparisons or timelines.\n   • Insert blank lines between paragraphs/sections for readability.\n2. **Visual Hierarchy**\n   • Bold section headers; *italicize* emphasis sparingly.\n   • Use \`inline code\` for commands or variables.\n   • Keep paragraphs ≤ 4 lines.\n3. **Tables**\n   • Include bold header rows.\n   • Ensure columns are aligned and tables are not split across multiple code blocks.\n4. **Tone & Readability**\n   • Friendly yet professional, no fluff.\n   • Break down complex topics into plain English first, then dive deeper.\n   • End with a ✅ **Summary** section when appropriate.\n5. **Conversation Memory**\n   • Reference prior context and maintain continuity.\n6. **Optional Enhancements**\n   • Emojis (📌, ✅) only when they add clarity.\n   • Collapsible sections if supported.\n\nAlways apply these rules while answering based on the provided message history. Remember you are in a shared collaboration room where multiple users can see your responses.`;
+        // Get memory context for the AI
+        let memoryContext = "";
+        try {
+          const summary = await memoryManagerClient.getSummary(chatId);
+          if (summary) {
+            memoryContext = `\n\n**CONVERSATION MEMORY:**\nSummary: ${summary.summary}\nKey topics: ${summary.keywords.join(", ")}\n\n`;
+          }
+        } catch (memoryError) {
+          console.warn("Failed to get memory context:", memoryError);
+        }
 
-        // Get recent messages for context - use simple approach without context for now
+        // Generate AI response using the same system as regular chat
+        const systemPrompt = `You are a helpful, clear, and professional AI assistant integrated into a shared collaboration room.${memoryContext}Follow these RESPONSE STYLE GUIDELINES for **every** reply unless explicitly instructed otherwise:\n1. **Structure & Formatting**\n   • Start with bold section headings (e.g., **Overview**, **Step-by-Step**).\n   • Use numbered lists for processes, bullets for unordered data, and Markdown tables for comparisons or timelines.\n   • Insert blank lines between paragraphs/sections for readability.\n2. **Visual Hierarchy**\n   • Bold section headers; *italicize* emphasis sparingly.\n   • Use \`inline code\` for commands or variables.\n   • Keep paragraphs ≤ 4 lines.\n3. **Tables**\n   • Include bold header rows.\n   • Ensure columns are aligned and tables are not split across multiple code blocks.\n4. **Tone & Readability**\n   • Friendly yet professional, no fluff.\n   • Break down complex topics into plain English first, then dive deeper.\n   • End with a ✅ **Summary** section when appropriate.\n5. **Conversation Memory**\n   • Reference prior context and maintain continuity.\n   • Use the conversation memory above to provide personalized responses.\n6. **Optional Enhancements**\n   • Emojis (📌, ✅) only when they add clarity.\n   • Collapsible sections if supported.\n\nAlways apply these rules while answering based on the provided message history and conversation memory. Remember you are in a shared collaboration room where multiple users can see your responses.`;
+
+        // Get recent messages for context
         const preparedMessages = [
           { role: "system" as const, content: systemPrompt },
           { role: "user" as const, content: content },
@@ -407,6 +424,74 @@ export function useCollaborationBridge(roomId: string | null) {
             "assistant",
             assistantContent,
           );
+
+          // Add AI response to memory
+          await memoryManagerClient.addMemory(chatId, assistantContent, {
+            role: "assistant",
+          });
+
+          // Generate summary periodically (after every 2 messages like in regular chat)
+          try {
+            const memories = await memoryManagerClient.getMemories(chatId);
+            if (memories.length > 0 && memories.length % 4 === 0) {
+              // Every 4 memories (2 user + 2 assistant pairs)
+              const historyString = memories
+                .slice(-10) // Last 10 memories for context
+                .map((m) => {
+                  const role =
+                    (m.metadata as { role?: string })?.role ?? "user";
+                  return `${role}: ${m.content}`;
+                })
+                .join("\n");
+
+              // Call the summarization API
+              try {
+                const response = await fetch(
+                  "/api/trpc/memory.summarizeHistory",
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      json: {
+                        chatId,
+                        history: historyString,
+                      },
+                    }),
+                  },
+                );
+
+                if (response.ok) {
+                  const result = (await response.json()) as {
+                    result?: {
+                      data?: {
+                        json?: {
+                          summary?: {
+                            summary: string;
+                            keywords: string[];
+                          };
+                        };
+                      };
+                    };
+                  };
+                  if (result.result?.data?.json?.summary) {
+                    const summary = result.result.data.json.summary;
+                    await memoryManagerClient.updateSummary(
+                      chatId,
+                      summary.summary,
+                      summary.keywords,
+                    );
+                    console.log("📝 Updated conversation summary");
+                  }
+                }
+              } catch (summaryError) {
+                console.warn("Failed to generate summary:", summaryError);
+              }
+            }
+          } catch (memoryError) {
+            console.warn("Failed to check memory count:", memoryError);
+          }
 
           // Send AI response as collaboration message so everyone sees it
           await pusherCollab.sendMessage({
