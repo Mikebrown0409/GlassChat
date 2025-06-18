@@ -568,12 +568,60 @@ Always apply these rules while answering based on the provided message history.`
           }
 
           // Send AI response as collaboration message so everyone sees it
-          await pusherCollab.sendMessage({
-            type: "chat_message",
-            content: assistantContent,
-            sender: "AI Assistant",
-            timestamp: Date.now(),
-          });
+          // Handle large messages by chunking them if they exceed Pusher's 10KB limit
+          const maxMessageSize = 8000; // Leave some buffer below 10KB limit
+
+          if (assistantContent.length > maxMessageSize) {
+            // Split large message into chunks
+            const chunks = [];
+            let currentChunk = "";
+            const lines = assistantContent.split("\n");
+
+            for (const line of lines) {
+              // If adding this line would exceed the limit, save current chunk and start new one
+              if (currentChunk.length + line.length + 1 > maxMessageSize) {
+                if (currentChunk.trim()) {
+                  chunks.push(currentChunk.trim());
+                }
+                currentChunk = line;
+              } else {
+                currentChunk += (currentChunk ? "\n" : "") + line;
+              }
+            }
+
+            // Add the last chunk
+            if (currentChunk.trim()) {
+              chunks.push(currentChunk.trim());
+            }
+
+            // Send chunks with a small delay between them
+            for (let i = 0; i < chunks.length; i++) {
+              const chunk = chunks[i];
+              const isLastChunk = i === chunks.length - 1;
+              const chunkPrefix =
+                chunks.length > 1 ? `[${i + 1}/${chunks.length}] ` : "";
+
+              await pusherCollab.sendMessage({
+                type: "chat_message",
+                content: chunkPrefix + chunk,
+                sender: "AI Assistant",
+                timestamp: Date.now(),
+              });
+
+              // Small delay between chunks to ensure proper ordering
+              if (!isLastChunk) {
+                await new Promise((resolve) => setTimeout(resolve, 100));
+              }
+            }
+          } else {
+            // Send single message if under size limit
+            await pusherCollab.sendMessage({
+              type: "chat_message",
+              content: assistantContent,
+              sender: "AI Assistant",
+              timestamp: Date.now(),
+            });
+          }
 
           console.log("✅ AI response sent successfully");
         } else {
@@ -582,14 +630,18 @@ Always apply these rules while answering based on the provided message history.`
       } catch (error) {
         console.error("Failed to send AI message:", error);
 
-        // Send error message to collaboration
-        await pusherCollab.sendMessage({
-          type: "chat_message",
-          content:
-            "Sorry, I encountered an error while processing your message. Please try again.",
-          sender: "AI Assistant",
-          timestamp: Date.now(),
-        });
+        // Send error message to collaboration (but keep it short to avoid same issue)
+        try {
+          await pusherCollab.sendMessage({
+            type: "chat_message",
+            content:
+              "Sorry, I encountered an error while processing your message. Please try again.",
+            sender: "AI Assistant",
+            timestamp: Date.now(),
+          });
+        } catch (errorSendingError) {
+          console.error("Failed to send error message:", errorSendingError);
+        }
       } finally {
         setIsSendingToAI(false);
       }
