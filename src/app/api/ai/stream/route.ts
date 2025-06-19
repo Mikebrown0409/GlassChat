@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateAIStream } from "~/lib/ai/models";
 import { AIModel, type AIMessage } from "~/lib/ai/types";
@@ -15,7 +16,7 @@ const streamRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as unknown;
     const { model, messages } = streamRequestSchema.parse(body);
 
     // Create the stream

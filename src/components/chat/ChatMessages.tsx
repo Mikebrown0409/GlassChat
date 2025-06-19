@@ -19,6 +19,8 @@ interface ChatMessagesProps {
   messages: ChatMessage[];
   isTyping: boolean;
   isPending: boolean;
+  streamingContent?: string;
+  streamingMessageId?: string | null;
   onTranslate: (text?: string) => void;
   onExplain: (text?: string) => void;
   onSuggestionClick: (text: string) => void;
@@ -33,6 +35,8 @@ export function ChatMessages({
   messages,
   isTyping,
   isPending,
+  streamingContent,
+  streamingMessageId,
   onTranslate,
   onExplain,
   onSuggestionClick,
@@ -167,6 +171,11 @@ export function ChatMessages({
                     key={message.id}
                     message={message}
                     _isTyping={idx === messages.length - 1 && isTyping}
+                    streamingContent={
+                      message.id === streamingMessageId && streamingContent
+                        ? streamingContent
+                        : undefined
+                    }
                     onTranslate={onTranslate}
                     onExplain={onExplain}
                     onSuggestionClick={onSuggestionClick}

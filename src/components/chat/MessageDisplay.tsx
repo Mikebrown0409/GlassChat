@@ -12,6 +12,7 @@ import { TextSelectionHandler } from "./TextSelectionHandler";
 interface MessageDisplayProps {
   message: Message;
   _isTyping?: boolean;
+  streamingContent?: string;
   onTranslate?: (text: string) => void;
   onExplain?: (text: string) => void;
   _isNewMessage?: boolean;
@@ -23,9 +24,20 @@ const MarkdownContent = dynamic(() => import("./MarkdownContent"), {
   ssr: false,
 });
 
+const TypewriterContent = dynamic(
+  () =>
+    import("./TypewriterContent").then((mod) => ({
+      default: mod.TypewriterContent,
+    })),
+  {
+    ssr: false,
+  },
+);
+
 export const MessageDisplay = memo(function MessageDisplayComponent({
   message,
   _isTyping,
+  streamingContent,
   onTranslate,
   onExplain,
   _isNewMessage,
@@ -145,14 +157,26 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                 )}
               >
                 <div className="prose prose-base dark:prose-invert word-wrap max-w-none text-[16px] leading-relaxed break-words">
-                  <MarkdownContent
-                    content={message.content}
-                    role={message.role}
-                    _messageId={message.id}
-                    _onUpdateMessage={(newContent) =>
-                      onUpdateMessage?.(message.id, newContent)
-                    }
-                  />
+                  {streamingContent ? (
+                    <TypewriterContent
+                      content={streamingContent}
+                      role={message.role}
+                      isStreaming={true}
+                      _messageId={message.id}
+                      _onUpdateMessage={(newContent) =>
+                        onUpdateMessage?.(message.id, newContent)
+                      }
+                    />
+                  ) : (
+                    <MarkdownContent
+                      content={message.content}
+                      role={message.role}
+                      _messageId={message.id}
+                      _onUpdateMessage={(newContent) =>
+                        onUpdateMessage?.(message.id, newContent)
+                      }
+                    />
+                  )}
                 </div>
               </div>
             </TextSelectionHandler>

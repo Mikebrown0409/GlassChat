@@ -306,6 +306,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   const {
     isTyping,
     isStreaming,
+    currentStreamContent,
+    streamingMessageId,
     generateResponseIsPending,
     handleSubmit: handleSubmitFromHook,
     handleStop,
@@ -638,6 +640,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           messages={messages}
           isTyping={isTyping}
           isPending={generateResponseIsPending}
+          streamingContent={isStreaming ? currentStreamContent : undefined}
+          streamingMessageId={streamingMessageId}
           onTranslate={handleTranslateSelection}
           onExplain={handleExplainSelection}
           onSuggestionClick={handleSuggestionClick}

@@ -34,7 +34,6 @@ export function useChatGenerationStreaming(
   const memory = useMemory(currentChatId ?? null, messages);
 
   const generateResponse = api.ai.generateResponse.useMutation();
-  const generateTitle = api.ai.generateResponse.useMutation();
 
   const handleSubmit = async (userInput: string, clearInput: () => void) => {
     if (!userInput.trim() || !currentChatId || streamingState.isStreaming)
@@ -196,7 +195,10 @@ Always apply these rules while answering based on the provided message history.`
               }
 
               try {
-                const parsed = JSON.parse(data);
+                const parsed = JSON.parse(data) as {
+                  content?: string;
+                  isComplete?: boolean;
+                };
                 if (parsed.content) {
                   accumulatedContent += parsed.content;
 
@@ -212,7 +214,7 @@ Always apply these rules while answering based on the provided message history.`
                     currentStreamContent: accumulatedContent,
                   }));
                 }
-              } catch (e) {
+              } catch {
                 // Skip invalid JSON
                 console.warn("Invalid JSON in stream:", data);
               }
@@ -272,6 +274,7 @@ Always apply these rules while answering based on the provided message history.`
     isTyping: streamingState.isStreaming,
     isStreaming: streamingState.isStreaming,
     currentStreamContent: streamingState.currentStreamContent,
+    streamingMessageId: streamingState.streamingMessageId,
     generateResponseIsPending: generateResponse.isPending,
     handleSubmit,
     handleStop,
