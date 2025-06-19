@@ -1,23 +1,29 @@
-# Project Requirements
+# Project Overview
 
-The requirements for the Cloneathon, derived from the [Cloneathon website]([invalid url, do not cite]) and X posts, are as follows, with our compliance strategy:
-Open-Source Mandate: Must be open-source with a permissive license (e.g., MIT), hosted on GitHub.
+GlassChat is an independent AI-powered chat and collaboration platform built with modern web technologies. Originally inspired by T3 Chat concepts, it has evolved into its own unique application focused on providing excellent user experience and real-time collaboration features.
 
-Action: We'll use MIT, as specified, and host on GitHub with detailed documentation (Prompt 14). This aligns with our tech stack's open-source ethos.
+## Project Goals
 
-Age Eligibility: Participants must be 18+ to claim prizes.
+**Core Functionality**: Multi-model AI chat (GPT-4, Claude, Gemini) with fast UI, local-first storage using Dexie.js, and real-time sync via Pusher and Upstash Redis.
 
-Action: Assuming you meet this (please confirm), we proceed. If not, we'll focus on community impact for recognition, as per competition rules.
+**Technical Excellence**: Built with the T3 Stack (Next.js, TypeScript, Tailwind CSS, tRPC) for type safety and developer experience.
 
-Functionality Baseline: Replicate T3 Chat's core features, including multi-model AI chat (e.g., GPT-4, Claude), fast UI, local-first storage with Dexie.js, and sync with Upstash Redis.
+**User Experience**: Modern, responsive design with glassmorphism elements where appropriate, focusing on usability and accessibility.
 
-Action: Covered by Prompts 3-5, ensuring AI integration, local storage, and sync, with performance optimizations (Prompt 9).
+**Collaboration**: Real-time multi-user rooms with live presence and shared AI conversations.
 
-Timeline: 10 days (June 7 - June 17, 2025, 12:00 PM PDT).
+## Current Status
 
-Action: Our 10-day workflow, adjusted to 9 days, 10 hours from now, is on track, with buffer time for polish.
+The project has evolved beyond its initial scope to become a fully-featured chat application with:
 
-Submission Format: GitHub repository link, live demo (e.g., Vercel), and optional video/PDF.
+- Multi-provider AI integration
+- Real-time collaboration via Pusher
+- Performance optimizations (60 FPS target)
+- Comprehensive memory system
+- Modern, polished UI design
 
-Action: Addressed in Prompt 15, with a cinematic video and PDF pitch highlighting vibes and benchmarks.
+## License & Distribution
 
+- **Open Source**: MIT licensed and hosted on GitHub
+- **Self-Hosted**: Can be deployed on Vercel or other platforms
+- **Community Focused**: Built for developers and teams who need AI-powered collaboration tools

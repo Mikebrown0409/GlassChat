@@ -172,6 +172,13 @@ export function ChatMessages({
                     onSuggestionClick={onSuggestionClick}
                     onUpdateMessage={onUpdateMessage}
                     _isNewMessage={idx === messages.length - 1}
+                    typingMode={
+                      idx === messages.length - 1 &&
+                      message.role === "assistant"
+                        ? "smart"
+                        : "none"
+                    }
+                    typingSpeed={60}
                   />
                 </div>
               </motion.div>

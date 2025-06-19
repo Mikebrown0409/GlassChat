@@ -1,10 +1,10 @@
 # GlassChat
 
-An elegant, real-time, AI-powered chat & collaboration platform built with the **T3 Stack**, sprinkled with glassmorphism and production-ready tooling.
+An elegant, real-time, AI-powered chat & collaboration platform built with the **T3 Stack**, featuring beautiful UI design and production-ready tooling.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-glasschat-blue?logo=vercel)](https://glass-chat-two.vercel.app)
 
-> “Chat beautifully, collaborate instantly.”
+> "Chat beautifully, collaborate instantly."
 
 ---
 
@@ -13,8 +13,8 @@ An elegant, real-time, AI-powered chat & collaboration platform built with the *
 | Category           | Highlights                                                                                                            |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | **AI Chat**        | 🔥 GPT-4o & GPT-4-Turbo, Anthropic Claude 3<br>🧠 Per-chat "Memory" & smart summarisation                             |
-| **Collaboration**  | 🫂 Multi-user rooms with live presence<br>📄 Real-time message & live-code editor powered by Upstash Redis            |
-| **UI / UX**        | 🪟 Glassmorphism theme, dark & light modes<br>�� Fully responsive & keyboard-accessible                               |
+| **Collaboration**  | 🫂 Multi-user rooms with live presence<br>📄 Real-time message sync powered by Pusher and Upstash Redis               |
+| **UI / UX**        | 🪟 Modern theme with glassmorphism elements, dark & light modes<br>📱 Fully responsive & keyboard-accessible          |
 | **Performance**    | ⚡️ React 18 + Next.js 15 App Router<br>🐇 Framer-Motion animations with custom cubic-bezier easing                   |
 | **Dev Experience** | 🛡️ End-to-end type-safety via tRPC & Prisma<br>🔐 NextAuth (Discord / Google / Email)<br>📈 Vercel Analytics baked in |
 
@@ -27,7 +27,7 @@ An elegant, real-time, AI-powered chat & collaboration platform built with the *
 • **Tailwind CSS v4** + CSS Variables for theming  
 • **Framer-Motion** for micro-interactions  
 • **Prisma ORM** → **Supabase Postgres** (prod) / SQLite (dev)  
-• **Upstash Redis** for pub/sub & rate-limiting  
+• **Pusher** for real-time collaboration + **Upstash Redis** for sync  
 • **tRPC** for end-to-end types  
 • **NextAuth.js** for authentication  
 • **OpenAI & Anthropic SDKs**  
@@ -76,7 +76,7 @@ src/
  │  └─ api/…             # Route Handlers (auth, upload, tRPC)
  ├─ components/          # UI & feature components (chat, collab, ui)
  ├─ lib/                 # Shared logic (ai, db, sync, memory)
- ├─ server/              # tRPC routers, auth config, WebSocket gateway
+ ├─ server/              # tRPC routers, auth config, real-time gateway
  ├─ prisma/              # Schema & migrations
  └─ styles/              # Tailwind base + themes
 ```
@@ -92,13 +92,13 @@ src/
 | `npm run lint`            | ESLint (strict)               |
 | `npm run typecheck`       | TypeScript without emit       |
 | `npm run prisma:migrate`  | Run `prisma migrate dev`      |
-| `npm run ws:dev`          | Local WebSocket gateway       |
+| `npm run test:ai`         | Test AI integration           |
 
 ---
 
 ## 🎨 Design Tokens
 
-• Backdrop blur `backdrop-blur-md` with 70% glass surfaces  
+• Modern UI with selective glassmorphism elements  
 • Fluid typography via `clamp()`  
 • Brand gradient accent `from-emerald-400 to-sky-500`  
 • Motion curve `[0.22,1,0.36,1]` applied globally

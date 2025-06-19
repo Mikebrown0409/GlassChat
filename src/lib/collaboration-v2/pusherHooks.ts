@@ -44,6 +44,13 @@ export function usePusherCollaboration({
     if (!roomId || !userId) return;
 
     const pusher = pusherRef.current;
+
+    // If Pusher is not available (missing credentials), skip collaboration
+    if (!pusher) {
+      console.log("⚠️ [Pusher] Skipping collaboration - Pusher not available");
+      return;
+    }
+
     const channelName = `room-${roomId}`;
 
     try {
@@ -108,8 +115,10 @@ export function usePusherCollaboration({
   // Send collaboration message via API
   const sendMessage = useCallback(
     async (message: CollaborationMessage) => {
-      if (!roomId || !isConnected) {
-        console.warn("🚫 [Pusher] Cannot send message - not connected to room");
+      if (!roomId || !isConnected || !pusherRef.current) {
+        console.warn(
+          "🚫 [Pusher] Cannot send message - not connected to room or Pusher unavailable",
+        );
         return;
       }
 

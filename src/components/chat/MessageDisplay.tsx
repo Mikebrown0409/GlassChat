@@ -17,11 +17,33 @@ interface MessageDisplayProps {
   _isNewMessage?: boolean;
   onSuggestionClick?: (text: string) => void;
   onUpdateMessage?: (id: string, newContent: string) => void;
+  typingMode?: "none" | "simple" | "smart";
+  typingSpeed?: number;
 }
 
 const MarkdownContent = dynamic(() => import("./MarkdownContent"), {
   ssr: false,
 });
+
+const SmartTypingAnimationComponent = dynamic(
+  () =>
+    import("./SmartTypingAnimation").then((mod) => ({
+      default: mod.SmartTypingAnimation,
+    })),
+  {
+    ssr: false,
+  },
+);
+
+const TypingAnimationComponent = dynamic(
+  () =>
+    import("./TypingAnimation").then((mod) => ({
+      default: mod.TypingAnimation,
+    })),
+  {
+    ssr: false,
+  },
+);
 
 export const MessageDisplay = memo(function MessageDisplayComponent({
   message,
@@ -31,6 +53,8 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
   _isNewMessage,
   onSuggestionClick,
   onUpdateMessage,
+  typingMode = "none",
+  typingSpeed = 60,
 }: MessageDisplayProps) {
   const { data: session } = useSession();
 
@@ -145,14 +169,34 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                 )}
               >
                 <div className="prose prose-base dark:prose-invert word-wrap max-w-none text-[16px] leading-relaxed break-words">
-                  <MarkdownContent
-                    content={message.content}
-                    role={message.role}
-                    _messageId={message.id}
-                    _onUpdateMessage={(newContent) =>
-                      onUpdateMessage?.(message.id, newContent)
-                    }
-                  />
+                  {/* Use typing animation for AI assistant messages when typing mode is enabled */}
+                  {typingMode !== "none" && message.role === "assistant" ? (
+                    <>
+                      {typingMode === "smart" ? (
+                        <SmartTypingAnimationComponent
+                          content={message.content}
+                          speed={typingSpeed}
+                          blockRevealMode="delayed"
+                          className="typing-message"
+                        />
+                      ) : (
+                        <TypingAnimationComponent
+                          content={message.content}
+                          speed={typingSpeed}
+                          className="typing-message"
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <MarkdownContent
+                      content={message.content}
+                      role={message.role}
+                      _messageId={message.id}
+                      _onUpdateMessage={(newContent) =>
+                        onUpdateMessage?.(message.id, newContent)
+                      }
+                    />
+                  )}
                 </div>
               </div>
             </TextSelectionHandler>

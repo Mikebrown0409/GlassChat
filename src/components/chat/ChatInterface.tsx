@@ -106,25 +106,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   // Load messages from the effective chat ID (shared room chat or personal chat)
   const rawMessages = useLiveMessages(effectiveChatId ?? "");
 
-  // COLLABORATION FIX: In collaboration mode, use collaboration messages instead of regular messages
-  const messages =
-    collaboration.room && collaboration.messages.length > 0
-      ? collaboration.messages.map((msg) => ({
-          id: msg.id,
-          content: msg.content,
-          chatId: collaboration.room?.chatId ?? effectiveChatId ?? "",
-          role:
-            msg.sender === "AI Assistant"
-              ? ("assistant" as const)
-              : ("user" as const),
-          createdAt: new Date(msg.timestamp).getTime(),
-          updatedAt: new Date(msg.timestamp).getTime(),
-          metadata: {
-            sender: msg.sender,
-            isCollaborationMessage: true,
-          },
-        }))
-      : (rawMessages ?? []);
+  // For now, always use regular database messages (collaboration disabled without Pusher)
+  const messages = rawMessages ?? [];
 
   const messagesRef = useRef(messages);
   messagesRef.current = messages;

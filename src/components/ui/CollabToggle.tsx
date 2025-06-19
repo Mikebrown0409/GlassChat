@@ -3,6 +3,7 @@ import { Copy, LogOut, Plus, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useCollaborationStore } from "~/lib/collaboration/store";
+import { isPusherConfigured } from "~/lib/pusher/client";
 import { Button } from "./Button";
 
 export function CollabToggle() {
@@ -16,10 +17,8 @@ export function CollabToggle() {
   const popupRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Check if Pusher is available (production real-time)
-  const isPusherAvailable = !!(
-    process.env.NEXT_PUBLIC_PUSHER_KEY && process.env.NEXT_PUBLIC_PUSHER_CLUSTER
-  );
+  // Check if Pusher is available for real-time collaboration
+  const isPusherAvailable = isPusherConfigured();
 
   // Collaboration is active when we're actually in a room
   const isInRoom = !!currentRoomId;

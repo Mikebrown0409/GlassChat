@@ -3,7 +3,7 @@ import "~/styles/globals.css";
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 
-import Analytics from "~/components/AnalyticsClient";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 import { AuthSessionProvider } from "~/components/AuthSessionProvider";
 import { ThemeProvider } from "~/components/ui/ThemeProvider";
 import { UserCacheIsolator } from "~/components/UserCacheIsolator";
@@ -12,10 +12,25 @@ import { auth } from "~/server/auth";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
-  title: "GlassChat - AI Chat with Glassmorphism",
+  title: "GlassChat - AI Chat & Collaboration",
   description:
-    "A stunning glassmorphism-powered AI chat application built with the T3 Stack",
+    "A modern AI chat application with real-time collaboration built with the T3 Stack",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
+  metadataBase: new URL("https://glass-chat-two.vercel.app"),
+  openGraph: {
+    title: "GlassChat - AI Chat & Collaboration",
+    description:
+      "A modern AI chat application with real-time collaboration built with the T3 Stack",
+    url: "https://glass-chat-two.vercel.app",
+    siteName: "GlassChat",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GlassChat - AI Chat & Collaboration",
+    description:
+      "A modern AI chat application with real-time collaboration built with the T3 Stack",
+  },
 };
 
 export default async function RootLayout({
@@ -62,7 +77,7 @@ export default async function RootLayout({
             <CollabModeProvider>
               <UserCacheIsolator userId={session?.user.id ?? null} />
               <TRPCReactProvider>{children}</TRPCReactProvider>
-              <Analytics />
+              <VercelAnalytics />
             </CollabModeProvider>
           </ThemeProvider>
         </AuthSessionProvider>

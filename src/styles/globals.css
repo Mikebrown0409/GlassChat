@@ -137,3 +137,34 @@ body {
 [data-density="compact"] {
   --chat-gap: 1rem;
 }
+
+/* ==============================================
+   AI Typing Animation
+   ============================================== */
+
+/* Smooth typing animations */
+.smart-typing-container .prose pre,
+.smart-typing-container .prose table,
+.smart-typing-container .prose blockquote {
+  animation: ai-block-reveal 0.4s ease-out;
+}
+
+@keyframes ai-block-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .smart-typing-container .prose pre,
+  .smart-typing-container .prose table,
+  .smart-typing-container .prose blockquote {
+    animation: none;
+  }
+}

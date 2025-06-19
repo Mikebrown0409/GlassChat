@@ -38,12 +38,15 @@ export default function LandingClient() {
         className="backdrop-blur-lg/60 glass relative z-10 mx-auto flex max-w-2xl flex-col items-center rounded-3xl border border-violet-600/40 bg-zinc-900/40 px-6 py-12 shadow-[0_0_30px_0_rgba(124,58,237,0.35)]"
         style={{ WebkitBackdropFilter: "blur(16px)" }}
       >
-        <h1 className="relative z-10 bg-gradient-to-r from-white to-zinc-200 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent md:text-5xl">
-          GlassChat
+        <h1 className="mb-4 text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl">
+          Chat{" "}
+          <span className="bg-gradient-to-r from-emerald-400 to-sky-500 bg-clip-text text-transparent">
+            beautifully
+          </span>
         </h1>
-        <p className="relative z-10 mt-3 max-w-xl text-base leading-relaxed text-white/90 md:text-lg">
-          AI chat & real-time collaboration—polished with glassmorphism.
-          Brainstorm, code, and create together.
+        <p className="mb-8 max-w-2xl text-xl leading-relaxed text-slate-300">
+          AI chat & real-time collaboration—built with modern design and
+          cutting-edge technology.
         </p>
 
         <div className="relative z-10 mt-10 flex flex-col items-center gap-4 sm:flex-row">
