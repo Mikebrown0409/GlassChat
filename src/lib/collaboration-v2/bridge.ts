@@ -351,15 +351,23 @@ export function useCollaborationBridge(roomId: string | null) {
           .limit(3) // Check last 3 messages
           .toArray();
 
-        // If the most recent message is from assistant, don't respond
-        if (
-          recentMessages.length > 0 &&
-          recentMessages[0]?.role === "assistant"
-        ) {
-          console.log(
-            "🚫 Last message was from AI, not responding to avoid loop",
-          );
-          return;
+        // Only block if the current user message content suggests it's responding to an AI message
+        // or if we detect rapid consecutive AI responses (potential loop)
+        if (recentMessages.length >= 2) {
+          const lastMessage = recentMessages[0];
+          const secondLastMessage = recentMessages[1];
+
+          // Check for potential loop: two consecutive AI messages within a short time
+          if (
+            lastMessage?.role === "assistant" &&
+            secondLastMessage?.role === "assistant" &&
+            Date.now() - lastMessage.createdAt < 5000 // 5 seconds
+          ) {
+            console.log(
+              "🚫 Detected potential AI message loop, skipping response",
+            );
+            return;
+          }
         }
       } catch (error) {
         console.warn("Failed to check recent messages:", error);
