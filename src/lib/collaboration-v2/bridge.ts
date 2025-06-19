@@ -511,29 +511,48 @@ export function useCollaborationBridge(roomId: string | null) {
         }
 
         // Use the same system prompt as regular chat
-        const systemPrompt = `You are a helpful, clear, and professional AI assistant.${memoryContext}
+        const systemPrompt = `You are a helpful, clear, and professional AI assistant integrated into a chat-based interface. Your job is to produce structured, visually clean, and highly readable responses, especially for business, technical, or product use cases.${memoryContext}
 
-Follow these RESPONSE STYLE GUIDELINES for **every** reply unless explicitly instructed otherwise:
+**Requirements for all responses:**
+
 1. **Structure & Formatting**
-   • Start with bold section headings (e.g., **Overview**, **Step-by-Step**).
-   • Use numbered lists for processes, bullets for unordered data, and Markdown tables for comparisons or timelines.
-   • Insert blank lines between paragraphs/sections for readability.
+   • Use clear headings (bolded using ** for markdown) to define sections (e.g., **Overview**, **Step-by-Step**, **Examples**).
+   • Use numbered lists for processes, bullets for unordered data, and tables where comparisons or timelines are involved.
+   • Insert line breaks between paragraphs and sections for white space and scannability.
+
 2. **Visual Hierarchy**
-   • Bold section headers; *italicize* emphasis sparingly.
-   • Use \`inline code\` for commands or variables.
-   • Keep paragraphs ≤ 4 lines.
+   • Bold section headers.
+   • Italicize emphasis where needed (not excessive).
+   • Use monospace or inline code syntax (\`like this\`) for code, commands, or variable names.
+   • Limit paragraphs to 3–4 lines max to avoid blocky text.
+
 3. **Tables**
-   • Include bold header rows.
-   • Ensure columns are aligned and tables are not split across multiple code blocks.
+   • When a comparison, timeline, or matrix is needed, use a Markdown table with bold headers.
+   • Always ensure table columns are aligned and meaningful.
+   • Avoid breaking tables across multiple lines.
+   • Example format:
+   
+   | **Phase** | **Timeline** | **Owner** | **Key Deliverable** |
+   |-----------|--------------|-----------|---------------------|
+   | Planning | Week 1–2 | PMO | Project charter, stakeholder map |
+   | Data Migration | Week 3–5 | Data Team | Cleaned & mapped legacy data |
+
 4. **Tone & Readability**
-   • Friendly yet professional, no fluff.
-   • Break down complex topics into plain English first, then dive deeper.
-   • End with a ✅ **Summary** section when appropriate.
-5. **Conversation Memory**
-   • Reference prior context and maintain continuity.
+   • Keep the tone friendly but professional — like a clear-thinking peer helping another.
+   • Break down complex ideas into plain English before introducing technical depth.
+   • Avoid fluff; be concise, but never robotic.
+   • When appropriate, summarize in a final "✅ **Summary**" section.
+
+5. **Conversational Memory**
+   • Always reference back to previous steps or context.
+   • If the user asks a follow-up, carry knowledge forward cleanly.
+
 6. **Optional Enhancements**
-   • Emojis (📌, ✅) only when they add clarity.
-   • Collapsible sections if supported.
+   • Add emojis for clarity/section marking if informal tone is acceptable (e.g., 📌, ✅, ⚙️).
+   • Use collapsible sections if platform allows.
+   • Provide copy-paste-friendly code snippets where relevant.
+
+**Your responses should always be production-quality, readable on both desktop and mobile, and easily transferable to Notion, Google Docs, or a slide deck.**
 
 Always apply these rules while answering based on the provided message history.`;
 
@@ -582,7 +601,27 @@ Always apply these rules while answering based on the provided message history.`
           result.result?.data?.json?.success &&
           result.result.data.json.response?.content
         ) {
-          const assistantContent = result.result.data.json.response.content;
+          let assistantContent = result.result.data.json.response.content;
+
+          // Filter out problematic external image URLs to prevent certificate errors
+          console.log("🔍 Filtering problematic image URLs from AI response");
+          assistantContent = assistantContent.replace(
+            /!\[([^\]]*)\]\((https?:\/\/(?:via\.)?placeholder\.com[^\)]*)\)/g,
+            "![Image placeholder removed for security]",
+          );
+          assistantContent = assistantContent.replace(
+            /!\[([^\]]*)\]\((https?:\/\/dummyimage\.com[^\)]*)\)/g,
+            "![Image placeholder removed for security]",
+          );
+          // Also handle HTML img tags
+          assistantContent = assistantContent.replace(
+            /<img[^>]*src=['"](https?:\/\/(?:via\.)?placeholder\.com[^'"]*)['"][^>]*>/g,
+            "[Image placeholder removed for security]",
+          );
+          assistantContent = assistantContent.replace(
+            /<img[^>]*src=['"](https?:\/\/dummyimage\.com[^'"]*)['"][^>]*>/g,
+            "[Image placeholder removed for security]",
+          );
 
           // Create AI assistant message in the database
           await syncManager.createMessage(
@@ -842,17 +881,55 @@ Always apply these rules while answering based on the provided message history.`
                   `❌ Failed to send chunk ${i + 1}/${chunks.length}:`,
                   chunkError,
                 );
+
+                // Check if this is a network/certificate error that we should ignore
+                const errorMessage =
+                  chunkError instanceof Error
+                    ? chunkError.message
+                    : String(chunkError);
+                if (
+                  errorMessage.includes("CERT_AUTHORITY_INVALID") ||
+                  errorMessage.includes("network") ||
+                  errorMessage.includes("fetch")
+                ) {
+                  console.warn(
+                    "🚨 Network/certificate error detected, continuing with next chunk to avoid breaking AI flow",
+                  );
+                }
+
                 // Continue with next chunk instead of failing completely
               }
             }
           } else {
             // Send single message if under size limit
-            await pusherCollab.sendMessage({
-              type: "chat_message",
-              content: assistantContent,
-              sender: "AI Assistant",
-              timestamp: Date.now(),
-            });
+            try {
+              await pusherCollab.sendMessage({
+                type: "chat_message",
+                content: assistantContent,
+                sender: "AI Assistant",
+                timestamp: Date.now(),
+              });
+            } catch (sendError) {
+              console.error("❌ Failed to send single AI message:", sendError);
+
+              // Check if this is a network/certificate error
+              const errorMessage =
+                sendError instanceof Error
+                  ? sendError.message
+                  : String(sendError);
+              if (
+                errorMessage.includes("CERT_AUTHORITY_INVALID") ||
+                errorMessage.includes("network") ||
+                errorMessage.includes("fetch")
+              ) {
+                console.warn(
+                  "🚨 Network/certificate error detected in single message send",
+                );
+              }
+
+              // Re-throw the error to be handled by the outer catch block
+              throw sendError;
+            }
           }
 
           console.log("✅ AI response sent successfully");
