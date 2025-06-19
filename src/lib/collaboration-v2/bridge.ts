@@ -393,9 +393,104 @@ export function useCollaborationBridge(roomId: string | null) {
           role: "user",
         });
 
-        // Get memory context for system prompt
+        // Get recent conversation history directly from database (like regular chat does)
+        let conversationHistory: Array<{
+          role: "user" | "assistant" | "system";
+          content: string;
+        }> = [];
+
+        try {
+          // Get recent messages from the database directly
+          const { db } = await import("~/lib/db");
+          const recentMessages = await db.messages
+            .where("chatId")
+            .equals(chatId)
+            .reverse()
+            .limit(20) // Get last 20 messages for context
+            .toArray();
+
+          // Convert to conversation format (oldest first)
+          conversationHistory = recentMessages
+            .reverse()
+            .filter((msg) => msg.role !== "system") // Skip system messages
+            .map((msg) => ({
+              role: msg.role as "user" | "assistant",
+              content: msg.content,
+            }));
+
+          console.log(
+            "🧠 Loaded conversation history:",
+            conversationHistory.length,
+            "messages",
+          );
+        } catch (error) {
+          console.warn("Failed to load conversation history:", error);
+        }
+
+        // Get updated memory context for system prompt (AFTER adding current message)
         let memoryContext = "";
         try {
+          // Check if we should update the summary first
+          const memories = await memoryManagerClient.getMemories(chatId);
+
+          // Update summary more frequently - every 2 messages instead of 4
+          if (memories.length > 0 && memories.length % 2 === 0) {
+            console.log("🔄 Updating memory summary...");
+            const historyString = memories
+              .slice(-10) // Last 10 memories for context
+              .map((m) => {
+                const role = (m.metadata as { role?: string })?.role ?? "user";
+                return `${role}: ${m.content}`;
+              })
+              .join("\n");
+
+            // Call the summarization API
+            try {
+              const response = await fetch(
+                "/api/trpc/memory.summarizeHistory",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    json: {
+                      chatId,
+                      history: historyString,
+                    },
+                  }),
+                },
+              );
+
+              if (response.ok) {
+                const result = (await response.json()) as {
+                  result?: {
+                    data?: {
+                      json?: {
+                        summary?: {
+                          summary: string;
+                          keywords: string[];
+                        };
+                      };
+                    };
+                  };
+                };
+                if (result.result?.data?.json?.summary) {
+                  const summary = result.result.data.json.summary;
+                  await memoryManagerClient.updateSummary(
+                    chatId,
+                    summary.summary,
+                    summary.keywords,
+                  );
+                  console.log("📝 Updated conversation summary");
+                }
+              }
+            } catch (summaryError) {
+              console.warn("Failed to generate summary:", summaryError);
+            }
+          }
+
+          // Now get the (potentially updated) summary
           const summary = await memoryManagerClient.getSummary(chatId);
           if (summary) {
             memoryContext = `\n\nConversation Context: ${summary.summary}\nKey Topics: ${summary.keywords.join(", ")}\n\n`;
@@ -433,40 +528,6 @@ Follow these RESPONSE STYLE GUIDELINES for **every** reply unless explicitly ins
    • Collapsible sections if supported.
 
 Always apply these rules while answering based on the provided message history.`;
-
-        // Get recent conversation history directly from database (like regular chat does)
-        let conversationHistory: Array<{
-          role: "user" | "assistant" | "system";
-          content: string;
-        }> = [];
-
-        try {
-          // Get recent messages from the database directly
-          const { db } = await import("~/lib/db");
-          const recentMessages = await db.messages
-            .where("chatId")
-            .equals(chatId)
-            .reverse()
-            .limit(20) // Get last 20 messages for context
-            .toArray();
-
-          // Convert to conversation format (oldest first)
-          conversationHistory = recentMessages
-            .reverse()
-            .filter((msg) => msg.role !== "system") // Skip system messages
-            .map((msg) => ({
-              role: msg.role as "user" | "assistant",
-              content: msg.content,
-            }));
-
-          console.log(
-            "🧠 Loaded conversation history:",
-            conversationHistory.length,
-            "messages",
-          );
-        } catch (error) {
-          console.warn("Failed to load conversation history:", error);
-        }
 
         // Prepare messages exactly like regular chat does
         const preparedMessages: Array<{
@@ -526,69 +587,6 @@ Always apply these rules while answering based on the provided message history.`
           await memoryManagerClient.addMemory(chatId, assistantContent, {
             role: "assistant",
           });
-
-          // Generate summary periodically (like regular chat does)
-          try {
-            const memories = await memoryManagerClient.getMemories(chatId);
-            if (memories.length > 0 && memories.length % 4 === 0) {
-              // Every 4 memories (2 user + 2 assistant pairs)
-              const historyString = memories
-                .slice(-10) // Last 10 memories for context
-                .map((m) => {
-                  const role =
-                    (m.metadata as { role?: string })?.role ?? "user";
-                  return `${role}: ${m.content}`;
-                })
-                .join("\n");
-
-              // Call the summarization API
-              try {
-                const response = await fetch(
-                  "/api/trpc/memory.summarizeHistory",
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      json: {
-                        chatId,
-                        history: historyString,
-                      },
-                    }),
-                  },
-                );
-
-                if (response.ok) {
-                  const result = (await response.json()) as {
-                    result?: {
-                      data?: {
-                        json?: {
-                          summary?: {
-                            summary: string;
-                            keywords: string[];
-                          };
-                        };
-                      };
-                    };
-                  };
-                  if (result.result?.data?.json?.summary) {
-                    const summary = result.result.data.json.summary;
-                    await memoryManagerClient.updateSummary(
-                      chatId,
-                      summary.summary,
-                      summary.keywords,
-                    );
-                    console.log("📝 Updated conversation summary");
-                  }
-                }
-              } catch (summaryError) {
-                console.warn("Failed to generate summary:", summaryError);
-              }
-            }
-          } catch (memoryError) {
-            console.warn("Failed to check memory count:", memoryError);
-          }
 
           // Handle large messages with proper table-aware chunking
           const maxMessageSize = 8000; // Leave buffer below 10KB limit
