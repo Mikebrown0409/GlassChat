@@ -25,6 +25,7 @@ export function TypewriterContent({
   const displayedRef = useRef("");
   const queueRef = useRef<string[]>([]);
   const animRef = useRef<number | null>(null);
+  const lastFlushRef = useRef<number>(0);
   const pauseUntilRef = useRef<number>(0);
 
   /* Blinking cursor ------------------------------------------- */
@@ -53,28 +54,40 @@ export function TypewriterContent({
       if (!animRef.current) {
         const step = () => {
           const now = Date.now();
+
+          // Handle punctuation pause
           if (now < pauseUntilRef.current) {
             animRef.current = requestAnimationFrame(step);
             return;
           }
 
-          const totalPrinted = displayedRef.current.length;
-          const batchSize = Math.min(4, 1 + Math.floor(totalPrinted / 300));
+          // Throttle flushes to every 35-40ms for smooth cadence
+          if (now - lastFlushRef.current < 35) {
+            animRef.current = requestAnimationFrame(step);
+            return;
+          }
 
+          const batchSize = 2; // constant small batch for stability
           let pushed = 0;
           while (pushed < batchSize && queueRef.current.length) {
             const chr = queueRef.current.shift();
-            if (chr) {
-              pushed += 1;
-              setDisplayed((prev) => prev + chr);
-              // punctuation pause
-              if (/[\.\?\!]/.test(chr) && queueRef.current.length) {
-                pauseUntilRef.current = Date.now() + 180; // 180ms pause
-              }
+            if (!chr) break;
+
+            pushed += 1;
+            setDisplayed((prev) => {
+              const next = prev + chr;
+              displayedRef.current = next;
+              return next;
+            });
+
+            // Insert natural pause after punctuation
+            if (/[\.\?\!]/.test(chr) && queueRef.current.length) {
+              pauseUntilRef.current = Date.now() + 160;
             }
           }
 
-          if (displayedRef.current.length) {
+          if (queueRef.current.length) {
+            lastFlushRef.current = now;
             animRef.current = requestAnimationFrame(step);
           } else {
             animRef.current = null;
@@ -96,7 +109,7 @@ export function TypewriterContent({
         container.scrollHeight - container.scrollTop - container.clientHeight <
         120;
       if (isNearBottom) {
-        container.scrollTop = container.scrollHeight; // instant for minimal jitter
+        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
       }
     });
     return () => cancelAnimationFrame(raf);
