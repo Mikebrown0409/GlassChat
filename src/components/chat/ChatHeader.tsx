@@ -20,22 +20,18 @@ import {
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import { CollabToggle } from "../ui/CollabToggle";
-import { InsightsToggle } from "../ui/InsightsToggle";
+// Removed InsightsToggle - no longer needed without the insights panel
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 
 interface ChatHeaderProps {
   sidebarOpen: boolean;
   onOpenSidebar: () => void;
-  onToggleMemory: () => void;
-  onToggleCollab: () => void;
   className?: string;
 }
 
 export function ChatHeader({
   sidebarOpen,
   onOpenSidebar,
-  onToggleMemory,
-  onToggleCollab,
   className,
 }: ChatHeaderProps) {
   // Global collaboration state
@@ -76,23 +72,42 @@ export function ChatHeader({
       <TooltipProvider delayDuration={200}>
         <div className="flex items-center gap-2">
           {/* Participant Avatars (visible only in collab) */}
-          {currentRoomId && (
+          {currentRoomId && onlineUsers.length > 0 && (
             <div className="flex -space-x-2">
-              {onlineUsers.slice(0, 3).map((u) => (
-                <Avatar
-                  key={u.userId}
-                  className="border-surface-0 h-6 w-6 border-2"
-                  style={{ backgroundColor: "#444" }}
-                >
-                  <AvatarFallback className="text-[10px]">
-                    {u.userId.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              ))}
+              {onlineUsers.slice(0, 3).map((u, index) => {
+                // Get user name from user ID - fallback to first char of userId
+                const userName = u.userName ?? u.userId;
+                const displayChar = userName.charAt(0).toUpperCase();
+
+                return (
+                  <Avatar
+                    key={`${u.userId}-${index}`}
+                    className="border-surface-0 h-6 w-6 border-2"
+                    style={{
+                      backgroundColor: u.color ?? "#444",
+                      borderColor: u.color ?? "#444",
+                    }}
+                    title={userName}
+                  >
+                    <AvatarFallback
+                      className="text-[10px] font-medium text-white"
+                      style={{ backgroundColor: u.color ?? "#444" }}
+                    >
+                      {displayChar}
+                    </AvatarFallback>
+                  </Avatar>
+                );
+              })}
+              {onlineUsers.length > 3 && (
+                <div className="border-surface-0 flex h-6 w-6 items-center justify-center rounded-full border-2 bg-zinc-600">
+                  <span className="text-[8px] font-medium text-white">
+                    +{onlineUsers.length - 3}
+                  </span>
+                </div>
+              )}
             </div>
           )}
-          <InsightsToggle onClick={onToggleMemory} />
-          <CollabToggle onClick={onToggleCollab} />
+          <CollabToggle />
           <ThemeSwitcher />
 
           {/* User dropdown */}

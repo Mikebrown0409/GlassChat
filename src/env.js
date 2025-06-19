@@ -30,6 +30,17 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_URL: z.string().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
+    // Pusher (for real-time collaboration)
+    PUSHER_APP_ID: z.string().optional(),
+    PUSHER_KEY: z.string().optional(),
+    PUSHER_SECRET: z.string().optional(),
+    PUSHER_CLUSTER: z.string().optional(),
+
+    // Memory system configuration
+    MEMORY_RETENTION_DAYS: z.coerce.number().min(1).max(365).default(90),
+    MAX_MEMORIES_PER_CHAT: z.coerce.number().min(10).max(1000).default(100),
+    MEMORY_CLEANUP_BATCH_SIZE: z.coerce.number().min(10).max(200).default(50),
+
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -41,7 +52,9 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    // Pusher public keys for client-side
+    NEXT_PUBLIC_PUSHER_KEY: z.string().optional(),
+    NEXT_PUBLIC_PUSHER_CLUSTER: z.string().optional(),
   },
 
   /**
@@ -60,6 +73,15 @@ export const env = createEnv({
     GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+    PUSHER_APP_ID: process.env.PUSHER_APP_ID,
+    PUSHER_KEY: process.env.PUSHER_KEY,
+    PUSHER_SECRET: process.env.PUSHER_SECRET,
+    PUSHER_CLUSTER: process.env.PUSHER_CLUSTER,
+    MEMORY_RETENTION_DAYS: process.env.MEMORY_RETENTION_DAYS,
+    MAX_MEMORIES_PER_CHAT: process.env.MAX_MEMORIES_PER_CHAT,
+    MEMORY_CLEANUP_BATCH_SIZE: process.env.MEMORY_CLEANUP_BATCH_SIZE,
+    NEXT_PUBLIC_PUSHER_KEY: process.env.NEXT_PUBLIC_PUSHER_KEY,
+    NEXT_PUBLIC_PUSHER_CLUSTER: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**

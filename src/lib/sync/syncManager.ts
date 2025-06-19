@@ -53,7 +53,7 @@ class SyncManager {
 
   private async initializeRedis(): Promise<void> {
     if (!this.config.redisUrl) {
-      console.info("No Redis URL provided, using local-only mode");
+      // Redis not available on client side, using local-only mode
       return;
     }
 
@@ -223,8 +223,6 @@ class SyncManager {
     };
 
     try {
-      console.info("🔄 Starting sync process...");
-
       // Step 1: Push pending local operations
       await this.pushPendingOperations();
 
@@ -239,7 +237,6 @@ class SyncManager {
       await this.updateSyncMetadata();
 
       stats.syncLatency = Date.now() - startTime;
-      console.info(`✅ Sync completed in ${stats.syncLatency}ms`);
     } catch (error) {
       console.error("❌ Sync failed:", error);
       stats.failedOperations++;
@@ -578,6 +575,23 @@ class SyncManager {
     return chat;
   }
 
+  // New method for creating chats with specific IDs (for collaboration rooms)
+  async createChatWithId(chatId: string, title: string): Promise<Chat> {
+    const chat = await db.createSyncableEntity(db.chats, {
+      id: chatId,
+      title,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    } as Omit<Chat, keyof SyncableEntity>);
+
+    // Debounced sync
+    if (this.isOnline) {
+      this.debouncedSync();
+    }
+
+    return chat;
+  }
+
   async createMessage(
     chatId: string,
     role: "user" | "assistant" | "system",
@@ -647,6 +661,11 @@ class SyncManager {
       isOnline: this.isOnline,
       syncLatency: 0,
     };
+  }
+
+  // Helper method to get chats (used in ChatInterface)
+  async getChats(): Promise<Chat[]> {
+    return await db.chats.orderBy("updatedAt").reverse().toArray();
   }
 
   // Cleanup

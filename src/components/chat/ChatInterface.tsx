@@ -1,16 +1,16 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useChatGeneration } from "~/lib/ai/useChatGeneration";
+import { useCollaborationBridge } from "~/lib/collaboration-v2/bridge";
 import { db } from "~/lib/db";
-import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 
-import { clsx } from "clsx";
-import { useCollabMode } from "~/context/CollabModeContext";
 import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { useCollaborationStore } from "~/lib/collaboration/store";
-import { InsightsDrawer } from "../insights/InsightsDrawer";
+// Removed InsightsDrawer - using main chat interface for all interactions
 import { ChatComposer, type ChatComposerHandle } from "./ChatComposer";
 import { ChatHeader } from "./ChatHeader";
 import { ChatMessages } from "./ChatMessages";
@@ -21,6 +21,10 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ className: _className }: ChatInterfaceProps) {
+  const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const roomIdFromUrl = searchParams?.get("room");
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectionMenu, setSelectionMenu] = useState<{
     position: { top: number; left: number };
@@ -32,33 +36,279 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   selectionMenuRef.current = selectionMenu;
   const [currentChatId, setCurrentChatId] = useState<string | undefined>();
 
-  // Debug currentChatId changes
-  useEffect(() => {
-    console.log("Debug - currentChatId changed to:", currentChatId);
-  }, [currentChatId]);
-  const [insightsOpen, setInsightsOpen] = useState(false);
-  const [insightsTab, setInsightsTab] = useState<"memory" | "collaboration">(
-    "memory",
-  );
+  // Removed insights panel state - no longer needed
 
   const chats = useLiveChats();
-  const rawMessages = useLiveMessages(currentChatId ?? "");
-  const messages = useMemo(() => rawMessages ?? [], [rawMessages]);
+
+  // Collaboration integration - UPDATED TO USE V2 BRIDGE
+  const currentRoomIdFromStore = useCollaborationStore((s) => s.currentRoomId);
+
+  // Debug logging for room state (removed effectiveChatId - defined later)
+
+  const collaboration = useCollaborationBridge(currentRoomIdFromStore);
+  const setCurrentRoomIdGlobal = useCollaborationStore(
+    (s) => s.setCurrentRoomId,
+  );
+
+  // **SHARED LLM CHAT**: Use room's chatId when in collaboration room, otherwise use regular chatId
+  const effectiveChatId = useMemo(() => {
+    // Only switch to shared room chat if we have both room ID and room data
+    if (
+      currentRoomIdFromStore &&
+      collaboration.room?.chatId &&
+      collaboration.room.id === currentRoomIdFromStore
+    ) {
+      console.log(
+        "🤝 Using shared room chatId for LLM:",
+        collaboration.room.chatId,
+      );
+      return collaboration.room.chatId;
+    }
+
+    console.log("👤 Using personal chatId:", currentChatId);
+    return currentChatId;
+  }, [
+    currentRoomIdFromStore,
+    collaboration.room?.chatId,
+    collaboration.room?.id,
+    currentChatId,
+  ]);
+
+  // Add debug logging for when effectiveChatId changes (reduced frequency)
+  useEffect(() => {
+    if (effectiveChatId) {
+      console.log("📱 effectiveChatId changed to:", effectiveChatId);
+    }
+  }, [effectiveChatId]);
+
+  // Reduced debug logging for room state - only log significant changes
+  useEffect(() => {
+    if (roomIdFromUrl || currentRoomIdFromStore) {
+      console.log("🏠 ChatInterface room state:", {
+        roomIdFromUrl,
+        currentRoomIdFromStore,
+        effectiveChatId,
+      });
+    }
+  }, [roomIdFromUrl, currentRoomIdFromStore]);
+
+  // Debug logging for collaboration state changes (reduced frequency)
+  useEffect(() => {
+    if (currentRoomIdFromStore && collaboration.room?.id) {
+      console.log("🏠 Collaboration room active:", {
+        roomId: collaboration.room.id,
+        chatId: collaboration.room.chatId,
+        users: collaboration.room.users?.length,
+      });
+    }
+  }, [currentRoomIdFromStore, collaboration.room?.id]);
+
+  // Load messages from the effective chat ID (shared room chat or personal chat)
+  const rawMessages = useLiveMessages(effectiveChatId ?? "");
+
+  // COLLABORATION FIX: In collaboration mode, use collaboration messages instead of regular messages
+  const messages =
+    collaboration.room && collaboration.messages.length > 0
+      ? collaboration.messages.map((msg) => ({
+          id: msg.id,
+          content: msg.content,
+          chatId: collaboration.room?.chatId ?? effectiveChatId ?? "",
+          role:
+            msg.sender === "AI Assistant"
+              ? ("assistant" as const)
+              : ("user" as const),
+          createdAt: new Date(msg.timestamp).getTime(),
+          updatedAt: new Date(msg.timestamp).getTime(),
+          metadata: {
+            sender: msg.sender,
+            isCollaborationMessage: true,
+          },
+        }))
+      : (rawMessages ?? []);
 
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
-  const memory = useMemory(currentChatId ?? null, messages);
+  // const _memory = useMemory(effectiveChatId ?? null, messages);
+
+  // Track URL room join attempts to prevent infinite loops
+  const [urlRoomJoined, setUrlRoomJoined] = useState<string | null>(null);
+  const [isJoiningFromUrl, setIsJoiningFromUrl] = useState(false);
+  const [joinFailureCount, setJoinFailureCount] = useState<
+    Record<string, number>
+  >({});
+
+  // IMPROVED: Auto-join room from URL parameter with better error handling
+  useEffect(() => {
+    // Prevent multiple simultaneous join attempts
+    const maxFailures = 3; // Stop trying after 3 failures
+    const currentFailures = joinFailureCount[roomIdFromUrl ?? ""] ?? 0;
+
+    if (
+      !roomIdFromUrl ||
+      !collaboration.user ||
+      urlRoomJoined === roomIdFromUrl ||
+      isJoiningFromUrl ||
+      currentRoomIdFromStore === roomIdFromUrl || // Already in the room
+      currentFailures >= maxFailures // Too many failures
+    ) {
+      if (currentFailures >= maxFailures) {
+        console.warn(
+          `❌ Stopped trying to join room ${roomIdFromUrl} after ${maxFailures} failures`,
+        );
+      }
+      return;
+    }
+
+    const joinRoomFromUrl = async () => {
+      setIsJoiningFromUrl(true);
+      try {
+        setUrlRoomJoined(roomIdFromUrl); // Mark as attempted
+
+        console.log("🔗 Joining room from URL:", roomIdFromUrl);
+
+        // Set room in global state first to prevent race conditions
+        setCurrentRoomIdGlobal(roomIdFromUrl);
+
+        // Join the room and get the room data
+        const joinResult = await collaboration.joinRoom(roomIdFromUrl);
+
+        if (joinResult.success && joinResult.room) {
+          const roomChatId = joinResult.room.chatId;
+
+          console.log("✅ Room joined successfully:", {
+            roomId: joinResult.room.id,
+            roomName: joinResult.room.name,
+            roomChatId,
+            roomUsers: joinResult.room.users.length,
+          });
+
+          // **CRITICAL FIX**: Switch chat context to the room's chatId
+          try {
+            const existingChats = await syncManager.getChats();
+            const chatExists = existingChats.some(
+              (chat) => chat.id === roomChatId,
+            );
+
+            if (!chatExists) {
+              console.log("📝 Creating new shared chat for room:", roomChatId);
+              await syncManager.createChatWithId(
+                roomChatId,
+                joinResult.room.name ?? "Shared Room",
+              );
+            }
+
+            // Switch to the room's chat - this will be used by effectiveChatId
+            setCurrentChatId(roomChatId);
+            console.log("�� Switched to shared room chat:", roomChatId);
+          } catch (error) {
+            console.error("❌ Failed to handle room chat creation:", error);
+            // Fallback: still switch to the chatId even if creation failed
+            setCurrentChatId(roomChatId);
+          }
+
+          // Room joined successfully - collaboration features now available in main chat
+
+          console.log("🎉 Successfully joined and configured room from URL");
+        } else {
+          console.error(
+            "❌ Room join failed:",
+            joinResult.error ?? "Unknown error",
+          );
+
+          // Track failure and decide whether to retry
+          const newFailureCount = currentFailures + 1;
+          setJoinFailureCount((prev) => ({
+            ...prev,
+            [roomIdFromUrl]: newFailureCount,
+          }));
+
+          if (newFailureCount < maxFailures) {
+            setUrlRoomJoined(null); // Reset for retry
+            setCurrentRoomIdGlobal(null); // Clear room state
+          } else {
+            console.warn(
+              `❌ Giving up on room ${roomIdFromUrl} after ${newFailureCount} failures`,
+            );
+            // Keep urlRoomJoined set to prevent further attempts
+          }
+        }
+      } catch (error) {
+        console.error("❌ Failed to join room from URL:", error);
+
+        // Track failure
+        const newFailureCount = currentFailures + 1;
+        setJoinFailureCount((prev) => ({
+          ...prev,
+          [roomIdFromUrl]: newFailureCount,
+        }));
+
+        if (newFailureCount < maxFailures) {
+          setUrlRoomJoined(null); // Reset so it can be retried
+          setCurrentRoomIdGlobal(null); // Clear room state
+        } else {
+          console.warn(
+            `❌ Giving up on room ${roomIdFromUrl} after ${newFailureCount} failures`,
+          );
+        }
+      } finally {
+        setIsJoiningFromUrl(false);
+      }
+    };
+
+    // Small delay to ensure user is fully initialized
+    const timeoutId = setTimeout(() => void joinRoomFromUrl(), 300);
+    return () => clearTimeout(timeoutId);
+  }, [
+    roomIdFromUrl,
+    collaboration.user,
+    collaboration.joinRoom,
+    setCurrentRoomIdGlobal,
+    urlRoomJoined,
+    isJoiningFromUrl,
+    joinFailureCount,
+    // Removed currentRoomIdFromStore to prevent infinite loop
+  ]);
+
+  // IMPROVED: Auto-create collaboration user if authenticated but no collab user exists
+  const [hasAttemptedUserCreation, setHasAttemptedUserCreation] =
+    useState(false);
+
+  useEffect(() => {
+    if (
+      !collaboration.user &&
+      !collaboration.isCreating &&
+      session?.user &&
+      !hasAttemptedUserCreation
+    ) {
+      const userName =
+        session.user.name ?? session.user.email ?? `User-${Date.now()}`;
+
+      setHasAttemptedUserCreation(true);
+      void collaboration.createUser(userName).catch((error) => {
+        console.error("Failed to auto-create collaboration user:", error);
+        setHasAttemptedUserCreation(false); // Allow retry on error
+      });
+    }
+  }, [
+    collaboration.user,
+    collaboration.isCreating,
+    collaboration.createUser,
+    session,
+    hasAttemptedUserCreation,
+  ]);
 
   // generateResponse handled inside hook
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
-  const [selectedModelId, setSelectedModelId] = useState("gemini-2.0-flash");
+  const [selectedModelId, setSelectedModelId] = useState(
+    "gemini-2.5-flash-lite-preview-06-17",
+  );
   const {
     isTyping,
     generateResponseIsPending,
     handleSubmit: handleSubmitFromHook,
     handleStop,
-  } = useChatGeneration(currentChatId, messages, selectedModelId);
+  } = useChatGeneration(effectiveChatId, messages, selectedModelId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -180,12 +430,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   const handleNewChat = async () => {
     try {
-      console.log("Debug - Creating new chat...");
       const newChat = await syncManager.createChat("New Conversation");
-      console.log("Debug - Created new chat:", newChat);
-      console.log("Debug - Setting currentChatId to:", newChat.id);
       setCurrentChatId(newChat.id);
-      console.log("Debug - currentChatId state should now be:", newChat.id);
     } catch (error) {
       console.error("Failed to create new chat:", error);
     }
@@ -235,8 +481,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   const models = [
     {
-      id: "gemini-2.0-flash",
-      name: "Gemini 2.0 Flash",
+      id: "gemini-2.5-flash-lite-preview-06-17",
+      name: "Gemini 2.5 Flash-Lite",
       description: "Fastest and newest",
       enabled: true,
     },
@@ -247,14 +493,14 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       enabled: true,
     },
     {
-      id: "gpt-4",
+      id: "gpt-4-turbo",
       name: "GPT-4 Turbo",
       description: "Coming soon",
       enabled: false,
     },
     {
-      id: "claude-3",
-      name: "Claude 3",
+      id: "claude-3-sonnet-20240229",
+      name: "Claude 3 Sonnet",
       description: "Coming soon",
       enabled: false,
     },
@@ -298,32 +544,36 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     };
   }, []);
 
-  const handleComposerSubmit = (text: string) => {
-    void handleSubmitFromHook(text, () => composerRef.current?.setInput(""));
+  const handleComposerSubmit = async (text: string) => {
+    // **ALWAYS SEND TO LLM**: Main chat is always for LLM interaction
+    // When in collaboration room, this creates shared LLM conversation via effectiveChatId
+    // The collaboration panel has separate user-to-user chat
+    await handleSubmitFromHook(text, () => composerRef.current?.setInput(""));
   };
 
-  const handleToggleMemory = () => {
-    setInsightsTab("memory");
-    setInsightsOpen(true);
-  };
-
-  const { toggle, mode } = useCollabMode();
-  const currentRoomIdStore = useCollaborationStore((s) => s.currentRoomId);
-  const session = undefined as unknown as
-    | { user?: { name?: string; image?: string } }
-    | undefined;
-
-  const handleToggleCollab = () => {
-    toggle();
-    if (mode === "solo") {
-      // entering collab: just open drawer; user can create/join via UI
-      setInsightsTab("collaboration");
-      setInsightsOpen(true);
-    } else {
-      // leaving collab
-      setInsightsOpen(false);
+  // NEW: Handle collaboration messages
+  const handleCollaborationMessage = async (content: string) => {
+    if (!collaboration.sendMessage) return;
+    try {
+      await collaboration.sendMessage(content);
+    } catch (error) {
+      console.error("Failed to send collaboration message:", error);
     }
   };
+
+  // NEW: Handle AI messages in collaboration
+  const handleCollaborationAIMessage = async (content: string) => {
+    if (!collaboration.sendMessageToAI) return;
+    try {
+      await collaboration.sendMessageToAI(content);
+    } catch (error) {
+      console.error("Failed to send AI message:", error);
+    }
+  };
+
+  // Removed handleToggleMemory - memory functionality still works in background
+
+  // Collaboration is now handled by room state, not mode toggle
 
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
@@ -364,7 +614,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       <ChatSidebar
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
-        currentChatId={currentChatId}
+        currentChatId={effectiveChatId}
         onSelectChat={handleChatSelect}
         onDeleteChat={handleDeleteChat}
         onRenameChat={handleRenameChat}
@@ -374,17 +624,12 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
       {/* Main Content with dynamic margin for sidebar */}
       <main
         data-chat-root
-        className={clsx(
-          "relative flex h-full min-w-0 flex-1 flex-col transition-all duration-300",
-          insightsOpen && isDesktop && "mr-80",
-        )}
+        className="relative flex h-full min-w-0 flex-1 flex-col"
       >
         {/* Top Bar */}
         <ChatHeader
           sidebarOpen={sidebarOpen}
           onOpenSidebar={() => setSidebarOpen(true)}
-          onToggleMemory={handleToggleMemory}
-          onToggleCollab={handleToggleCollab}
         />
 
         {/* Messages Area */}
@@ -403,7 +648,12 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         <ChatComposer
           ref={composerRef}
           isTyping={isTyping}
-          onSubmit={handleComposerSubmit}
+          onSubmit={handleCollaborationMessage}
+          onSubmitToAI={
+            !!collaboration.room
+              ? handleCollaborationAIMessage
+              : handleComposerSubmit
+          }
           onStop={handleStop}
           selectedModel={selectedModelId}
           setSelectedModel={setSelectedModelId}
@@ -411,18 +661,15 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           setModelDropdownOpen={setModelDropdownOpen}
           models={models}
           dropdownRef={dropdownRef}
+          isCollaborationMode={!!collaboration.room}
+          isSendingToAI={collaboration.isSendingToAI}
+          disabled={
+            isTyping ||
+            collaboration.isSendingMessage ||
+            collaboration.isSendingToAI
+          }
         />
       </main>
-
-      {/* Insights Drawer */}
-      <InsightsDrawer
-        open={insightsOpen}
-        tab={insightsTab}
-        setTab={setInsightsTab}
-        onClose={() => setInsightsOpen(false)}
-        currentChatId={currentChatId ?? null}
-        memoryHook={memory}
-      />
     </div>
   );
 }

@@ -28,7 +28,29 @@ const config = {
       fs: false,
       net: false,
       tls: false,
+      dns: false,
+      child_process: false,
+      cluster: false,
     };
+
+    // Exclude server-only modules from client bundles
+    if (!isServer) {
+      config.externals = config.externals || [];
+
+      // In production, exclude all Redis dependencies from client
+      if (!dev) {
+        config.externals.push({
+          ioredis: "commonjs ioredis",
+          redis: "commonjs redis",
+        });
+      } else {
+        // In development, allow dynamic requires for local testing
+        config.externals.push({
+          ioredis: "ioredis",
+          redis: "redis",
+        });
+      }
+    }
 
     return config;
   },
@@ -73,7 +95,7 @@ const config = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; media-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'self';",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.githubusercontent.com https://*.unsplash.com; connect-src 'self' wss://*.pusher.com https://*.pusher.com wss://sockjs-us3.pusher.com https://sockjs-us3.pusher.com wss://ws-us3.pusher.com https://ws-us3.pusher.com; media-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'self';",
           },
           {
             key: "Referrer-Policy",

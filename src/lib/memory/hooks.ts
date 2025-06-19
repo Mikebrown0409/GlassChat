@@ -19,6 +19,7 @@ export function useMemory(chatId: string | null, messages: HookMessage[]) {
   const summarizeHistoryMutation = api.memory.summarizeHistory.useMutation();
 
   const historyString = useMemo(() => {
+    if (!messages || !Array.isArray(messages)) return "";
     return messages.map((m) => `${m.role}: ${m.content}`).join("\\n");
   }, [messages]);
 
@@ -43,6 +44,7 @@ export function useMemory(chatId: string | null, messages: HookMessage[]) {
   }, [chatId, historyString, summarizeHistoryMutation]);
 
   useEffect(() => {
+    if (!messages || !Array.isArray(messages)) return;
     const messageCount = messages.length;
     if (
       messageCount > 0 &&

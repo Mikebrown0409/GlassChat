@@ -9,7 +9,7 @@ import {
   Plus,
   Settings as SettingsIcon,
 } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { memo, useCallback, useMemo, useState } from "react";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
@@ -55,6 +55,7 @@ export function ChatSidebar({
   const [renamingChat, setRenamingChat] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const router = useRouter();
+  const { data: session } = useSession();
 
   const chats = useLiveChats();
   // Collaboration store — determine if we are in a room and who is online
@@ -98,12 +99,19 @@ export function ChatSidebar({
               className="focus:ring-brand-primary h-8 w-full rounded-md border-none bg-zinc-800/70 px-2 text-sm text-zinc-100 focus:ring-2"
             />
           ) : (
-            <div className="group grid w-full grid-cols-[1fr_auto] items-center overflow-hidden rounded-md px-3 py-1 hover:bg-zinc-800">
+            <div
+              className={cn(
+                "group grid w-full grid-cols-[1fr_auto] items-center overflow-hidden rounded-md px-3 py-1",
+                currentChatId === chat.id
+                  ? "bg-zinc-800/70"
+                  : "hover:bg-zinc-800",
+              )}
+            >
               <button
                 type="button"
                 className={cn(
                   "min-w-0 cursor-pointer truncate text-left text-sm text-zinc-300 focus:outline-none",
-                  currentChatId === chat.id && "text-white",
+                  currentChatId === chat.id && "font-medium text-white",
                 )}
                 onClick={() => onSelectChat(chat.id)}
                 title={chat.title}
@@ -163,9 +171,14 @@ export function ChatSidebar({
       animate={{ width: sidebarOpen ? "16rem" : 0 }}
       transition={{ ease: DYNAMIC_EASE, duration: 0.3 }}
       className={cn(
-        "relative flex h-full flex-shrink-0 flex-col overflow-hidden rounded-br-2xl bg-zinc-900 text-zinc-200 shadow-inner",
-        sidebarOpen ? "w-64 border-r border-zinc-800/40" : "w-0 border-none",
+        "glass-effect flex h-full flex-shrink-0 flex-col overflow-hidden rounded-br-2xl text-zinc-200 backdrop-blur-lg",
+        sidebarOpen ? "w-64 border-r border-white/10" : "w-0 border-none",
       )}
+      style={{
+        background: "rgba(20,20,20,0.4)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+      }}
     >
       <div className="flex items-center gap-2 p-4 text-lg font-semibold">
         <MessageCircle size={20} />
@@ -220,17 +233,25 @@ export function ChatSidebar({
                 Team
               </div>
               <div className="mt-2 flex flex-wrap gap-2 px-2">
-                {onlineUsers.map((u) => (
-                  <Avatar
-                    key={u.userId}
-                    className="border-surface-0 h-7 w-7 border-2 bg-zinc-700"
-                    title={u.userId}
-                  >
-                    <AvatarFallback className="text-[10px]">
-                      {u.userId.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
+                {onlineUsers.map((u, index) => {
+                  const userName = u.userName ?? u.userId;
+                  const displayChar = userName.charAt(0).toUpperCase();
+
+                  return (
+                    <Avatar
+                      key={`${u.userId}-${index}`}
+                      className="border-surface-0 h-7 w-7 border-2"
+                      style={{
+                        backgroundColor: u.color ?? "#444",
+                      }}
+                      title={userName}
+                    >
+                      <AvatarFallback className="text-[10px]">
+                        {displayChar}
+                      </AvatarFallback>
+                    </Avatar>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -240,7 +261,9 @@ export function ChatSidebar({
       {/* Bottom user/settings section */}
       <div className="flex items-center justify-between gap-2 border-t border-zinc-800 p-4">
         <Avatar>
-          <AvatarFallback>U</AvatarFallback>
+          <AvatarFallback>
+            {session?.user?.name?.charAt(0).toUpperCase() ?? "U"}
+          </AvatarFallback>
         </Avatar>
 
         <DropdownMenu>

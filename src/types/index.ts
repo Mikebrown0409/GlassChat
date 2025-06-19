@@ -4,4 +4,8 @@ export interface Message {
   content: string;
   createdAt: number;
   updatedAt?: number;
+  metadata?: {
+    sender: string;
+    isCollaborationMessage: boolean;
+  };
 }
