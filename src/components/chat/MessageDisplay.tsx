@@ -144,8 +144,8 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
             >
               <div
                 className={clsx(
-                  // Ensure bubble expands to contain all content
-                  "inline-block min-w-full rounded-2xl p-4 shadow-sm backdrop-blur-sm",
+                  // Ensure bubble expands to contain all content with consistent sizing
+                  "inline-block min-h-[3rem] min-w-full rounded-2xl p-4 shadow-sm backdrop-blur-sm transition-all duration-200",
                   // Current user: use the existing user styling
                   isCurrentUser &&
                     "text-primary bg-[color:var(--surface-user)]",

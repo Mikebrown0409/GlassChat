@@ -26,8 +26,19 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder();
     const readableStream = new ReadableStream({
       async start(controller) {
+        let isClosed = false;
+
+        const safeClose = () => {
+          if (!isClosed) {
+            isClosed = true;
+            controller.close();
+          }
+        };
+
         try {
           for await (const chunk of stream) {
+            if (isClosed) break;
+
             // Format as Server-Sent Events
             const data = JSON.stringify({
               content: chunk.content,
@@ -39,17 +50,22 @@ export async function POST(request: NextRequest) {
 
             if (chunk.isComplete) {
               controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-              controller.close();
+              safeClose();
               return;
             }
           }
+
+          // If we exit the loop without isComplete, close the stream
+          safeClose();
         } catch (error) {
           console.error("Streaming error:", error);
-          const errorData = JSON.stringify({
-            error: error instanceof Error ? error.message : "Unknown error",
-          });
-          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
-          controller.close();
+          if (!isClosed) {
+            const errorData = JSON.stringify({
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
+            controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+            safeClose();
+          }
         }
       },
     });

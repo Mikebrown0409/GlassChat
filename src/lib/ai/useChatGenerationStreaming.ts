@@ -186,6 +186,14 @@ Always apply these rules while answering based on the provided message history.`
             if (line.startsWith("data: ")) {
               const data = line.slice(6);
               if (data === "[DONE]") {
+                // Update the database with the final content
+                if (accumulatedContent) {
+                  await syncManager.updateMessage(
+                    messageId,
+                    accumulatedContent,
+                  );
+                }
+
                 setStreamingState({
                   isStreaming: false,
                   currentStreamContent: "",
@@ -202,13 +210,8 @@ Always apply these rules while answering based on the provided message history.`
                 if (parsed.content) {
                   accumulatedContent += parsed.content;
 
-                  // Update the message in the database
-                  await syncManager.updateMessage(
-                    messageId,
-                    accumulatedContent,
-                  );
-
-                  // Update the UI state
+                  // Only update the UI state during streaming
+                  // Don't update the database until streaming is complete
                   setStreamingState((prev) => ({
                     ...prev,
                     currentStreamContent: accumulatedContent,
@@ -225,7 +228,11 @@ Always apply these rules while answering based on the provided message history.`
         reader.releaseLock();
       }
 
-      // Stream completed
+      // Stream completed - update the database with final content
+      if (accumulatedContent) {
+        await syncManager.updateMessage(messageId, accumulatedContent);
+      }
+
       setStreamingState({
         isStreaming: false,
         currentStreamContent: "",

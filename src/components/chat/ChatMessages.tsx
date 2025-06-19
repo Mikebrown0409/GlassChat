@@ -63,7 +63,8 @@ export function ChatMessages({
   return (
     <div
       ref={viewportRef}
-      className="chat-viewport glass-scrollbar relative pb-28"
+      className="chat-viewport glass-scrollbar relative scroll-smooth pb-28"
+      style={{ scrollBehavior: "smooth" }}
     >
       {messages.length === 0 ? (
         <motion.div
