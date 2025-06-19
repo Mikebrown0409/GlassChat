@@ -633,6 +633,17 @@ class SyncManager {
     }
   }
 
+  async updateMessage(id: string, content: string): Promise<void> {
+    await db.updateSyncableEntity(db.messages, id, {
+      content,
+    });
+
+    // Debounced sync
+    if (this.isOnline) {
+      this.debouncedSync();
+    }
+  }
+
   // Helper methods for getting sync data (use hooks.ts for React components)
   async getSyncStats(): Promise<SyncStats> {
     const pendingChats = await db.chats

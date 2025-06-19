@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
-import { useChatGeneration } from "~/lib/ai/useChatGeneration";
+import { useChatGenerationStreaming } from "~/lib/ai/useChatGenerationStreaming";
 import { useCollaborationBridge } from "~/lib/collaboration-v2/bridge";
 import { db } from "~/lib/db";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
@@ -305,10 +305,11 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   );
   const {
     isTyping,
+    isStreaming,
     generateResponseIsPending,
     handleSubmit: handleSubmitFromHook,
     handleStop,
-  } = useChatGeneration(effectiveChatId, messages, selectedModelId);
+  } = useChatGenerationStreaming(effectiveChatId, messages, selectedModelId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
