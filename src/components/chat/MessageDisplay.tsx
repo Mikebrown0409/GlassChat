@@ -34,6 +34,53 @@ const TypewriterContent = dynamic(
   },
 );
 
+// Wrap streaming logic to comply with hooks rules
+function StreamingWrapper({
+  streamingContent,
+  message,
+  onUpdateMessage,
+}: {
+  streamingContent: string | undefined;
+  message: Message;
+  onUpdateMessage?: (id: string, newContent: string) => void;
+}) {
+  const [localStream, setLocalStream] = React.useState<string | null>(null);
+  const [typingDone, setTypingDone] = React.useState(false);
+
+  React.useEffect(() => {
+    if (streamingContent !== undefined) {
+      setLocalStream(streamingContent);
+      setTypingDone(false);
+    }
+  }, [streamingContent]);
+
+  if (!typingDone && localStream !== null) {
+    return (
+      <TypewriterContent
+        content={localStream}
+        role={message.role}
+        isStreaming={streamingContent !== undefined}
+        onDone={() => setTypingDone(true)}
+        _messageId={message.id}
+        _onUpdateMessage={(newContent) =>
+          onUpdateMessage?.(message.id, newContent)
+        }
+      />
+    );
+  }
+
+  return (
+    <MarkdownContent
+      content={message.content}
+      role={message.role}
+      _messageId={message.id}
+      _onUpdateMessage={(newContent) =>
+        onUpdateMessage?.(message.id, newContent)
+      }
+    />
+  );
+}
+
 export const MessageDisplay = memo(function MessageDisplayComponent({
   message,
   _isTyping,
@@ -157,46 +204,11 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                 )}
               >
                 <div className="prose prose-base dark:prose-invert word-wrap max-w-none text-[16px] leading-relaxed break-words">
-                  {(() => {
-                    const [localStream, setLocalStream] = React.useState<
-                      string | null
-                    >(null);
-                    const [typingDone, setTypingDone] = React.useState(false);
-
-                    // update localStream when parent streams
-                    React.useEffect(() => {
-                      if (streamingContent !== undefined) {
-                        setLocalStream(streamingContent);
-                        setTypingDone(false);
-                      }
-                    }, [streamingContent]);
-
-                    if (!typingDone && localStream !== null) {
-                      return (
-                        <TypewriterContent
-                          content={localStream}
-                          role={message.role}
-                          isStreaming={streamingContent !== undefined}
-                          onDone={() => setTypingDone(true)}
-                          _messageId={message.id}
-                          _onUpdateMessage={(newContent) =>
-                            onUpdateMessage?.(message.id, newContent)
-                          }
-                        />
-                      );
-                    }
-
-                    return (
-                      <MarkdownContent
-                        content={message.content}
-                        role={message.role}
-                        _messageId={message.id}
-                        _onUpdateMessage={(newContent) =>
-                          onUpdateMessage?.(message.id, newContent)
-                        }
-                      />
-                    );
-                  })()}
+                  <StreamingWrapper
+                    streamingContent={streamingContent}
+                    message={message}
+                    onUpdateMessage={onUpdateMessage}
+                  />
                 </div>
               </div>
             </TextSelectionHandler>
