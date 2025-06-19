@@ -61,7 +61,8 @@ function MarkdownTableWrapper({ children }: { children?: React.ReactNode }) {
     >
       <table
         ref={tableRef}
-        className="min-w-full table-auto border-collapse text-left whitespace-nowrap"
+        className="min-w-full table-auto border-collapse text-left"
+        style={{ tableLayout: "fixed" }}
       >
         {children}
       </table>
@@ -115,7 +116,13 @@ export default function MarkdownContent({
         ),
         td: ({ children, ...props }) => (
           <td
-            className="border-b border-zinc-700 px-3 py-2 align-top text-sm break-words whitespace-pre-wrap dark:border-zinc-700"
+            className="border-b border-zinc-700 px-3 py-2 align-top text-sm break-words"
+            style={{
+              wordWrap: "break-word",
+              wordBreak: "break-word",
+              maxWidth: "200px",
+              whiteSpace: "normal",
+            }}
             {...props}
           >
             {children}

@@ -335,6 +335,36 @@ export function useCollaborationBridge(roomId: string | null) {
         return;
       }
 
+      // Prevent AI from responding to its own messages
+      if (isSendingToAI) {
+        console.log("🚫 AI is already generating a response, skipping");
+        return;
+      }
+
+      // Check if this is a request to respond to an AI message (prevent loops)
+      try {
+        const { db } = await import("~/lib/db");
+        const recentMessages = await db.messages
+          .where("chatId")
+          .equals(bridgedRoom.chatId)
+          .reverse()
+          .limit(3) // Check last 3 messages
+          .toArray();
+
+        // If the most recent message is from assistant, don't respond
+        if (
+          recentMessages.length > 0 &&
+          recentMessages[0]?.role === "assistant"
+        ) {
+          console.log(
+            "🚫 Last message was from AI, not responding to avoid loop",
+          );
+          return;
+        }
+      } catch (error) {
+        console.warn("Failed to check recent messages:", error);
+      }
+
       setIsSendingToAI(true);
       try {
         // Import required modules dynamically to avoid circular dependencies
