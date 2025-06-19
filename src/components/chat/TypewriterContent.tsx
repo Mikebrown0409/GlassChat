@@ -36,7 +36,9 @@ export function TypewriterContent({
       return;
     }
 
-    const diff = content.slice(displayed.length);
+    // Calculate new content that has not yet been queued or displayed
+    const alreadyHandled = displayed.length + queueRef.current.length;
+    const diff = content.slice(alreadyHandled);
     if (diff) {
       queueRef.current.push(...diff.split(""));
       // Kick animation loop if not already running
