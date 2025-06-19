@@ -173,6 +173,29 @@ Always apply these rules while answering based on the provided message history.`
 
       const decoder = new TextDecoder();
       let accumulatedContent = "";
+      // Buffer to throttle UI state updates so we don't re-render on every single token
+      let pendingBuffer = "";
+      let flushTimer: NodeJS.Timeout | null = null;
+
+      const flushBuffer = () => {
+        if (pendingBuffer) {
+          accumulatedContent += pendingBuffer;
+
+          // Update UI once per flush cycle
+          setStreamingState((prev) => ({
+            ...prev,
+            currentStreamContent: accumulatedContent,
+          }));
+
+          pendingBuffer = "";
+        }
+        flushTimer = null;
+      };
+
+      const scheduleFlush = () => {
+        // Use nullish coalescing assignment to satisfy eslint rule
+        flushTimer ??= setTimeout(flushBuffer, 60); // ~16fps (chatGPT-like)
+      };
 
       try {
         while (true) {
@@ -186,6 +209,16 @@ Always apply these rules while answering based on the provided message history.`
             if (line.startsWith("data: ")) {
               const data = line.slice(6);
               if (data === "[DONE]") {
+                // Flush any remaining buffered tokens before finishing
+                if (flushTimer) {
+                  clearTimeout(flushTimer);
+                  flushTimer = null;
+                }
+                if (pendingBuffer) {
+                  accumulatedContent += pendingBuffer;
+                  pendingBuffer = "";
+                }
+
                 // Update the database with the final content
                 if (accumulatedContent) {
                   await syncManager.updateMessage(
@@ -208,14 +241,8 @@ Always apply these rules while answering based on the provided message history.`
                   isComplete?: boolean;
                 };
                 if (parsed.content) {
-                  accumulatedContent += parsed.content;
-
-                  // Only update the UI state during streaming
-                  // Don't update the database until streaming is complete
-                  setStreamingState((prev) => ({
-                    ...prev,
-                    currentStreamContent: accumulatedContent,
-                  }));
+                  pendingBuffer += parsed.content;
+                  scheduleFlush();
                 }
               } catch {
                 // Skip invalid JSON
@@ -228,7 +255,20 @@ Always apply these rules while answering based on the provided message history.`
         reader.releaseLock();
       }
 
-      // Stream completed - update the database with final content
+      // Stream completed - flush remaining buffer and update DB/UI
+      if (flushTimer) {
+        clearTimeout(flushTimer);
+        flushTimer = null;
+      }
+      if (pendingBuffer) {
+        accumulatedContent += pendingBuffer;
+        pendingBuffer = "";
+        setStreamingState((prev) => ({
+          ...prev,
+          currentStreamContent: accumulatedContent,
+        }));
+      }
+
       if (accumulatedContent) {
         await syncManager.updateMessage(messageId, accumulatedContent);
       }
