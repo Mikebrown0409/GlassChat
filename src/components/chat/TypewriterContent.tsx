@@ -44,9 +44,17 @@ export function TypewriterContent({
       // Kick animation loop if not already running
       if (!animRef.current) {
         const step = () => {
-          const nextChar = queueRef.current.shift();
-          if (nextChar) {
-            setDisplayed((prev) => prev + nextChar);
+          // Adaptive batch size: 1 char/frame for first 300 chars, then +1 every 300 chars up to 4
+          const totalPrinted = displayed.length;
+          const batchSize = Math.min(4, 1 + Math.floor(totalPrinted / 300));
+
+          let pushed = 0;
+          while (pushed < batchSize && queueRef.current.length) {
+            const chr = queueRef.current.shift();
+            if (chr) {
+              pushed += 1;
+              setDisplayed((prev) => prev + chr);
+            }
           }
 
           if (queueRef.current.length) {
