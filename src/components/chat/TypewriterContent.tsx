@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MarkdownContent from "./MarkdownContent";
 
 interface TypewriterContentProps {
@@ -20,28 +20,65 @@ export function TypewriterContent({
 }: TypewriterContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when content updates
+  /* Smooth character animation -------------------------------------------------- */
+  const [displayed, setDisplayed] = useState("");
+  const queueRef = useRef<string[]>([]);
+  const animRef = useRef<number | null>(null);
+
+  // Whenever upstream streaming content grows, push the diff into queue
   useEffect(() => {
-    const container = containerRef.current?.closest(".chat-viewport");
-    if (container && isStreaming) {
-      const isNearBottom =
-        container.scrollHeight - container.scrollTop - container.clientHeight <
-        100;
-      if (isNearBottom) {
-        setTimeout(() => {
-          container.scrollTo({
-            top: container.scrollHeight,
-            behavior: "smooth",
-          });
-        }, 50);
+    if (!isStreaming) {
+      // When streaming ends, jump to full content immediately
+      setDisplayed(content);
+      queueRef.current = [];
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+      animRef.current = null;
+      return;
+    }
+
+    const diff = content.slice(displayed.length);
+    if (diff) {
+      queueRef.current.push(...diff.split(""));
+      // Kick animation loop if not already running
+      if (!animRef.current) {
+        const step = () => {
+          const nextChar = queueRef.current.shift();
+          if (nextChar) {
+            setDisplayed((prev) => prev + nextChar);
+          }
+
+          if (queueRef.current.length) {
+            animRef.current = requestAnimationFrame(step);
+          } else {
+            animRef.current = null;
+          }
+        };
+        animRef.current = requestAnimationFrame(step);
       }
     }
-  }, [content, isStreaming]);
+  }, [content, isStreaming, displayed.length]);
+
+  /* Auto-scroll ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!isStreaming) return;
+    const container = containerRef.current?.closest(".chat-viewport");
+    if (!container) return;
+
+    const raf = requestAnimationFrame(() => {
+      const isNearBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight <
+        120;
+      if (isNearBottom) {
+        container.scrollTop = container.scrollHeight; // instant for minimal jitter
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [displayed, isStreaming]);
 
   // Display content with cursor when streaming
   const displayContent = useMemo(() => {
-    return isStreaming ? content + "▊" : content;
-  }, [content, isStreaming]);
+    return isStreaming ? displayed + "▊" : displayed;
+  }, [displayed, isStreaming]);
 
   return (
     <div
