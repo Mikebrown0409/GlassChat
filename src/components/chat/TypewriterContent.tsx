@@ -22,17 +22,25 @@ export function TypewriterContent({
 
   /* Smooth character animation -------------------------------------------------- */
   const [displayed, setDisplayed] = useState("");
+  const displayedRef = useRef("");
   const queueRef = useRef<string[]>([]);
   const animRef = useRef<number | null>(null);
+  const pauseUntilRef = useRef<number>(0);
+
+  /* Blinking cursor ------------------------------------------- */
+  const [cursorOn, setCursorOn] = useState(true);
+  useEffect(() => {
+    if (!isStreaming) return;
+    const id = setInterval(() => setCursorOn((v) => !v), 500);
+    return () => clearInterval(id);
+  }, [isStreaming]);
 
   // Whenever upstream streaming content grows, push the diff into queue
   useEffect(() => {
     if (!isStreaming) {
       // When streaming ends, jump to full content immediately
       setDisplayed(content);
-      queueRef.current = [];
-      if (animRef.current) cancelAnimationFrame(animRef.current);
-      animRef.current = null;
+      displayedRef.current = "";
       return;
     }
 
@@ -44,8 +52,13 @@ export function TypewriterContent({
       // Kick animation loop if not already running
       if (!animRef.current) {
         const step = () => {
-          // Adaptive batch size: 1 char/frame for first 300 chars, then +1 every 300 chars up to 4
-          const totalPrinted = displayed.length;
+          const now = Date.now();
+          if (now < pauseUntilRef.current) {
+            animRef.current = requestAnimationFrame(step);
+            return;
+          }
+
+          const totalPrinted = displayedRef.current.length;
           const batchSize = Math.min(4, 1 + Math.floor(totalPrinted / 300));
 
           let pushed = 0;
@@ -54,10 +67,14 @@ export function TypewriterContent({
             if (chr) {
               pushed += 1;
               setDisplayed((prev) => prev + chr);
+              // punctuation pause
+              if (/[\.\?\!]/.test(chr) && queueRef.current.length) {
+                pauseUntilRef.current = Date.now() + 180; // 180ms pause
+              }
             }
           }
 
-          if (queueRef.current.length) {
+          if (displayedRef.current.length) {
             animRef.current = requestAnimationFrame(step);
           } else {
             animRef.current = null;
@@ -87,8 +104,13 @@ export function TypewriterContent({
 
   // Display content with cursor when streaming
   const displayContent = useMemo(() => {
-    return isStreaming ? displayed + "▊" : displayed;
-  }, [displayed, isStreaming]);
+    return isStreaming ? displayed + (cursorOn ? "▊" : "") : displayed;
+  }, [displayed, isStreaming, cursorOn]);
+
+  // keep ref in sync
+  useEffect(() => {
+    displayedRef.current = displayed;
+  }, [displayed]);
 
   return (
     <div
