@@ -6,7 +6,6 @@ import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useChatGeneration } from "~/lib/ai/useChatGeneration";
 import { useCollaborationBridge } from "~/lib/collaboration-v2/bridge";
 import { db } from "~/lib/db";
-import { useMemory } from "~/lib/memory/hooks";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
 
 import { useMediaQuery } from "~/hooks/useMediaQuery";
@@ -130,7 +129,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
-  const memory = useMemory(effectiveChatId ?? null, messages);
+  // const _memory = useMemory(effectiveChatId ?? null, messages);
 
   // Track URL room join attempts to prevent infinite loops
   const [urlRoomJoined, setUrlRoomJoined] = useState<string | null>(null);

@@ -100,10 +100,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     // Local ref to the trigger button to calculate dropdown position
     const triggerRef = useRef<HTMLButtonElement>(null);
 
-    const [dropdownCoords, setDropdownCoords] = useState<{
-      x: number;
-      y: number;
-    } | null>(null);
+    // const [_dropdownCoords, setDropdownCoords] = useState<{
+    //   x: number;
+    //   y: number;
+    // } | null>(null);
 
     // Ref to measure dropdown height after it renders
     const dropdownRefInternal = useRef<HTMLDivElement>(null);
@@ -117,16 +117,16 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
         if (!rect) return;
 
         // Default gap between dropdown and trigger
-        const GAP = 6;
+        // const GAP = 6;
 
         // Measure dropdown height if already rendered
-        const dropdownHeight = dropdownRefInternal.current?.offsetHeight ?? 0;
+        // const dropdownHeight = dropdownRefInternal.current?.offsetHeight ?? 0;
 
-        setDropdownCoords({
-          x: rect.right - 224 /* dropdown width */,
-          // Position so the dropdown sits above the trigger
-          y: rect.top - dropdownHeight - GAP,
-        }); // 224px = w-56 in Tailwind
+        // setDropdownCoords({
+        //   x: rect.right - 224 /* dropdown width */,
+        //   // Position so the dropdown sits above the trigger
+        //   y: rect.top - dropdownHeight - GAP,
+        // }); // 224px = w-56 in Tailwind
       };
 
       calcCoords();
@@ -153,7 +153,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       };
       document.addEventListener("mousedown", handleOutside);
       return () => document.removeEventListener("mousedown", handleOutside);
-    }, [modelDropdownOpen]);
+    }, [modelDropdownOpen, setModelDropdownOpen]);
 
     const handleSend = async () => {
       if (!input.trim() && attachments.length === 0) return;

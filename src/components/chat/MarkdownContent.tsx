@@ -24,7 +24,7 @@ interface Props {
 // Previously attempted to auto-convert tabular-looking text into markdown tables.
 // This heuristic proved too aggressive (e.g. turning simple bullet lists into tables).
 // We now disable it and leave author content untouched.
-const normalizeToMarkdownTable = (src: string): string => src;
+// const normalizeToMarkdownTable = (src: string): string => src;
 
 // Wrapper to render tables with copy-to-markdown capability
 function MarkdownTableWrapper({ children }: { children?: React.ReactNode }) {

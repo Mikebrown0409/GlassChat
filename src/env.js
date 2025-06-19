@@ -36,6 +36,11 @@ export const env = createEnv({
     PUSHER_SECRET: z.string().optional(),
     PUSHER_CLUSTER: z.string().optional(),
 
+    // Memory system configuration
+    MEMORY_RETENTION_DAYS: z.coerce.number().min(1).max(365).default(90),
+    MAX_MEMORIES_PER_CHAT: z.coerce.number().min(10).max(1000).default(100),
+    MEMORY_CLEANUP_BATCH_SIZE: z.coerce.number().min(10).max(200).default(50),
+
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -72,6 +77,9 @@ export const env = createEnv({
     PUSHER_KEY: process.env.PUSHER_KEY,
     PUSHER_SECRET: process.env.PUSHER_SECRET,
     PUSHER_CLUSTER: process.env.PUSHER_CLUSTER,
+    MEMORY_RETENTION_DAYS: process.env.MEMORY_RETENTION_DAYS,
+    MAX_MEMORIES_PER_CHAT: process.env.MAX_MEMORIES_PER_CHAT,
+    MEMORY_CLEANUP_BATCH_SIZE: process.env.MEMORY_CLEANUP_BATCH_SIZE,
     NEXT_PUBLIC_PUSHER_KEY: process.env.NEXT_PUBLIC_PUSHER_KEY,
     NEXT_PUBLIC_PUSHER_CLUSTER: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
     NODE_ENV: process.env.NODE_ENV,

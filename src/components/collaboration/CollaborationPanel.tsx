@@ -29,7 +29,6 @@ import { useCollaboration } from "~/lib/collaboration/hooks";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import {
   Role,
-  type CollaborationEvent,
   type CollaborationMessage,
   type CollaborationRoom,
   type CollaborationUser,
@@ -61,7 +60,7 @@ export function CollaborationPanel({
     return localStorage.getItem("collabRoomId");
   });
   const [showUserSetup, setShowUserSetup] = useState(false);
-  const [userName, setUserName] = useState("");
+  const [userName] = useState("");
   const [messageInput, setMessageInput] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -166,23 +165,23 @@ export function CollaborationPanel({
   useEffect(() => {
     if (!currentRoomId) return;
 
-    const handleUserJoined = (event: CollaborationEvent) => {
-      const userData = event.data as { user: { name: string } };
-      console.log("User joined:", userData.user.name);
-    };
+    // const _handleUserJoined = (event: CollaborationEvent) => {
+    //   const userData = event.data as { user: { name: string } };
+    //   console.log("User joined:", userData.user.name);
+    // };
 
-    const handleUserLeft = (event: CollaborationEvent) => {
-      const userData = event.data as { user: { name: string } };
-      console.log("User left:", userData.user.name);
-    };
+    // const _handleUserLeft = (event: CollaborationEvent) => {
+    //   const userData = event.data as { user: { name: string } };
+    //   console.log("User left:", userData.user.name);
+    // };
 
-    const handleModeSwitch = (event: CollaborationEvent) => {
-      const modeData = event.data as { isLiveCodingMode: boolean };
-      console.log(
-        "Live coding mode:",
-        modeData.isLiveCodingMode ? "enabled" : "disabled",
-      );
-    };
+    // const _handleModeSwitch = (event: CollaborationEvent) => {
+    //   const modeData = event.data as { isLiveCodingMode: boolean };
+    //   console.log(
+    //     "Live coding mode:",
+    //     modeData.isLiveCodingMode ? "enabled" : "disabled",
+    //   );
+    // };
 
     // Events are now handled through polling in the collaboration hook
     // Disabled excessive event logging for performance
@@ -194,21 +193,21 @@ export function CollaborationPanel({
     return undefined;
   }, [currentRoomId, collaboration.events]);
 
-  const handleCreateUser = async () => {
-    if (!userName.trim()) return;
+  // const _handleCreateUser = async () => {
+  //   if (!userName.trim()) return;
 
-    try {
-      await collaboration.createUser(userName.trim());
-      setShowUserSetup(false);
+  //   try {
+  //     await collaboration.createUser(userName.trim());
+  //     setShowUserSetup(false);
 
-      // Auto-create or join a room for the current chat
-      if (currentChatId && collaboration.rooms.length === 0) {
-        void handleCreateRoom();
-      }
-    } catch (error: unknown) {
-      console.error("Failed to create user:", error);
-    }
-  };
+  //     // Auto-create or join a room for the current chat
+  //     if (currentChatId && collaboration.rooms.length === 0) {
+  //       void handleCreateRoom();
+  //     }
+  //   } catch (error: unknown) {
+  //     console.error("Failed to create user:", error);
+  //   }
+  // };
 
   const handleCreateRoom = async () => {
     if (!currentChatId) return;

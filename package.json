@@ -45,7 +45,8 @@
     "mock:populate": "tsx scripts/populate-mock-data.ts",
     "test:ui": "npm run mock:populate && npm run dev",
     "lighthouse:audit": "lighthouse http://localhost:3000 --output=json --output-path=./lighthouse-report.json --quiet --chrome-flags='--headless'",
-    "ws:dev": "tsx src/server/ws/gateway.ts"
+    "ws:dev": "tsx src/server/ws/gateway.ts",
+    "cleanup:memory": "tsx scripts/cleanup-memory.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.2",

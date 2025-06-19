@@ -12,7 +12,7 @@ interface Message {
   createdAt: number;
 }
 
-export function useChatGeneration(chatId: string) {
+export function useChatGeneration(_chatId: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);

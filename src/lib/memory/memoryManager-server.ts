@@ -7,6 +7,11 @@ import type { SmartSummary } from "~/types/memory";
 const genAI = new GoogleGenerativeAI(env.GOOGLE_GENERATIVE_AI_API_KEY);
 
 class MemoryManagerServer {
+  // Memory retention configuration
+  private readonly MAX_MEMORIES_PER_CHAT = 100; // Keep last 100 memories
+  private readonly MEMORY_RETENTION_DAYS = 90; // Keep memories for 90 days
+  private readonly CLEANUP_BATCH_SIZE = 50; // Process cleanup in batches
+
   async getEmbedding(text: string): Promise<number[]> {
     const model = genAI.getGenerativeModel({ model: "embedding-001" });
     const result = await model.embedContent(text);
@@ -29,6 +34,9 @@ class MemoryManagerServer {
           metadata: metadata as Prisma.InputJsonValue,
         },
       });
+
+      // Trigger cleanup after adding new memory to prevent bloat
+      await this.cleanupOldMemories(chatId);
     } catch (error) {
       console.error("Failed to create memory entry:", error);
       throw new Error("Failed to create memory entry in database.");
@@ -36,6 +44,135 @@ class MemoryManagerServer {
 
     // This is where you would also trigger a re-summarization if needed.
     // For example, after every 5-10 new memories.
+  }
+
+  /**
+   * Intelligent memory cleanup that preserves important memories while removing old/redundant ones
+   */
+  async cleanupOldMemories(chatId: string): Promise<void> {
+    try {
+      // Get memory count for this chat
+      const memoryCount = await db.memoryEntry.count({
+        where: { chatId },
+      });
+
+      // Only cleanup if we exceed the limit
+      if (memoryCount <= this.MAX_MEMORIES_PER_CHAT) {
+        return;
+      }
+
+      console.log(
+        `🧹 Cleaning up memories for chat ${chatId} (${memoryCount} entries)`,
+      );
+
+      // Strategy 1: Remove memories older than retention period
+      const cutoffDate = new Date(
+        Date.now() - this.MEMORY_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+      );
+      const deletedOld = await db.memoryEntry.deleteMany({
+        where: {
+          chatId,
+          timestamp: {
+            lt: cutoffDate,
+          },
+        },
+      });
+
+      console.log(
+        `🗑️ Deleted ${deletedOld.count} old memories (older than ${this.MEMORY_RETENTION_DAYS} days)`,
+      );
+
+      // Strategy 2: If still over limit, keep only the most recent memories
+      const remainingCount = await db.memoryEntry.count({
+        where: { chatId },
+      });
+
+      if (remainingCount > this.MAX_MEMORIES_PER_CHAT) {
+        // Get IDs of memories to keep (most recent ones)
+        const memoriesToKeep = await db.memoryEntry.findMany({
+          where: { chatId },
+          select: { id: true },
+          orderBy: { timestamp: "desc" },
+          take: this.MAX_MEMORIES_PER_CHAT,
+        });
+
+        const keepIds = memoriesToKeep.map((m) => m.id);
+
+        // Delete memories not in the keep list
+        const deletedExcess = await db.memoryEntry.deleteMany({
+          where: {
+            chatId,
+            id: {
+              notIn: keepIds,
+            },
+          },
+        });
+
+        console.log(
+          `🗑️ Deleted ${deletedExcess.count} excess memories (keeping ${this.MAX_MEMORIES_PER_CHAT} most recent)`,
+        );
+      }
+
+      // Update summary after cleanup to ensure it reflects current state
+      const recentMemories = await db.memoryEntry.findMany({
+        where: { chatId },
+        orderBy: { timestamp: "desc" },
+        take: 20, // Use last 20 memories for summary
+      });
+
+      if (recentMemories.length > 0) {
+        const historyString = recentMemories
+          .reverse() // Chronological order
+          .map((m) => {
+            const role = (m.metadata as { role?: string })?.role ?? "user";
+            return `${role}: ${m.content}`;
+          })
+          .join("\n");
+
+        await this.summarizeAndStore(chatId, historyString);
+        console.log(`📝 Updated summary after memory cleanup`);
+      }
+    } catch (error) {
+      console.error(`Failed to cleanup memories for chat ${chatId}:`, error);
+      // Don't throw - cleanup failure shouldn't break memory addition
+    }
+  }
+
+  /**
+   * Bulk cleanup for maintenance - can be run as a scheduled job
+   */
+  async performGlobalMemoryCleanup(): Promise<void> {
+    console.log("🧹 Starting global memory cleanup...");
+
+    try {
+      // Get all unique chat IDs
+      const chatIds = await db.memoryEntry.findMany({
+        select: { chatId: true },
+        distinct: ["chatId"],
+      });
+
+      console.log(`Found ${chatIds.length} chats with memories`);
+
+      // Process in batches to avoid overwhelming the database
+      for (let i = 0; i < chatIds.length; i += this.CLEANUP_BATCH_SIZE) {
+        const batch = chatIds.slice(i, i + this.CLEANUP_BATCH_SIZE);
+
+        await Promise.all(
+          batch.map(({ chatId }) => this.cleanupOldMemories(chatId)),
+        );
+
+        console.log(
+          `Processed batch ${Math.floor(i / this.CLEANUP_BATCH_SIZE) + 1}/${Math.ceil(chatIds.length / this.CLEANUP_BATCH_SIZE)}`,
+        );
+
+        // Small delay to prevent database overload
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      console.log("✅ Global memory cleanup completed");
+    } catch (error) {
+      console.error("❌ Global memory cleanup failed:", error);
+    }
   }
 
   async generateSummary(

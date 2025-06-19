@@ -119,7 +119,7 @@ export default function TestCollabV2() {
               Participants
             </h2>
             <div className="space-y-2">
-              {room.participants?.map((participant, index) => (
+              {room.participants?.map((participant) => (
                 <div
                   key={participant.id}
                   className="flex items-center gap-3 rounded-lg bg-white/5 p-2"

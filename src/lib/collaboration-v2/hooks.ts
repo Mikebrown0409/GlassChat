@@ -170,7 +170,7 @@ export function useCollaboration(
         wsClientRef.current = null;
       }
     };
-  }, [roomId, participantName, queryClient, isWebSocketConnected]);
+  }, [roomId, participantName, queryClient, isWebSocketConnected, refreshData]);
 
   // Auto-join room when component mounts (only once)
   const joinRoom = useCallback(async () => {
@@ -224,8 +224,7 @@ export function useCollaboration(
       }
 
       try {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const result = await sendMessageToAIMutation.mutateAsync({
+        const _result = await sendMessageToAIMutation.mutateAsync({
           roomId,
           content,
           participantName, // Fixed: was 'sender', now matches server expectation
@@ -235,7 +234,7 @@ export function useCollaboration(
         void roomQuery.refetch();
         void messagesQuery.refetch();
 
-        return result;
+        return _result;
       } catch (error) {
         console.error("Failed to send message to AI:", error);
         throw error;
@@ -328,7 +327,7 @@ export function useCollaboration(
           setIsWebSocketConnected(false);
           setWsError("WebSocket connection failed");
         };
-      } catch (error) {
+      } catch {
         setWsError("Failed to create WebSocket connection");
         setIsWebSocketConnected(false);
       }
