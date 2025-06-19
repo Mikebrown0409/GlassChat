@@ -3,7 +3,7 @@
 import { clsx } from "clsx";
 import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
-import { memo } from "react";
+import React, { memo } from "react";
 import { TextToSpeechButton } from "~/components/ui/TextToSpeechButton";
 import type { Message } from "~/types/index";
 import { QuickActionsMenu } from "./QuickActionsMenu";
@@ -157,26 +157,46 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                 )}
               >
                 <div className="prose prose-base dark:prose-invert word-wrap max-w-none text-[16px] leading-relaxed break-words">
-                  {streamingContent ? (
-                    <TypewriterContent
-                      content={streamingContent}
-                      role={message.role}
-                      isStreaming={true}
-                      _messageId={message.id}
-                      _onUpdateMessage={(newContent) =>
-                        onUpdateMessage?.(message.id, newContent)
+                  {(() => {
+                    const [localStream, setLocalStream] = React.useState<
+                      string | null
+                    >(null);
+                    const [typingDone, setTypingDone] = React.useState(false);
+
+                    // update localStream when parent streams
+                    React.useEffect(() => {
+                      if (streamingContent !== undefined) {
+                        setLocalStream(streamingContent);
+                        setTypingDone(false);
                       }
-                    />
-                  ) : (
-                    <MarkdownContent
-                      content={message.content}
-                      role={message.role}
-                      _messageId={message.id}
-                      _onUpdateMessage={(newContent) =>
-                        onUpdateMessage?.(message.id, newContent)
-                      }
-                    />
-                  )}
+                    }, [streamingContent]);
+
+                    if (!typingDone && localStream !== null) {
+                      return (
+                        <TypewriterContent
+                          content={localStream}
+                          role={message.role}
+                          isStreaming={streamingContent !== undefined}
+                          onDone={() => setTypingDone(true)}
+                          _messageId={message.id}
+                          _onUpdateMessage={(newContent) =>
+                            onUpdateMessage?.(message.id, newContent)
+                          }
+                        />
+                      );
+                    }
+
+                    return (
+                      <MarkdownContent
+                        content={message.content}
+                        role={message.role}
+                        _messageId={message.id}
+                        _onUpdateMessage={(newContent) =>
+                          onUpdateMessage?.(message.id, newContent)
+                        }
+                      />
+                    );
+                  })()}
                 </div>
               </div>
             </TextSelectionHandler>

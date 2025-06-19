@@ -194,7 +194,7 @@ Always apply these rules while answering based on the provided message history.`
 
       const scheduleFlush = () => {
         // Use nullish coalescing assignment to satisfy eslint rule
-        flushTimer ??= setTimeout(flushBuffer, 60); // ~16fps (chatGPT-like)
+        flushTimer ??= setTimeout(flushBuffer, 32); // ~30fps for smoother streaming
       };
 
       try {
@@ -227,11 +227,28 @@ Always apply these rules while answering based on the provided message history.`
                   );
                 }
 
+                // Keep isStreaming true for a short grace period so the
+                // Typewriter animation can flush the remaining queue.
                 setStreamingState({
-                  isStreaming: false,
-                  currentStreamContent: "",
-                  streamingMessageId: null,
+                  isStreaming: true,
+                  currentStreamContent: accumulatedContent,
+                  streamingMessageId: messageId,
                 });
+
+                // After grace period (~2s) mark stream truly finished
+                setTimeout(
+                  () => {
+                    setStreamingState({
+                      isStreaming: false,
+                      currentStreamContent: accumulatedContent,
+                      streamingMessageId: null,
+                    });
+                  },
+                  Math.min(
+                    Math.max(accumulatedContent.length * 15, 1500),
+                    6000,
+                  ),
+                ); // 15ms per char, 1.5s-6s clamp
                 return;
               }
 
@@ -275,7 +292,7 @@ Always apply these rules while answering based on the provided message history.`
 
       setStreamingState({
         isStreaming: false,
-        currentStreamContent: "",
+        currentStreamContent: accumulatedContent,
         streamingMessageId: null,
       });
     } catch (error) {
