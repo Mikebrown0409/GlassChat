@@ -570,11 +570,11 @@ Always apply these rules while answering based on the provided message history.`
               "chars",
             );
 
-            // Improved table-aware chunking that preserves markdown structure
+            // Improved chunking that preserves code blocks and tables
             const chunks = [];
             let currentChunk = "";
 
-            // First, try to split at major section boundaries (headers)
+            // First, split at major section boundaries (headers)
             const majorSections = assistantContent.split(/(?=\n#{1,3}\s)/);
 
             for (const section of majorSections) {
@@ -592,94 +592,176 @@ Always apply these rules while answering based on the provided message history.`
 
               // If the section itself is too big, we need to split it more carefully
               if (section.length > maxMessageSize) {
-                // Check if this section contains tables
-                const hasTable =
-                  section.includes("|") && /\|.*\|.*\|/m.exec(section);
+                // Check for code blocks first (they should never be split)
+                const codeBlockRegex = /```[\s\S]*?```/g;
+                const codeBlocks = section.match(codeBlockRegex) ?? [];
 
-                if (hasTable) {
-                  // For table sections, split at paragraph boundaries but keep tables intact
-                  const paragraphs = section.split(/\n\s*\n/);
+                // If section has code blocks, try to keep them intact
+                if (codeBlocks.length > 0) {
+                  // Split section while preserving code blocks
+                  let remainingSection = section;
                   let tempChunk = "";
-                  let currentTable = "";
-                  let inTable = false;
 
-                  for (const paragraph of paragraphs) {
-                    // Check if this paragraph is part of a table
-                    const isTablePart =
-                      paragraph.includes("|") && /\|.*\|/m.exec(paragraph);
+                  // Process each code block
+                  for (const codeBlock of codeBlocks) {
+                    const beforeBlock = remainingSection.substring(
+                      0,
+                      remainingSection.indexOf(codeBlock),
+                    );
+                    const afterBlock = remainingSection.substring(
+                      remainingSection.indexOf(codeBlock) + codeBlock.length,
+                    );
 
-                    if (isTablePart) {
-                      if (!inTable) {
-                        inTable = true;
-                        currentTable = paragraph;
-                      } else {
-                        currentTable += "\n\n" + paragraph;
-                      }
-                    } else {
-                      // Not a table part
-                      if (inTable) {
-                        // End of table, try to add the complete table
-                        if (
-                          tempChunk.length + currentTable.length + 4 <=
-                          maxMessageSize
-                        ) {
-                          tempChunk += (tempChunk ? "\n\n" : "") + currentTable;
-                        } else {
-                          // Table is too big for current chunk, save current and start new
-                          if (tempChunk.trim()) {
-                            chunks.push(tempChunk.trim());
-                          }
-                          tempChunk = currentTable;
-                        }
-                        currentTable = "";
-                        inTable = false;
-                      }
-
-                      // Add regular paragraph
+                    // Add content before code block
+                    if (beforeBlock.trim()) {
                       if (
-                        tempChunk.length + paragraph.length + 4 <=
+                        tempChunk.length + beforeBlock.length + 2 <=
                         maxMessageSize
                       ) {
-                        tempChunk += (tempChunk ? "\n\n" : "") + paragraph;
+                        tempChunk +=
+                          (tempChunk ? "\n\n" : "") + beforeBlock.trim();
                       } else {
                         if (tempChunk.trim()) {
                           chunks.push(tempChunk.trim());
                         }
-                        tempChunk = paragraph;
+                        tempChunk = beforeBlock.trim();
                       }
                     }
-                  }
 
-                  // Handle any remaining table
-                  if (inTable && currentTable) {
+                    // Add code block (keep intact)
                     if (
-                      tempChunk.length + currentTable.length + 4 <=
+                      tempChunk.length + codeBlock.length + 2 <=
                       maxMessageSize
                     ) {
-                      tempChunk += (tempChunk ? "\n\n" : "") + currentTable;
+                      tempChunk += (tempChunk ? "\n\n" : "") + codeBlock;
+                    } else {
+                      // Code block is too big for current chunk
+                      if (tempChunk.trim()) {
+                        chunks.push(tempChunk.trim());
+                      }
+
+                      // If code block itself is too big, we have a problem but still add it
+                      if (codeBlock.length > maxMessageSize) {
+                        console.warn(
+                          "📦 Code block exceeds size limit, adding anyway:",
+                          codeBlock.length,
+                        );
+                      }
+                      tempChunk = codeBlock;
+                    }
+
+                    remainingSection = afterBlock;
+                  }
+
+                  // Add any remaining content
+                  if (remainingSection.trim()) {
+                    if (
+                      tempChunk.length + remainingSection.length + 2 <=
+                      maxMessageSize
+                    ) {
+                      tempChunk +=
+                        (tempChunk ? "\n\n" : "") + remainingSection.trim();
                     } else {
                       if (tempChunk.trim()) {
                         chunks.push(tempChunk.trim());
                       }
-                      tempChunk = currentTable;
+                      tempChunk = remainingSection.trim();
                     }
                   }
 
                   currentChunk = tempChunk;
                 } else {
-                  // No tables, use simpler paragraph-based splitting
-                  const paragraphs = section.split(/\n\s*\n/);
-                  for (const paragraph of paragraphs) {
-                    if (
-                      currentChunk.length + paragraph.length + 4 >
-                      maxMessageSize
-                    ) {
-                      if (currentChunk.trim()) {
-                        chunks.push(currentChunk.trim());
+                  // No code blocks, check for tables
+                  const hasTable =
+                    section.includes("|") && /\|.*\|.*\|/m.exec(section);
+
+                  if (hasTable) {
+                    // For table sections, split at paragraph boundaries but keep tables intact
+                    const paragraphs = section.split(/\n\s*\n/);
+                    let tempChunk = "";
+                    let currentTable = "";
+                    let inTable = false;
+
+                    for (const paragraph of paragraphs) {
+                      // Check if this paragraph is part of a table
+                      const isTablePart =
+                        paragraph.includes("|") && /\|.*\|/m.exec(paragraph);
+
+                      if (isTablePart) {
+                        if (!inTable) {
+                          inTable = true;
+                          currentTable = paragraph;
+                        } else {
+                          currentTable += "\n\n" + paragraph;
+                        }
+                      } else {
+                        // Not a table part
+                        if (inTable) {
+                          // End of table, try to add the complete table
+                          if (
+                            tempChunk.length + currentTable.length + 4 <=
+                            maxMessageSize
+                          ) {
+                            tempChunk +=
+                              (tempChunk ? "\n\n" : "") + currentTable;
+                          } else {
+                            // Table is too big for current chunk, save current and start new
+                            if (tempChunk.trim()) {
+                              chunks.push(tempChunk.trim());
+                            }
+                            tempChunk = currentTable;
+                          }
+                          currentTable = "";
+                          inTable = false;
+                        }
+
+                        // Add regular paragraph
+                        if (
+                          tempChunk.length + paragraph.length + 4 <=
+                          maxMessageSize
+                        ) {
+                          tempChunk += (tempChunk ? "\n\n" : "") + paragraph;
+                        } else {
+                          if (tempChunk.trim()) {
+                            chunks.push(tempChunk.trim());
+                          }
+                          tempChunk = paragraph;
+                        }
                       }
-                      currentChunk = paragraph;
-                    } else {
-                      currentChunk += (currentChunk ? "\n\n" : "") + paragraph;
+                    }
+
+                    // Handle any remaining table
+                    if (inTable && currentTable) {
+                      if (
+                        tempChunk.length + currentTable.length + 4 <=
+                        maxMessageSize
+                      ) {
+                        tempChunk += (tempChunk ? "\n\n" : "") + currentTable;
+                      } else {
+                        if (tempChunk.trim()) {
+                          chunks.push(tempChunk.trim());
+                        }
+                        tempChunk = currentTable;
+                      }
+                    }
+
+                    currentChunk = tempChunk;
+                  } else {
+                    // No tables or code blocks, use simpler paragraph-based splitting
+                    const paragraphs = section.split(/\n\s*\n/);
+                    for (const paragraph of paragraphs) {
+                      if (
+                        currentChunk.length + paragraph.length + 4 >
+                        maxMessageSize
+                      ) {
+                        if (currentChunk.trim()) {
+                          chunks.push(currentChunk.trim());
+                        }
+                        currentChunk = paragraph;
+                      } else {
+                        currentChunk +=
+                          (currentChunk ? "\n\n" : "") + paragraph;
+                      }
                     }
                   }
                 }

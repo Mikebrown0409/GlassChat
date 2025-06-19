@@ -54,12 +54,13 @@ function MarkdownTableWrapper({ children }: { children?: React.ReactNode }) {
 
   return (
     <div
-      className="relative my-4 max-h-96 overflow-auto rounded-lg border border-zinc-700 dark:border-zinc-600"
+      className="relative my-4 max-h-96 overflow-x-auto overflow-y-auto rounded-lg border border-zinc-700 dark:border-zinc-600"
       onCopy={handleCopy}
+      style={{ maxWidth: "100%" }}
     >
       <table
         ref={tableRef}
-        className="min-w-full table-auto border-collapse text-left"
+        className="min-w-full table-auto border-collapse text-left whitespace-nowrap"
       >
         {children}
       </table>
