@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateAIStream } from "~/lib/ai/models";
+import { createStreamTransformer } from "~/lib/ai/streamTransformer";
 import { AIModel, type AIMessage } from "~/lib/ai/types";
 
 const streamRequestSchema = z.object({
@@ -12,15 +13,27 @@ const streamRequestSchema = z.object({
       content: z.string(),
     }),
   ),
+  // Block-aware streaming options (Phase 1)
+  blockAware: z.boolean().optional().default(false),
+  streamMode: z
+    .enum(["passthrough", "simple", "block"])
+    .optional()
+    .default("passthrough"),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as unknown;
-    const { model, messages } = streamRequestSchema.parse(body);
+    const { model, messages, blockAware, streamMode } =
+      streamRequestSchema.parse(body);
 
-    // Create the stream
-    const stream = await generateAIStream(model, messages as AIMessage[]);
+    // Create the base stream
+    const baseStream = await generateAIStream(model, messages as AIMessage[]);
+
+    // Apply stream transformation based on configuration
+    const transformMode = blockAware ? streamMode || "simple" : "passthrough";
+    const streamTransformer = createStreamTransformer(transformMode);
+    const stream = streamTransformer(baseStream);
 
     // Create a readable stream for the response
     const encoder = new TextEncoder();
@@ -39,10 +52,15 @@ export async function POST(request: NextRequest) {
           for await (const chunk of stream) {
             if (isClosed) break;
 
-            // Format as Server-Sent Events
+            // Format as Server-Sent Events with block metadata
             const data = JSON.stringify({
               content: chunk.content,
               isComplete: chunk.isComplete,
+              // Include block metadata if available (Phase 1)
+              ...(chunk.block && {
+                block: chunk.block,
+                blockId: chunk.blockId,
+              }),
             });
 
             const sseData = `data: ${data}\n\n`;

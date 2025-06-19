@@ -17,6 +17,28 @@ export enum AIProvider {
   GOOGLE = "google",
 }
 
+// Block types for semantic streaming
+export enum BlockType {
+  PARAGRAPH = "paragraph",
+  CODE_BLOCK = "code_block",
+  HEADER = "header",
+  LIST = "list",
+  BLOCKQUOTE = "blockquote",
+  TABLE = "table",
+  INLINE = "inline", // For small chunks within larger blocks
+}
+
+export interface StreamBlock {
+  type: BlockType;
+  content: string;
+  metadata?: {
+    language?: string; // For code blocks
+    level?: number; // For headers (1-6)
+    ordered?: boolean; // For lists
+    complete?: boolean; // Whether this block is finished
+  };
+}
+
 export interface AIMessage {
   role: "user" | "assistant" | "system";
   content: string;
@@ -41,6 +63,9 @@ export interface AIStreamChunk {
     completionTokens: number;
     totalTokens: number;
   };
+  // Block-aware extensions (Phase 1)
+  block?: StreamBlock;
+  blockId?: string; // Unique identifier for block continuity
 }
 
 export interface AIResponse {
