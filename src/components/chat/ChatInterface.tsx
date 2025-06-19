@@ -640,7 +640,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           messages={messages}
           isTyping={isTyping}
           isPending={generateResponseIsPending}
-          streamingContent={isStreaming ? currentStreamContent : undefined}
+          streamingContent={currentStreamContent}
+          isStreaming={isStreaming}
           streamingMessageId={streamingMessageId}
           onTranslate={handleTranslateSelection}
           onExplain={handleExplainSelection}
