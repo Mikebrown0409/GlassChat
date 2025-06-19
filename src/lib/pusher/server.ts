@@ -2,7 +2,7 @@ import Pusher from "pusher";
 
 let pusher: Pusher | null = null;
 
-export function getPusherServer(): Pusher {
+export function getPusherServer(): Pusher | null {
   if (!pusher) {
     const appId = process.env.PUSHER_APP_ID;
     const key = process.env.PUSHER_KEY;
@@ -10,9 +10,10 @@ export function getPusherServer(): Pusher {
     const cluster = process.env.PUSHER_CLUSTER;
 
     if (!appId || !key || !secret || !cluster) {
-      throw new Error(
-        `Missing Pusher server credentials. AppId: ${!!appId}, Key: ${!!key}, Secret: ${!!secret}, Cluster: ${!!cluster}`,
+      console.warn(
+        `Missing Pusher server credentials. AppId: ${!!appId}, Key: ${!!key}, Secret: ${!!secret}, Cluster: ${!!cluster}. Pusher features will be disabled.`,
       );
+      return null;
     }
 
     // Remove any quotes that might be in the environment variables
@@ -45,7 +46,16 @@ export async function triggerCollaborationEvent(
   data: unknown,
 ): Promise<void> {
   const pusherServer = getPusherServer();
-  await pusherServer.trigger(`room-${roomId}`, event, data);
+  if (!pusherServer) {
+    console.warn("Pusher not configured, skipping collaboration event trigger");
+    return;
+  }
+  try {
+    await pusherServer.trigger(`room-${roomId}`, event, data);
+  } catch (error) {
+    console.error("Failed to trigger Pusher event:", error);
+    // Don't throw - let the operation continue without real-time updates
+  }
 }
 
 // Helper function to trigger chat message events
@@ -55,5 +65,14 @@ export async function triggerChatEvent(
   data: unknown,
 ): Promise<void> {
   const pusherServer = getPusherServer();
-  await pusherServer.trigger(`chat-${chatId}`, event, data);
+  if (!pusherServer) {
+    console.warn("Pusher not configured, skipping chat event trigger");
+    return;
+  }
+  try {
+    await pusherServer.trigger(`chat-${chatId}`, event, data);
+  } catch (error) {
+    console.error("Failed to trigger Pusher event:", error);
+    // Don't throw - let the operation continue without real-time updates
+  }
 }

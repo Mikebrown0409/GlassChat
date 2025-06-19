@@ -785,16 +785,28 @@ Always apply these rules while answering based on the provided message history.`
               const chunkPrefix =
                 chunks.length > 1 ? `[${i + 1}/${chunks.length}] ` : "";
 
-              await pusherCollab.sendMessage({
-                type: "chat_message",
-                content: chunkPrefix + chunk,
-                sender: "AI Assistant",
-                timestamp: Date.now(),
-              });
+              try {
+                await pusherCollab.sendMessage({
+                  type: "chat_message",
+                  content: chunkPrefix + chunk,
+                  sender: "AI Assistant",
+                  timestamp: Date.now(),
+                });
 
-              // Small delay between chunks to ensure proper ordering
-              if (!isLastChunk) {
-                await new Promise((resolve) => setTimeout(resolve, 150));
+                console.log(
+                  `✅ Sent chunk ${i + 1}/${chunks.length} (${chunk?.length ?? 0} chars)`,
+                );
+
+                // Small delay between chunks to ensure proper ordering
+                if (!isLastChunk) {
+                  await new Promise((resolve) => setTimeout(resolve, 150));
+                }
+              } catch (chunkError) {
+                console.error(
+                  `❌ Failed to send chunk ${i + 1}/${chunks.length}:`,
+                  chunkError,
+                );
+                // Continue with next chunk instead of failing completely
               }
             }
           } else {

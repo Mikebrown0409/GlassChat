@@ -60,7 +60,7 @@ export function CollaborationPanel({
     return localStorage.getItem("collabRoomId");
   });
   const [showUserSetup, setShowUserSetup] = useState(false);
-  const [userName] = useState("");
+  const [userName] = useState<string>(""); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [messageInput, setMessageInput] = useState("");
   const [copied, setCopied] = useState(false);
 

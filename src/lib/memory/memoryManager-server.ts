@@ -178,10 +178,22 @@ class MemoryManagerServer {
   async generateSummary(
     chatHistory: string,
   ): Promise<{ summary: string; keywords: string[] }> {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite-preview-06-17",
-    });
-    const prompt = `Based on the following chat history, provide a concise one-paragraph summary and a list of up to 5 main keywords (as a comma-separated list).
+    try {
+      if (!env.GOOGLE_GENERATIVE_AI_API_KEY) {
+        console.warn(
+          "Google AI API key not configured, skipping summary generation",
+        );
+        return {
+          summary: "Summary generation unavailable - API key not configured",
+          keywords: ["chat", "conversation"],
+        };
+      }
+
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash-lite-preview-06-17",
+      });
+
+      const prompt = `Based on the following chat history, provide a concise one-paragraph summary and a list of up to 5 main keywords (as a comma-separated list).
 
 Chat History:
 ---
@@ -192,16 +204,25 @@ Output format should be:
 Summary: [Your summary here]
 Keywords: [keyword1, keyword2, keyword3]`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
 
-    const summaryMatch = /Summary: (.*)/.exec(text);
-    const keywordsMatch = /Keywords: (.*)/.exec(text);
+      const summaryMatch = /Summary: (.*)/.exec(text);
+      const keywordsMatch = /Keywords: (.*)/.exec(text);
 
-    const summary = summaryMatch?.[1]?.trim() ?? "Could not generate summary.";
-    const keywords = keywordsMatch?.[1]?.split(",").map((k) => k.trim()) ?? [];
+      const summary =
+        summaryMatch?.[1]?.trim() ?? "Could not generate summary.";
+      const keywords =
+        keywordsMatch?.[1]?.split(",").map((k) => k.trim()) ?? [];
 
-    return { summary, keywords };
+      return { summary, keywords };
+    } catch (error) {
+      console.error("Failed to generate summary:", error);
+      return {
+        summary: "Error generating summary - please try again later",
+        keywords: ["error", "chat", "conversation"],
+      };
+    }
   }
 
   async summarizeAndStore(

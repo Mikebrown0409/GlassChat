@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import type { Pluggable } from "unified";
 import { CodeBlock } from "./CodeBlock";
+import { MermaidDiagram } from "./MermaidDiagram";
 
 const remarkBreaksTyped = remarkBreaks as unknown as Pluggable;
 const remarkMathTyped = remarkMath as unknown as Pluggable;
@@ -147,9 +148,7 @@ export default function MarkdownContent({
               const codeString = stringifyChildren(children).replace(/\n$/, "");
               return (
                 <div className="my-4">
-                  <CodeBlock language="mermaid" {...props}>
-                    {codeString}
-                  </CodeBlock>
+                  <MermaidDiagram chart={codeString} />
                 </div>
               );
             }
