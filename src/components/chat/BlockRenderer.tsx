@@ -21,7 +21,7 @@ export function HeaderBlock({
   onAnimationComplete,
   className,
 }: BlockComponentProps) {
-  const { block, isAnimating, displayContent } = renderedBlock;
+  const { block, isAnimating } = renderedBlock;
   const level = block.metadata?.level ?? 1;
 
   if (isAnimating) {
@@ -52,7 +52,7 @@ export function CodeBlock({
   onAnimationComplete,
   className,
 }: BlockComponentProps) {
-  const { block, isAnimating, displayContent } = renderedBlock;
+  const { block, isAnimating } = renderedBlock;
 
   if (isAnimating) {
     return (
@@ -82,7 +82,7 @@ export function ListBlock({
   onAnimationComplete,
   className,
 }: BlockComponentProps) {
-  const { block, isAnimating, displayContent } = renderedBlock;
+  const { block, isAnimating } = renderedBlock;
   const isOrdered = block.metadata?.ordered ?? false;
 
   if (isAnimating) {
@@ -117,7 +117,7 @@ export function BlockquoteBlock({
   onAnimationComplete,
   className,
 }: BlockComponentProps) {
-  const { block, isAnimating, displayContent } = renderedBlock;
+  const { block, isAnimating } = renderedBlock;
 
   if (isAnimating) {
     return (
@@ -147,7 +147,7 @@ export function TableBlock({
   onAnimationComplete,
   className,
 }: BlockComponentProps) {
-  const { block, isAnimating, displayContent } = renderedBlock;
+  const { block, isAnimating } = renderedBlock;
 
   if (isAnimating) {
     return (
@@ -177,7 +177,7 @@ export function ParagraphBlock({
   onAnimationComplete,
   className,
 }: BlockComponentProps) {
-  const { block, isAnimating, displayContent } = renderedBlock;
+  const { block, isAnimating } = renderedBlock;
 
   if (isAnimating) {
     return (
