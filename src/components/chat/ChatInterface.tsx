@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
-import { useChatGenerationStreaming } from "~/lib/ai/useChatGenerationStreaming";
+import { useUnifiedStreaming } from "~/lib/ai/useUnifiedStreaming";
 import { useCollaborationBridge } from "~/lib/collaboration-v2/bridge";
 import { db } from "~/lib/db";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
@@ -90,7 +90,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         effectiveChatId,
       });
     }
-  }, [roomIdFromUrl, currentRoomIdFromStore]);
+  }, [roomIdFromUrl, currentRoomIdFromStore, effectiveChatId]);
 
   // Debug logging for collaboration state changes (reduced frequency)
   useEffect(() => {
@@ -101,14 +101,19 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         users: collaboration.room.users?.length,
       });
     }
-  }, [currentRoomIdFromStore, collaboration.room?.id]);
+  }, [
+    currentRoomIdFromStore,
+    collaboration.room?.id,
+    collaboration.room?.chatId,
+    collaboration.room?.users?.length,
+  ]);
 
   // Load messages from the effective chat ID (shared room chat or personal chat)
   const rawMessages = useLiveMessages(effectiveChatId ?? "");
 
   // COLLABORATION FIX: In collaboration mode, use collaboration messages instead of regular messages
-  const messages =
-    collaboration.room && collaboration.messages.length > 0
+  const messages = useMemo(() => {
+    return collaboration.room && collaboration.messages.length > 0
       ? collaboration.messages.map((msg) => ({
           id: msg.id,
           content: msg.content,
@@ -125,6 +130,12 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           },
         }))
       : (rawMessages ?? []);
+  }, [
+    collaboration.room,
+    collaboration.messages,
+    effectiveChatId,
+    rawMessages,
+  ]);
 
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -306,12 +317,12 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   const {
     isTyping,
     isStreaming,
-    currentStreamContent,
+    streamingContent,
     streamingMessageId,
-    generateResponseIsPending,
-    handleSubmit: handleSubmitFromHook,
+    handleSubmit,
     handleStop,
-  } = useChatGenerationStreaming(effectiveChatId, messages, selectedModelId);
+    clearStreamingState,
+  } = useUnifiedStreaming(effectiveChatId, messages, selectedModelId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -551,7 +562,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     // **ALWAYS SEND TO LLM**: Main chat is always for LLM interaction
     // When in collaboration room, this creates shared LLM conversation via effectiveChatId
     // The collaboration panel has separate user-to-user chat
-    await handleSubmitFromHook(text, () => composerRef.current?.setInput(""));
+    await handleSubmit(text, () => composerRef.current?.setInput(""));
   };
 
   // NEW: Handle collaboration messages
@@ -564,15 +575,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     }
   };
 
-  // NEW: Handle AI messages in collaboration
-  const handleCollaborationAIMessage = async (content: string) => {
-    if (!collaboration.sendMessageToAI) return;
-    try {
-      await collaboration.sendMessageToAI(content);
-    } catch (error) {
-      console.error("Failed to send AI message:", error);
-    }
-  };
+  // Removed handleCollaborationAIMessage - now using unified streaming for all AI messages
 
   // Removed handleToggleMemory - memory functionality still works in background
 
@@ -639,15 +642,16 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         <ChatMessages
           messages={messages}
           isTyping={isTyping}
-          isPending={generateResponseIsPending}
-          streamingContent={currentStreamContent}
-          isStreaming={isStreaming}
+          isPending={false}
+          streamingContent={streamingContent}
           streamingMessageId={streamingMessageId}
           onTranslate={handleTranslateSelection}
           onExplain={handleExplainSelection}
           onSuggestionClick={handleSuggestionClick}
           onUpdateMessage={handleUpdateMessage}
           messagesEndRef={messagesEndRef}
+          onStreamingDone={clearStreamingState}
+          selectedModel={selectedModelId}
         />
 
         {/* Input Area (Composer) */}
@@ -655,11 +659,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           ref={composerRef}
           isTyping={isTyping}
           onSubmit={handleCollaborationMessage}
-          onSubmitToAI={
-            !!collaboration.room
-              ? handleCollaborationAIMessage
-              : handleComposerSubmit
-          }
+          onSubmitToAI={handleComposerSubmit} // **FIXED**: Always use unified streaming for AI messages
           onStop={handleStop}
           selectedModel={selectedModelId}
           setSelectedModel={setSelectedModelId}
@@ -668,11 +668,9 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           models={models}
           dropdownRef={dropdownRef}
           isCollaborationMode={!!collaboration.room}
-          isSendingToAI={collaboration.isSendingToAI}
+          isSendingToAI={isStreaming} // **FIXED**: Use unified streaming state instead of collaboration state
           disabled={
-            isTyping ||
-            collaboration.isSendingMessage ||
-            collaboration.isSendingToAI
+            isTyping || collaboration.isSendingMessage || isStreaming // **FIXED**: Use unified streaming state for AI-related disabling
           }
         />
       </main>

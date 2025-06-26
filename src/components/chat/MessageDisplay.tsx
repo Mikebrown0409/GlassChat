@@ -2,11 +2,12 @@
 
 import { clsx } from "clsx";
 import { useSession } from "next-auth/react";
-import dynamic from "next/dynamic";
 import React, { memo } from "react";
 import { TextToSpeechButton } from "~/components/ui/TextToSpeechButton";
 import type { Message } from "~/types/index";
+import MarkdownContent from "./MarkdownContent";
 import { QuickActionsMenu } from "./QuickActionsMenu";
+import { StreamingTypewriter } from "./StreamingTypewriter";
 import { TextSelectionHandler } from "./TextSelectionHandler";
 
 interface MessageDisplayProps {
@@ -18,68 +19,13 @@ interface MessageDisplayProps {
   _isNewMessage?: boolean;
   onSuggestionClick?: (text: string) => void;
   onUpdateMessage?: (id: string, newContent: string) => void;
+  onStreamingDone?: () => void;
+  selectedModel?: string;
 }
 
-const MarkdownContent = dynamic(() => import("./MarkdownContent"), {
-  ssr: false,
-});
+// UnifiedTypewriter removed – using ChunkTypewriter instead
 
-const TypewriterContent = dynamic(
-  () =>
-    import("./TypewriterContent").then((mod) => ({
-      default: mod.TypewriterContent,
-    })),
-  {
-    ssr: false,
-  },
-);
-
-// Wrap streaming logic to comply with hooks rules
-function StreamingWrapper({
-  streamingContent,
-  message,
-  onUpdateMessage,
-}: {
-  streamingContent: string | undefined;
-  message: Message;
-  onUpdateMessage?: (id: string, newContent: string) => void;
-}) {
-  const [localStream, setLocalStream] = React.useState<string | null>(null);
-  const [typingDone, setTypingDone] = React.useState(false);
-
-  React.useEffect(() => {
-    if (streamingContent !== undefined) {
-      setLocalStream(streamingContent);
-      setTypingDone(false);
-    }
-  }, [streamingContent]);
-
-  if (!typingDone && localStream !== null) {
-    return (
-      <TypewriterContent
-        content={localStream}
-        role={message.role}
-        isStreaming={streamingContent !== undefined}
-        onDone={() => setTypingDone(true)}
-        _messageId={message.id}
-        _onUpdateMessage={(newContent) =>
-          onUpdateMessage?.(message.id, newContent)
-        }
-      />
-    );
-  }
-
-  return (
-    <MarkdownContent
-      content={message.content}
-      role={message.role}
-      _messageId={message.id}
-      _onUpdateMessage={(newContent) =>
-        onUpdateMessage?.(message.id, newContent)
-      }
-    />
-  );
-}
+// (Deprecated) old StreamingWrapper retained to avoid import churn
 
 export const MessageDisplay = memo(function MessageDisplayComponent({
   message,
@@ -90,12 +36,38 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
   _isNewMessage,
   onSuggestionClick,
   onUpdateMessage,
+  onStreamingDone,
+  selectedModel,
 }: MessageDisplayProps) {
   const { data: session } = useSession();
 
   const handleCopy = (_text: string) => {
     // Optional: Add any additional copy handling logic here
   };
+
+  // Track when the streaming/typewriter animation is fully complete so we
+  // can safely reveal the quick-action menu and TTS button.
+  const [typingFinished, setTypingFinished] = React.useState(false);
+
+  // Reset local completion state whenever we render a brand-new message ID.
+  React.useEffect(() => {
+    setTypingFinished(false);
+  }, [message.id]);
+
+  // Handle animation completion from ChunkTypewriter
+  const handleAnimationComplete = React.useCallback(() => {
+    setTypingFinished(true);
+    // Only call onStreamingDone after the typewriter animation is complete
+    // This ensures the streaming state isn't cleared too early
+    onStreamingDone?.();
+  }, [onStreamingDone]);
+
+  // For non-streaming messages, mark as finished immediately
+  React.useEffect(() => {
+    if (streamingContent === undefined && !_isTyping) {
+      setTypingFinished(true);
+    }
+  }, [streamingContent, _isTyping]);
 
   // Check if this is a collaboration message and get sender info
   const isCollabMessage = Boolean(message.metadata?.isCollaborationMessage);
@@ -204,35 +176,84 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                 )}
               >
                 <div className="prose prose-base dark:prose-invert word-wrap max-w-none text-[16px] leading-relaxed break-words">
-                  <StreamingWrapper
-                    streamingContent={streamingContent}
-                    message={message}
-                    onUpdateMessage={onUpdateMessage}
-                  />
+                  {(() => {
+                    const shouldUseTypewriter = streamingContent !== undefined;
+
+                    // Helper function to determine model type from selectedModel string
+                    const getModelType = (model?: string): "gpt" | "gemini" => {
+                      if (!model) return "gpt";
+                      if (model.includes("gpt")) return "gpt";
+                      if (model.includes("gemini")) return "gemini";
+                      return "gpt"; // default
+                    };
+
+                    if (process.env.NODE_ENV === "development") {
+                      console.log(
+                        `[MessageDisplay] Render decision for ${message.id}:`,
+                        {
+                          shouldUseTypewriter,
+                          streamingContentLength: streamingContent?.length ?? 0,
+                          isTyping: _isTyping,
+                          modelType: getModelType(selectedModel),
+                          messageContent: message.content.slice(0, 50) + "...",
+                        },
+                      );
+                    }
+
+                    return shouldUseTypewriter ? (
+                      <StreamingTypewriter
+                        content={streamingContent ?? ""}
+                        isComplete={!_isTyping}
+                        modelType={getModelType(selectedModel)}
+                        messageId={message.id}
+                        role={message.role}
+                        onComplete={handleAnimationComplete}
+                        onUpdateMessage={(newContent) =>
+                          onUpdateMessage?.(message.id, newContent)
+                        }
+                      />
+                    ) : (
+                      <MarkdownContent
+                        content={message.content}
+                        role={message.role}
+                        isStreaming={false}
+                        _messageId={message.id}
+                        _onUpdateMessage={(newContent) =>
+                          onUpdateMessage?.(message.id, newContent)
+                        }
+                      />
+                    );
+                  })()}
                 </div>
               </div>
             </TextSelectionHandler>
 
-            {/* Meta controls inside bubble */}
-            {(message.role === "assistant" || isAIMessage) && (
-              <div className="mt-1.5 space-y-1">
-                <div className="text-muted flex items-center gap-2">
-                  {onSuggestionClick && (
-                    <QuickActionsMenu
-                      content={message.content}
-                      onSelect={onSuggestionClick}
+            {/* Meta controls inside bubble - only after streaming & typing complete */}
+            {typingFinished &&
+              !_isTyping &&
+              streamingContent === undefined &&
+              (message.role === "assistant" || isAIMessage) && (
+                <div className="mt-1.5 space-y-1">
+                  <div className="text-muted flex items-center gap-2">
+                    {onSuggestionClick && (
+                      <QuickActionsMenu
+                        content={message.content}
+                        onSelect={onSuggestionClick}
+                      />
+                    )}
+                    <TextToSpeechButton
+                      text={message.content}
+                      buttonSize={14}
                     />
-                  )}
-                  <TextToSpeechButton text={message.content} buttonSize={14} />
+                  </div>
+                  <span className="text-muted/80 block text-[11px]">
+                    {new Date(message.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
                 </div>
-                <span className="text-muted/80 block text-[11px]">
-                  {new Date(message.createdAt).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </div>
-            )}
+              )}
 
             {/* Timestamp for user messages (both current user and other users) */}
             {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
