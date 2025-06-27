@@ -121,7 +121,7 @@ Always apply these rules while answering based on the provided message history.`
         { role: "user" as const, content: userMessage },
       ];
 
-      // Create an empty assistant message that will be updated as we stream
+      // Create an empty assistant message that will be updated as we stream (both preview and full)
       const assistantMessage = await syncManager.createMessage(
         currentChatId,
         "assistant",
@@ -138,7 +138,7 @@ Always apply these rules while answering based on the provided message history.`
       // Create abort controller for this stream
       abortControllerRef.current = new AbortController();
 
-      // Start simplified HTTP streaming
+      // Start streaming full answer (single call). Paragraph-stagger handled in typewriter.
       await startStreaming(
         aiModel,
         preparedMessages,

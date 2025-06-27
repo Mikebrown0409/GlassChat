@@ -34,6 +34,7 @@ export function StreamingTypewriter({
   const [displayedLength, setDisplayedLength] = useState(0);
   const completedRef = useRef(false);
   const currentMessageIdRef = useRef(messageId);
+  const startTimeRef = useRef<number>(Date.now());
 
   // Reset state when message changes
   useEffect(() => {
@@ -41,8 +42,26 @@ export function StreamingTypewriter({
       currentMessageIdRef.current = messageId;
       setDisplayedLength(0);
       completedRef.current = false;
+      startTimeRef.current = Date.now(); // reset timer for new message
     }
   }, [messageId]);
+
+  // Gemini instant first-paragraph reveal
+  useEffect(() => {
+    if (
+      modelType === "gemini" &&
+      displayedLength === 0 &&
+      content.length > 120
+    ) {
+      // grab up to first newline or 100 chars
+      const firstBreak = content.indexOf("\n");
+      const revealLength =
+        firstBreak !== -1 && firstBreak < 120 ? firstBreak + 1 : 100;
+      setDisplayedLength(Math.min(revealLength, content.length));
+    }
+    // run only once when content first arrives
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, modelType]);
 
   // Simple animation logic
   useEffect(() => {
@@ -59,66 +78,70 @@ export function StreamingTypewriter({
     // Calculate next chunk size and delay based on model type
     const getNextChunk = () => {
       const remaining = content.slice(displayedLength);
+      const elapsed = Date.now() - startTimeRef.current;
 
-      // If streaming is complete, show remaining content quickly but not instant
+      // If streaming is complete, drain quickly but keep a tiny delay for polish
       if (isComplete && remaining.length > 5) {
-        const chunkSize = Math.min(Math.ceil(remaining.length / 3), 30);
-        const delay = modelType === "gpt" ? 15 : 25; // GPT faster completion than Gemini
+        const chunkSize = Math.min(Math.ceil(remaining.length / 2), 60);
+        const delay = modelType === "gpt" ? 10 : 20;
         return { size: chunkSize, delay };
       }
 
       if (modelType === "gpt") {
-        // GPT: Fast, snappy multi-word chunks - like ChatGPT's actual behavior
-        const multiWordRegex = /^(\s*\S+(?:\s+\S+){0,2})/; // 1-3 words at once
-        const multiWordMatch = multiWordRegex.exec(remaining);
-        if (multiWordMatch?.[1] && multiWordMatch[1].length <= 25) {
+        // GPT acceleration curve ----------------------------------------
+        //   < 400 ms  → small (1-2 words)   28-35 ms
+        //   400-2000 ms → medium (3-4 words) 14-22 ms
+        //   > 2000 ms → large (5-6 words)   6-12 ms
+
+        const phase = elapsed < 400 ? 0 : elapsed < 2000 ? 1 : 2;
+        const wordCount = phase === 0 ? 2 : phase === 1 ? 4 : 6;
+        const regex = new RegExp(`^(\\s*\\S+(?:\\s+\\S+){0,${wordCount - 1}})`);
+
+        const match = regex.exec(remaining);
+        if (match?.[1]) {
+          const baseDelay = phase === 0 ? 30 : phase === 1 ? 18 : 8;
           return {
-            size: multiWordMatch[1].length,
-            delay: 20 + Math.random() * 15, // 20-35ms - snappy but not too fast
+            size: match[1].length,
+            delay: baseDelay + Math.random() * (baseDelay * 0.6),
           };
         }
 
-        // Fallback: single word
-        const wordRegex = /^(\s*\S+)/;
-        const wordMatch = wordRegex.exec(remaining);
-        if (wordMatch?.[1]) {
-          return {
-            size: wordMatch[1].length,
-            delay: 25 + Math.random() * 15, // 25-40ms
-          };
-        }
-        return { size: 1, delay: 30 };
+        // fallback char-by-char
+        return { size: 1, delay: 20 };
       } else {
-        // Gemini: Chunky block streaming - visible but not instant
-        const lineRegex = /^[^\n]*\n/;
-        const lineMatch = lineRegex.exec(remaining);
-        if (lineMatch?.[0] && lineMatch[0].length <= 60) {
+        // Gemini acceleration curve ------------------------------------
+        //   < 600 ms  → line (≤60)  110-160 ms
+        //   600-3000 ms → phrase (≤80) 60-100 ms
+        //   > 3000 ms  → sentence/large (≤120) 35-60 ms
+
+        const phase = elapsed < 600 ? 0 : elapsed < 3000 ? 1 : 2;
+
+        if (phase === 0) {
+          const lineMatch = /^[^\n]*\n?/.exec(remaining);
+          if (lineMatch?.[0]) {
+            return {
+              size: Math.min(lineMatch[0].length, 60),
+              delay: 110 + Math.random() * 50,
+            };
+          }
+        }
+
+        const phraseMatch = /^[^.!?]*[.!?]?\s*/.exec(remaining);
+        if (phraseMatch?.[0]) {
+          const sizeLimit = phase === 1 ? 80 : 120;
+          const baseDelay = phase === 1 ? 70 : 40;
           return {
-            size: lineMatch[0].length,
-            delay: 120 + Math.random() * 80, // 120-200ms - visible blocks
+            size: Math.min(phraseMatch[0].length, sizeLimit),
+            delay: baseDelay + Math.random() * (baseDelay * 0.6),
           };
         }
 
-        // Phrase chunks (up to punctuation)
-        const phraseRegex = /^[^.!?,:;]*[.!?,:;]?\s*/;
-        const phraseMatch = phraseRegex.exec(remaining);
-        if (phraseMatch?.[0] && phraseMatch[0].length <= 40) {
-          return {
-            size: phraseMatch[0].length,
-            delay: 80 + Math.random() * 60, // 80-140ms - readable pace
-          };
+        // fallback word
+        const wordMatch = /^(\s*\S+)/.exec(remaining);
+        if (wordMatch?.[1]) {
+          return { size: wordMatch[1].length, delay: 90 };
         }
-
-        // Multi-word fallback
-        const multiWordRegex = /^(\s*\S+(?:\s+\S+){0,1})/; // 1-2 words
-        const multiWordMatch = multiWordRegex.exec(remaining);
-        if (multiWordMatch?.[1]) {
-          return {
-            size: multiWordMatch[1].length,
-            delay: 100 + Math.random() * 40, // 100-140ms
-          };
-        }
-        return { size: 1, delay: 120 };
+        return { size: 1, delay: 110 };
       }
     };
 
