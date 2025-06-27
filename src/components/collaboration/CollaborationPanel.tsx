@@ -191,7 +191,7 @@ export function CollaborationPanel({
 
     // No cleanup needed since we're not using event listeners anymore
     return undefined;
-  }, [currentRoomId, collaboration.events]);
+  }, [currentRoomId, collaboration]);
 
   // const _handleCreateUser = async () => {
   //   if (!userName.trim()) return;

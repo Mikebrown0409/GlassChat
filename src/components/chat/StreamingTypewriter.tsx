@@ -60,8 +60,25 @@ export function StreamingTypewriter({
     const getNextChunk = () => {
       const remaining = content.slice(displayedLength);
 
+      // If streaming is complete, show remaining content quickly but not instant
+      if (isComplete && remaining.length > 5) {
+        const chunkSize = Math.min(Math.ceil(remaining.length / 3), 30);
+        const delay = modelType === "gpt" ? 15 : 25; // GPT faster completion than Gemini
+        return { size: chunkSize, delay };
+      }
+
       if (modelType === "gpt") {
-        // GPT: Fast, smooth word-by-word animation
+        // GPT: Fast, snappy multi-word chunks - like ChatGPT's actual behavior
+        const multiWordRegex = /^(\s*\S+(?:\s+\S+){0,2})/; // 1-3 words at once
+        const multiWordMatch = multiWordRegex.exec(remaining);
+        if (multiWordMatch?.[1] && multiWordMatch[1].length <= 25) {
+          return {
+            size: multiWordMatch[1].length,
+            delay: 20 + Math.random() * 15, // 20-35ms - snappy but not too fast
+          };
+        }
+
+        // Fallback: single word
         const wordRegex = /^(\s*\S+)/;
         const wordMatch = wordRegex.exec(remaining);
         if (wordMatch?.[1]) {
@@ -72,29 +89,42 @@ export function StreamingTypewriter({
         }
         return { size: 1, delay: 30 };
       } else {
-        // Gemini: Chunkier, block-like animation
-        const sentenceRegex = /^[^.!?]*[.!?]\s*/;
-        const sentenceMatch = sentenceRegex.exec(remaining);
-        if (sentenceMatch?.[0] && sentenceMatch[0].length <= 100) {
+        // Gemini: Chunky block streaming - visible but not instant
+        const lineRegex = /^[^\n]*\n/;
+        const lineMatch = lineRegex.exec(remaining);
+        if (lineMatch?.[0] && lineMatch[0].length <= 60) {
           return {
-            size: sentenceMatch[0].length,
-            delay: 150 + Math.random() * 100, // 150-250ms
+            size: lineMatch[0].length,
+            delay: 120 + Math.random() * 80, // 120-200ms - visible blocks
           };
         }
 
-        const wordRegex = /^(\s*\S+)/;
-        const wordMatch = wordRegex.exec(remaining);
-        if (wordMatch?.[1]) {
+        // Phrase chunks (up to punctuation)
+        const phraseRegex = /^[^.!?,:;]*[.!?,:;]?\s*/;
+        const phraseMatch = phraseRegex.exec(remaining);
+        if (phraseMatch?.[0] && phraseMatch[0].length <= 40) {
           return {
-            size: wordMatch[1].length,
-            delay: 80 + Math.random() * 40, // 80-120ms
+            size: phraseMatch[0].length,
+            delay: 80 + Math.random() * 60, // 80-140ms - readable pace
           };
         }
-        return { size: 1, delay: 100 };
+
+        // Multi-word fallback
+        const multiWordRegex = /^(\s*\S+(?:\s+\S+){0,1})/; // 1-2 words
+        const multiWordMatch = multiWordRegex.exec(remaining);
+        if (multiWordMatch?.[1]) {
+          return {
+            size: multiWordMatch[1].length,
+            delay: 100 + Math.random() * 40, // 100-140ms
+          };
+        }
+        return { size: 1, delay: 120 };
       }
     };
 
     const { size, delay } = getNextChunk();
+
+    // Debug logging removed to prevent console spam
 
     const timer = setTimeout(() => {
       setDisplayedLength((prev) => Math.min(prev + size, content.length));
@@ -103,17 +133,7 @@ export function StreamingTypewriter({
     return () => clearTimeout(timer);
   }, [displayedLength, content, isComplete, modelType, onComplete]);
 
-  // Debug logging in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[StreamingTypewriter] ${messageId}:`, {
-        contentLength: content.length,
-        displayedLength,
-        isComplete,
-        modelType,
-      });
-    }
-  }, [displayedLength, content.length, isComplete, modelType, messageId]);
+  // Debug logging removed to prevent console spam
 
   // Show the animated content
   const displayedContent = content.slice(0, displayedLength);

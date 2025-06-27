@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateAIStream } from "~/lib/ai/models";
 import { createStreamTransformer } from "~/lib/ai/streamTransformer";
-import { AIModel, type AIMessage } from "~/lib/ai/types";
+import { AIModel, type AIMessage, type AIStreamChunk } from "~/lib/ai/types";
 
 const streamRequestSchema = z.object({
   model: z.nativeEnum(AIModel),
@@ -13,26 +13,25 @@ const streamRequestSchema = z.object({
       content: z.string(),
     }),
   ),
-  // Block-aware streaming options (Phase 1)
+  // Keep these for backward-compat but they no longer affect behavior
   blockAware: z.boolean().optional().default(false),
-  streamMode: z
-    .enum(["passthrough", "simple", "block"])
-    .optional()
-    .default("passthrough"),
+  streamMode: z.string().optional().default("passthrough"),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as unknown;
-    const { model, messages, blockAware, streamMode } =
-      streamRequestSchema.parse(body);
+    const { model, messages } = streamRequestSchema.parse(body);
 
-    // Create the base stream
+    if (process.env.NODE_ENV === "development") {
+      console.log("[API] Unified stream request received:", {
+        messageCount: messages.length,
+      });
+    }
+
+    // Always use passthrough transformer for real-time responsiveness.
     const baseStream = await generateAIStream(model, messages as AIMessage[]);
-
-    // Apply stream transformation based on configuration
-    const transformMode = blockAware ? streamMode || "simple" : "passthrough";
-    const streamTransformer = createStreamTransformer(transformMode);
+    const streamTransformer = createStreamTransformer("passthrough");
     const stream = streamTransformer(baseStream);
 
     // Create a readable stream for the response
@@ -52,16 +51,18 @@ export async function POST(request: NextRequest) {
           for await (const chunk of stream) {
             if (isClosed) break;
 
-            // Format as Server-Sent Events with block metadata
-            const data = JSON.stringify({
+            // Include block metadata only when present to minimize payload size
+            const payload: Partial<AIStreamChunk> = {
               content: chunk.content,
               isComplete: chunk.isComplete,
-              // Include block metadata if available (Phase 1)
-              ...(chunk.block && {
-                block: chunk.block,
-                blockId: chunk.blockId,
-              }),
-            });
+            };
+
+            if (chunk.blockId) {
+              payload.blockId = chunk.blockId;
+              payload.block = chunk.block;
+            }
+
+            const data = JSON.stringify(payload);
 
             const sseData = `data: ${data}\n\n`;
             controller.enqueue(encoder.encode(sseData));

@@ -18,7 +18,7 @@ const BLOCK_PATTERNS: BlockPattern[] = [
     startRegex: /^```(\w+)?\s*$/m,
     endRegex: /^```\s*$/m,
     extractMetadata: (match) => ({
-      language: match[1] || "text",
+      language: match[1] ?? "text",
       complete: false,
     }),
   },
@@ -28,7 +28,7 @@ const BLOCK_PATTERNS: BlockPattern[] = [
     type: BlockType.HEADER,
     startRegex: /^(#{1,6})\s+(.+)$/m,
     extractMetadata: (match) => ({
-      level: match[1]?.length || 1,
+      level: match[1]?.length ?? 1,
       complete: true,
     }),
   },
@@ -88,6 +88,8 @@ export class BlockDetector {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      if (!line) continue; // Skip undefined lines
+
       const nextLine = lines[i + 1];
 
       // Check if we're starting a new block
@@ -200,14 +202,17 @@ export class BlockDetector {
   /**
    * Detect what type of block a line represents
    */
-  private detectBlockType(line: string, nextLine?: string): StreamBlock | null {
+  private detectBlockType(
+    line: string,
+    _nextLine?: string,
+  ): StreamBlock | null {
     for (const pattern of BLOCK_PATTERNS) {
       const match = line.match(pattern.startRegex);
       if (match) {
         return {
           type: pattern.type,
           content: "",
-          metadata: pattern.extractMetadata?.(match) || { complete: false },
+          metadata: pattern.extractMetadata?.(match) ?? { complete: false },
         };
       }
     }
@@ -242,86 +247,296 @@ export class BlockDetector {
 
 /**
  * Simple block detector for backward compatibility
- * Detects paragraph breaks and basic structures
+ * Detects paragraph breaks and basic structures with improved handling for AI-generated content
  */
 export function detectSimpleBlocks(content: string): StreamBlock[] {
   const blocks: StreamBlock[] = [];
-  const paragraphs = content.split(/\n\s*\n/);
 
-  for (const paragraph of paragraphs) {
-    if (paragraph.trim()) {
-      const trimmed = paragraph.trim();
+  // Pre-process content to handle common AI markdown issues
+  const processedContent = preprocessContent(content);
 
-      // Headers (# ## ### etc.)
-      if (/^#{1,6}\s+/.test(trimmed)) {
-        blocks.push({
-          type: BlockType.HEADER,
-          content: paragraph,
-          metadata: {
-            level: trimmed.match(/^#+/)?.[0].length || 1,
-            complete: true,
-          },
-        });
-      }
-      // Code blocks (```lang or just ```)
-      else if (trimmed.startsWith("```")) {
-        blocks.push({
-          type: BlockType.CODE_BLOCK,
-          content: paragraph,
-          metadata: {
-            language: trimmed.match(/^```(\w+)/)?.[1] || "text",
-            complete: true,
-          },
-        });
-      }
-      // Unordered lists (- * +)
-      else if (/^[-*+]\s+/.test(trimmed)) {
-        blocks.push({
-          type: BlockType.LIST,
-          content: paragraph,
-          metadata: {
-            ordered: false,
-            complete: true,
-          },
-        });
-      }
-      // Ordered lists (1. 2. etc.)
-      else if (/^\d+\.\s+/.test(trimmed)) {
-        blocks.push({
-          type: BlockType.LIST,
-          content: paragraph,
-          metadata: {
-            ordered: true,
-            complete: true,
-          },
-        });
-      }
-      // Blockquotes (> text)
-      else if (trimmed.startsWith("> ")) {
-        blocks.push({
-          type: BlockType.BLOCKQUOTE,
-          content: paragraph,
-          metadata: { complete: true },
-        });
-      }
-      // Tables (| col | col |)
-      else if (/^\|.*\|.*$/m.test(trimmed)) {
-        blocks.push({
-          type: BlockType.TABLE,
-          content: paragraph,
-          metadata: { complete: true },
-        });
-      }
-      // Default to paragraph
-      else {
-        blocks.push({
-          type: BlockType.PARAGRAPH,
-          content: paragraph,
-          metadata: { complete: true },
-        });
+  // Split by clear paragraph boundaries but be more flexible
+  // Also handle single line breaks that separate different content types
+  const sections = processedContent.split(
+    /\n\s*\n|\n(?=#{1,6}\s)|\n(?=\d+\.\s)|\n(?=[-*+]\s)/,
+  );
+
+  for (const section of sections) {
+    if (!section.trim()) continue;
+
+    // Process each section for mixed content
+    const sectionBlocksRaw = processSectionIntoBlocks(section.trim());
+
+    // Post-process: split very long paragraphs for smoother streaming
+    const sectionBlocks: StreamBlock[] = [];
+    for (const blk of sectionBlocksRaw) {
+      if (blk.type === BlockType.PARAGRAPH && blk.content.length > 500) {
+        // Split at sentence boundaries
+        const sentences = blk.content.split(/(?<=[.!?])\s+/);
+        let buffer = "";
+        for (const s of sentences) {
+          if ((buffer + " " + s).trim().length > 500) {
+            sectionBlocks.push({
+              type: BlockType.PARAGRAPH,
+              content: buffer.trim(),
+              metadata: blk.metadata,
+            });
+            buffer = s;
+          } else {
+            buffer += (buffer ? " " : "") + s;
+          }
+        }
+        if (buffer.trim()) {
+          sectionBlocks.push({
+            type: BlockType.PARAGRAPH,
+            content: buffer.trim(),
+            metadata: blk.metadata,
+          });
+        }
+      } else {
+        sectionBlocks.push(blk);
       }
     }
+
+    blocks.push(...sectionBlocks);
+  }
+
+  // If no blocks were detected (edge case), treat as single paragraph
+  if (blocks.length === 0 && content.trim()) {
+    blocks.push({
+      type: BlockType.PARAGRAPH,
+      content: content.trim(),
+      metadata: { complete: true },
+    });
   }
 
   return blocks;
+}
+
+/**
+ * Preprocess content to normalize common AI markdown patterns
+ */
+function preprocessContent(content: string): string {
+  let processed = content;
+
+  // Fix headers that might be embedded in text (e.g., "text***### Header***text")
+  processed = processed.replace(
+    /\*{2,}(#{1,6}\s+[^*\n]+)\*{2,}/g,
+    "\n\n$1\n\n",
+  );
+
+  // Do not strip bold markers—preserve original markdown for accurate rendering
+
+  // Add line breaks before lists that aren't at line start
+  processed = processed.replace(/([.!?])\s*([*-]\s+)/g, "$1\n\n$2");
+
+  // Add line breaks before headers that aren't at line start
+  processed = processed.replace(/([.!?])\s*(#{1,6}\s+)/g, "$1\n\n$2");
+
+  // Normalize spacing around headers
+  processed = processed.replace(/(#{1,6}\s+[^\n]+)/g, "\n\n$1\n\n");
+
+  // SPECIFIC FIX: Handle the user's exact case - "for?*   A different" pattern
+  processed = processed.replace(/([?!.])\s*\*\s{2,}(\w+)/g, "$1\n\n* $2");
+
+  // Handle "for:*   " pattern (alternative format)
+  processed = processed.replace(/([?!.:])(?:\s*)(\*\s{2,})/g, "$1\n\n$2");
+
+  // Fix ordered lists that appear mid-line
+  processed = processed.replace(/([.!?])\s*(\d+\.\s+)/g, "$1\n\n$2");
+
+  return processed;
+}
+
+/**
+ * Process a section that may contain mixed block types
+ */
+function processSectionIntoBlocks(section: string): StreamBlock[] {
+  const blocks: StreamBlock[] = [];
+  const lines = section.split("\n");
+
+  let currentBlock: {
+    type: BlockType;
+    lines: string[];
+    metadata?: Record<string, unknown>;
+  } | null = null;
+  let inCodeBlock = false;
+  let codeBlockDelimiter = "";
+
+  const finishCurrentBlock = () => {
+    if (currentBlock && currentBlock.lines.length > 0) {
+      const content = currentBlock.lines.join("\n").trim();
+      if (content) {
+        blocks.push({
+          type: currentBlock.type,
+          content,
+          metadata: currentBlock.metadata ?? { complete: true },
+        });
+      }
+    }
+    currentBlock = null;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    const trimmed = line.trim();
+
+    // Handle code block boundaries
+    if (
+      !inCodeBlock &&
+      (trimmed.startsWith("```") || trimmed.startsWith("~~~"))
+    ) {
+      finishCurrentBlock();
+      inCodeBlock = true;
+      codeBlockDelimiter = trimmed.startsWith("```") ? "```" : "~~~";
+      const language = trimmed.slice(3).trim() || "text";
+      currentBlock = {
+        type: BlockType.CODE_BLOCK,
+        lines: [line],
+        metadata: { language, complete: false },
+      };
+      continue;
+    }
+
+    if (inCodeBlock) {
+      currentBlock?.lines.push(line);
+      if (trimmed === codeBlockDelimiter) {
+        inCodeBlock = false;
+        codeBlockDelimiter = "";
+        if (currentBlock) {
+          currentBlock.metadata = { ...currentBlock.metadata, complete: true };
+        }
+        finishCurrentBlock();
+      } else if (i === lines.length - 1) {
+        // End of content while in code block - close it
+        inCodeBlock = false;
+        codeBlockDelimiter = "";
+        if (currentBlock) {
+          currentBlock.metadata = { ...currentBlock.metadata, complete: true };
+        }
+        finishCurrentBlock();
+      }
+      continue;
+    }
+
+    // Skip empty lines but finish current block
+    if (!trimmed) {
+      if (currentBlock) {
+        finishCurrentBlock();
+      }
+      continue;
+    }
+
+    // Skip very short lines that are likely fragments (unless they're meaningful)
+    if (trimmed.length < 3 && !/^[#*-]\s*$|^\d+\.\s*$/.exec(trimmed)) {
+      // Append short fragments to current block instead of creating new ones
+      if (currentBlock) {
+        currentBlock.lines.push(line);
+      }
+      continue;
+    }
+
+    // Detect block type for this line
+    const detectedType = detectLineBlockType(trimmed);
+    const shouldStartNewBlock =
+      !currentBlock ||
+      currentBlock.type !== detectedType ||
+      detectedType === BlockType.HEADER; // Always start new block for headers
+
+    if (shouldStartNewBlock) {
+      finishCurrentBlock();
+
+      // Special handling for headers
+      if (detectedType === BlockType.HEADER) {
+        const level = (/^#+/.exec(trimmed) ?? [""])[0].length;
+        currentBlock = {
+          type: BlockType.HEADER,
+          lines: [line],
+          metadata: { level, complete: true },
+        };
+        finishCurrentBlock(); // Headers are always single-line blocks
+        continue;
+      }
+
+      // Special handling for blockquotes, lists
+      const metadata = getBlockMetadata(detectedType, trimmed);
+      currentBlock = {
+        type: detectedType,
+        lines: [line],
+        metadata,
+      };
+    } else {
+      // Continue current block
+      currentBlock?.lines.push(line);
+    }
+  }
+
+  // Finish the last block
+  finishCurrentBlock();
+
+  return blocks;
+}
+
+/**
+ * Detect the block type of a single line
+ */
+function detectLineBlockType(line: string): BlockType {
+  const trimmed = line.trim();
+
+  // Headers (must be at start of line)
+  if (/^#{1,6}\s+/.test(trimmed)) {
+    return BlockType.HEADER;
+  }
+
+  // Unordered lists
+  if (/^[-*+]\s+/.test(trimmed)) {
+    return BlockType.LIST;
+  }
+
+  // Ordered lists
+  if (/^\d+\.\s+/.test(trimmed)) {
+    return BlockType.LIST;
+  }
+
+  // Blockquotes
+  if (/^>\s+/.test(trimmed)) {
+    return BlockType.BLOCKQUOTE;
+  }
+
+  // Tables (pipe-separated)
+  if (/^\|.*\|.*$/.test(trimmed)) {
+    return BlockType.TABLE;
+  }
+
+  // Default to paragraph
+  return BlockType.PARAGRAPH;
+}
+
+/**
+ * Get metadata for a block type
+ */
+function getBlockMetadata(
+  type: BlockType,
+  line: string,
+): Record<string, unknown> {
+  switch (type) {
+    case BlockType.HEADER:
+      return {
+        level: (/^#+/.exec(line) ?? [""])[0].length,
+        complete: true,
+      };
+    case BlockType.LIST:
+      return {
+        ordered: /^\d+\./.test(line.trim()),
+        complete: false,
+      };
+    case BlockType.CODE_BLOCK:
+      const language = (/^```(\w+)/.exec(line) ?? ["", "text"])[1];
+      return {
+        language,
+        complete: false,
+      };
+    default:
+      return { complete: true };
+  }
 }

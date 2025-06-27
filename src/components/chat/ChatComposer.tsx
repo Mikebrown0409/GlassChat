@@ -5,6 +5,7 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
   type RefObject,
@@ -81,6 +82,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     // NEW: Chat mode state (AI vs Team chat)
     const [chatMode, setChatMode] = useState<"ai" | "team">("ai");
 
+    // Client-side hydration safety
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+      setIsClient(true);
+    }, []);
+
     // Expose imperative methods to parent
     useImperativeHandle(ref, () => ({
       setInput: (text: string) => setInput(text),
@@ -138,9 +146,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       };
     }, [modelDropdownOpen]);
 
-    // Close when clicking outside
+    // Close when clicking outside - with debouncing to prevent rapid state changes
     useEffect(() => {
-      if (!modelDropdownOpen) return;
+      if (!modelDropdownOpen || !isClient) return; // Don't run until client-side
+
+      let timeoutId: NodeJS.Timeout;
       const handleOutside = (e: MouseEvent) => {
         const target = e.target as Node;
         if (
@@ -149,11 +159,20 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
         ) {
           return; // click inside trigger or dropdown – ignore
         }
-        setModelDropdownOpen(false);
+
+        // Debounce the close to prevent rapid state changes
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          setModelDropdownOpen(false);
+        }, 10);
       };
+
       document.addEventListener("mousedown", handleOutside);
-      return () => document.removeEventListener("mousedown", handleOutside);
-    }, [modelDropdownOpen, setModelDropdownOpen]);
+      return () => {
+        document.removeEventListener("mousedown", handleOutside);
+        clearTimeout(timeoutId);
+      };
+    }, [modelDropdownOpen, setModelDropdownOpen, isClient]);
 
     const handleSend = async () => {
       if (!input.trim() && attachments.length === 0) return;
@@ -192,7 +211,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       setAttachments([]);
     };
 
-    const info = models.find((m) => m.id === selectedModel);
+    // Memoize model info to prevent unnecessary re-renders during model changes
+    const info = useMemo(() => {
+      return models.find((m) => m.id === selectedModel);
+    }, [models, selectedModel]);
 
     return (
       <footer
@@ -297,23 +319,25 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                       <span className="max-w-[90px] truncate text-[11px] font-medium">
                         {info?.name ?? "Model"}
                       </span>
-                      <svg
-                        width="7"
-                        height="7"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        className={`ml-0.5 transition-transform duration-200 ${
-                          modelDropdownOpen ? "rotate-180" : ""
-                        }`}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
+                      {isClient && (
+                        <svg
+                          width="7"
+                          height="7"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          className={`ml-0.5 transition-transform duration-200 ${
+                            modelDropdownOpen ? "rotate-180" : ""
+                          }`}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      )}
                     </Button>
 
                     {modelDropdownOpen && (
@@ -327,9 +351,16 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                             type="button"
                             disabled={!model.enabled}
                             onClick={() => {
-                              if (model.enabled) {
+                              if (model.enabled && model.id !== selectedModel) {
                                 console.log("Selecting model", model.id);
-                                setSelectedModel(model.id);
+                                // Close dropdown first, then update model to prevent rapid state changes
+                                setModelDropdownOpen(false);
+                                // Use setTimeout to ensure dropdown closes before model change
+                                setTimeout(() => {
+                                  setSelectedModel(model.id);
+                                }, 50);
+                              } else if (model.id === selectedModel) {
+                                // Just close dropdown if same model is selected
                                 setModelDropdownOpen(false);
                               }
                             }}

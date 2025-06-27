@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { AIModel } from "~/lib/ai/types";
-import { useMemory } from "~/lib/memory/hooks";
+import { memoryManagerClient } from "~/lib/memory/memoryManager-client";
 import { syncManager } from "~/lib/sync";
 
 interface Message {
@@ -39,8 +39,6 @@ export function useUnifiedStreaming(
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
-  const memory = useMemory(currentChatId ?? null, messages);
-
   // Remove throttling for immediate UI responsiveness - especially critical for OpenAI
   const setStreamingStateImmediate = setStreamingState;
 
@@ -54,7 +52,11 @@ export function useUnifiedStreaming(
     try {
       // Add user message
       await syncManager.createMessage(currentChatId, "user", userMessage);
-      await memory.addMemory(userMessage, { role: "user" });
+
+      // Add to memory directly without reactive hook to prevent infinite loops
+      await memoryManagerClient.addMemory(currentChatId, userMessage, {
+        role: "user",
+      });
 
       // Map selected model to AIModel enum
       const map: Record<string, AIModel> = {
@@ -137,7 +139,12 @@ Always apply these rules while answering based on the provided message history.`
       abortControllerRef.current = new AbortController();
 
       // Start simplified HTTP streaming
-      await startStreaming(aiModel, preparedMessages, assistantMessage.id);
+      await startStreaming(
+        aiModel,
+        preparedMessages,
+        assistantMessage.id,
+        currentChatId,
+      );
     } catch (err) {
       console.error("Failed to send message:", err);
       await syncManager.createMessage(
@@ -157,6 +164,7 @@ Always apply these rules while answering based on the provided message history.`
     model: AIModel,
     messages: Array<{ role: string; content: string }>,
     messageId: string,
+    currentChatId: string,
   ) => {
     const totalContent = messages.map((m) => m.content).join("\n");
     const MAX_GENERATED_CHARS = 16000;
@@ -225,6 +233,15 @@ Always apply these rules while answering based on the provided message history.`
 
                 if (finalContent) {
                   await syncManager.updateMessage(messageId, finalContent);
+
+                  // Add assistant response to memory directly to prevent infinite loops
+                  if (currentChatId) {
+                    await memoryManagerClient.addMemory(
+                      currentChatId,
+                      finalContent,
+                      { role: "assistant" },
+                    );
+                  }
                 }
 
                 // Mark streaming as finished - keep content and messageId for typewriter
@@ -281,6 +298,13 @@ Always apply these rules while answering based on the provided message history.`
 
       if (finalContent) {
         await syncManager.updateMessage(messageId, finalContent);
+
+        // Add assistant response to memory directly to prevent infinite loops
+        if (currentChatId) {
+          await memoryManagerClient.addMemory(currentChatId, finalContent, {
+            role: "assistant",
+          });
+        }
       }
 
       setStreamingStateImmediate({

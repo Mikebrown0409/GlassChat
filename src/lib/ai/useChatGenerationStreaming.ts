@@ -14,12 +14,23 @@ interface StreamingState {
   isStreaming: boolean;
   currentStreamContent: string;
   streamingMessageId: string | null;
+  blockData?: Array<{
+    content: string;
+    block: {
+      type: string;
+      content: string;
+      metadata?: Record<string, unknown>;
+    };
+    blockId: string;
+  }>;
+  lastBlockDataMessageId?: string | null; // Track which message has the block data
 }
 
 export function useChatGenerationStreaming(
   currentChatId: string | undefined,
   messages: Message[],
   selectedModel: string,
+  enableBlockMode?: boolean, // Feature flag for block-aware streaming
 ) {
   const [streamingState, setStreamingState] = useState<StreamingState>({
     isStreaming: false,
@@ -122,6 +133,8 @@ Always apply these rules while answering based on the provided message history.`
         isStreaming: true,
         currentStreamContent: "",
         streamingMessageId: assistantMessage.id,
+        blockData: undefined, // Reset block data for new stream
+        lastBlockDataMessageId: undefined, // Reset block data tracking
       });
 
       // Create abort controller for this stream
@@ -140,6 +153,8 @@ Always apply these rules while answering based on the provided message history.`
         isStreaming: false,
         currentStreamContent: "",
         streamingMessageId: null,
+        blockData: undefined, // Clear block data on error
+        lastBlockDataMessageId: undefined, // Clear block data tracking
       });
     }
   };
@@ -150,15 +165,30 @@ Always apply these rules while answering based on the provided message history.`
     messageId: string,
   ) => {
     try {
+      const requestBody = {
+        model,
+        messages,
+        // Enable server-side block detection when block mode is enabled
+        blockAware: enableBlockMode ?? false,
+        streamMode: enableBlockMode ? "simple" : "passthrough", // Use 'simple' for better performance
+      };
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Streaming] API Request:", {
+          blockAware: requestBody.blockAware,
+          streamMode: requestBody.streamMode,
+          enableBlockMode,
+          model: requestBody.model,
+          messageCount: requestBody.messages.length,
+        });
+      }
+
       const response = await fetch("/api/ai/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model,
-          messages,
-        }),
+        body: JSON.stringify(requestBody),
         signal: abortControllerRef.current?.signal,
       });
 
@@ -177,6 +207,18 @@ Always apply these rules while answering based on the provided message history.`
       let pendingBuffer = "";
       let flushTimer: NodeJS.Timeout | null = null;
 
+      // Track if we're receiving block-aware chunks
+      let hasBlockData = false;
+      const blockBuffer: Array<{
+        content: string;
+        block: {
+          type: string;
+          content: string;
+          metadata?: Record<string, unknown>;
+        };
+        blockId: string;
+      }> = [];
+
       const flushBuffer = () => {
         if (pendingBuffer) {
           accumulatedContent += pendingBuffer;
@@ -185,6 +227,8 @@ Always apply these rules while answering based on the provided message history.`
           setStreamingState((prev) => ({
             ...prev,
             currentStreamContent: accumulatedContent,
+            // Pass block data if available
+            blockData: hasBlockData ? blockBuffer : undefined,
           }));
 
           pendingBuffer = "";
@@ -194,7 +238,7 @@ Always apply these rules while answering based on the provided message history.`
 
       const scheduleFlush = () => {
         // Use nullish coalescing assignment to satisfy eslint rule
-        flushTimer ??= setTimeout(flushBuffer, 32); // ~30fps for smoother streaming
+        flushTimer ??= setTimeout(flushBuffer, 50); // Slightly slower for block mode
       };
 
       try {
@@ -227,28 +271,48 @@ Always apply these rules while answering based on the provided message history.`
                   );
                 }
 
+                // For block mode, provide shorter grace period since blocks are already processed
+                const gracePeriod =
+                  enableBlockMode && hasBlockData
+                    ? Math.min(accumulatedContent.length * 8, 2000) // Faster for block mode
+                    : Math.min(
+                        Math.max(accumulatedContent.length * 15, 1500),
+                        6000,
+                      ); // Legacy timing
+
                 // Keep isStreaming true for a short grace period so the
                 // Typewriter animation can flush the remaining queue.
+                if (process.env.NODE_ENV === "development") {
+                  console.log(
+                    `[Streaming] Stream completed, setting grace period: ${gracePeriod}ms, hasBlockData: ${hasBlockData}, blocks: ${blockBuffer.length}`,
+                  );
+                }
+
                 setStreamingState({
                   isStreaming: true,
                   currentStreamContent: accumulatedContent,
                   streamingMessageId: messageId,
+                  blockData: hasBlockData ? [...blockBuffer] : undefined, // Preserve block data!
+                  lastBlockDataMessageId: hasBlockData ? messageId : undefined, // Track which message has blocks
                 });
 
-                // After grace period (~2s) mark stream truly finished
-                setTimeout(
-                  () => {
-                    setStreamingState({
-                      isStreaming: false,
-                      currentStreamContent: accumulatedContent,
-                      streamingMessageId: null,
-                    });
-                  },
-                  Math.min(
-                    Math.max(accumulatedContent.length * 15, 1500),
-                    6000,
-                  ),
-                ); // 15ms per char, 1.5s-6s clamp
+                // After grace period mark stream truly finished
+                setTimeout(() => {
+                  if (process.env.NODE_ENV === "development") {
+                    console.log(
+                      `[Streaming] Grace period ended, finalizing stream with ${hasBlockData ? blockBuffer.length : 0} blocks`,
+                    );
+                  }
+                  setStreamingState({
+                    isStreaming: false,
+                    currentStreamContent: accumulatedContent,
+                    streamingMessageId: null,
+                    blockData: hasBlockData ? [...blockBuffer] : undefined, // Preserve block data!
+                    lastBlockDataMessageId: hasBlockData
+                      ? messageId
+                      : undefined, // Keep tracking the message with blocks
+                  });
+                }, gracePeriod);
                 return;
               }
 
@@ -256,10 +320,56 @@ Always apply these rules while answering based on the provided message history.`
                 const parsed = JSON.parse(data) as {
                   content?: string;
                   isComplete?: boolean;
+                  block?: {
+                    type: string;
+                    content: string;
+                    metadata?: Record<string, unknown>;
+                  };
+                  blockId?: string; // Block identifier
                 };
                 if (parsed.content) {
-                  pendingBuffer += parsed.content;
-                  scheduleFlush();
+                  // Check if this is block-aware content
+                  if (parsed.block && parsed.blockId) {
+                    hasBlockData = true;
+
+                    // Find existing block or create new one
+                    const existingBlockIndex = blockBuffer.findIndex(
+                      (b) => b.blockId === parsed.blockId,
+                    );
+
+                    if (existingBlockIndex !== -1) {
+                      // Update existing block content
+                      blockBuffer[existingBlockIndex]!.content = parsed.content;
+                    } else {
+                      // Add new block
+                      blockBuffer.push({
+                        content: parsed.content,
+                        block: parsed.block,
+                        blockId: parsed.blockId,
+                      });
+                    }
+
+                    // For block mode, don't concatenate blocks - let BlockAwareTypewriter handle them
+                    // The blocks will be displayed individually, not as concatenated content
+                    // Just use empty string since BlockAwareTypewriter handles rendering
+                    accumulatedContent = "";
+
+                    if (process.env.NODE_ENV === "development") {
+                      console.log(
+                        `[Streaming] Updated block ${parsed.blockId}, total blocks: ${blockBuffer.length}`,
+                      );
+                    }
+
+                    setStreamingState((prev) => ({
+                      ...prev,
+                      currentStreamContent: accumulatedContent,
+                      blockData: [...blockBuffer], // Always pass current block state
+                    }));
+                  } else {
+                    // Legacy character-by-character mode
+                    pendingBuffer += parsed.content;
+                    scheduleFlush();
+                  }
                 }
               } catch {
                 // Skip invalid JSON
@@ -283,6 +393,7 @@ Always apply these rules while answering based on the provided message history.`
         setStreamingState((prev) => ({
           ...prev,
           currentStreamContent: accumulatedContent,
+          blockData: hasBlockData ? [...blockBuffer] : undefined, // Preserve block data!
         }));
       }
 
@@ -290,11 +401,13 @@ Always apply these rules while answering based on the provided message history.`
         await syncManager.updateMessage(messageId, accumulatedContent);
       }
 
-      setStreamingState({
-        isStreaming: false,
-        currentStreamContent: accumulatedContent,
-        streamingMessageId: null,
-      });
+      // Don't set final state here - let the setTimeout handle it to avoid race conditions
+      // This was causing blockData to be overwritten
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[Streaming] Stream processing complete, letting grace period handle final state`,
+        );
+      }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         console.log("Stream aborted by user");
@@ -306,6 +419,8 @@ Always apply these rules while answering based on the provided message history.`
         isStreaming: false,
         currentStreamContent: "",
         streamingMessageId: null,
+        blockData: undefined, // Clear block data on streaming error
+        lastBlockDataMessageId: undefined, // Clear block data tracking
       });
     }
   };
@@ -331,6 +446,8 @@ Always apply these rules while answering based on the provided message history.`
       isStreaming: false,
       currentStreamContent: "",
       streamingMessageId: null,
+      blockData: undefined, // Clear block data when stopped
+      lastBlockDataMessageId: undefined, // Clear block data tracking
     });
   };
 
@@ -339,6 +456,8 @@ Always apply these rules while answering based on the provided message history.`
     isStreaming: streamingState.isStreaming,
     currentStreamContent: streamingState.currentStreamContent,
     streamingMessageId: streamingState.streamingMessageId,
+    blockData: streamingState.blockData,
+    lastBlockDataMessageId: streamingState.lastBlockDataMessageId,
     generateResponseIsPending: generateResponse.isPending,
     handleSubmit,
     handleStop,

@@ -48,15 +48,21 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
   // Track when the streaming/typewriter animation is fully complete so we
   // can safely reveal the quick-action menu and TTS button.
   const [typingFinished, setTypingFinished] = React.useState(false);
+  const [showQuickActions, setShowQuickActions] = React.useState(false);
 
   // Reset local completion state whenever we render a brand-new message ID.
   React.useEffect(() => {
     setTypingFinished(false);
+    setShowQuickActions(false);
   }, [message.id]);
 
   // Handle animation completion from ChunkTypewriter
   const handleAnimationComplete = React.useCallback(() => {
     setTypingFinished(true);
+    // Delay showing QuickActions to prevent infinite loops during state transitions
+    setTimeout(() => {
+      setShowQuickActions(true);
+    }, 500); // 500ms delay to ensure all state is stable
     // Only call onStreamingDone after the typewriter animation is complete
     // This ensures the streaming state isn't cleared too early
     onStreamingDone?.();
@@ -66,6 +72,10 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
   React.useEffect(() => {
     if (streamingContent === undefined && !_isTyping) {
       setTypingFinished(true);
+      // Delay showing QuickActions for non-streaming messages too
+      setTimeout(() => {
+        setShowQuickActions(true);
+      }, 200); // Shorter delay for non-streaming messages
     }
   }, [streamingContent, _isTyping]);
 
@@ -187,18 +197,7 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
                       return "gpt"; // default
                     };
 
-                    if (process.env.NODE_ENV === "development") {
-                      console.log(
-                        `[MessageDisplay] Render decision for ${message.id}:`,
-                        {
-                          shouldUseTypewriter,
-                          streamingContentLength: streamingContent?.length ?? 0,
-                          isTyping: _isTyping,
-                          modelType: getModelType(selectedModel),
-                          messageContent: message.content.slice(0, 50) + "...",
-                        },
-                      );
-                    }
+                    // Debug logging removed to prevent console spam
 
                     return shouldUseTypewriter ? (
                       <StreamingTypewriter
@@ -232,15 +231,19 @@ export const MessageDisplay = memo(function MessageDisplayComponent({
             {typingFinished &&
               !_isTyping &&
               streamingContent === undefined &&
+              message.content && // Ensure content exists
+              message.content.length > 0 && // Ensure content is not empty
               (message.role === "assistant" || isAIMessage) && (
                 <div className="mt-1.5 space-y-1">
                   <div className="text-muted flex items-center gap-2">
-                    {onSuggestionClick && (
-                      <QuickActionsMenu
-                        content={message.content}
-                        onSelect={onSuggestionClick}
-                      />
-                    )}
+                    {onSuggestionClick &&
+                      message.content.length > 10 &&
+                      showQuickActions && ( // Only show after delay
+                        <QuickActionsMenu
+                          content={message.content}
+                          onSelect={onSuggestionClick}
+                        />
+                      )}
                     <TextToSpeechButton
                       text={message.content}
                       buttonSize={14}
