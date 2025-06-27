@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         if (closed) return;
         try {
           controller.enqueue(`data: ${JSON.stringify(data)}\n\n`);
-        } catch (err) {
+        } catch {
           closed = true;
           if (unsubscribeFn) unsubscribeFn();
         }

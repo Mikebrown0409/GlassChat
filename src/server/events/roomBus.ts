@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/prefer-includes */
 
 declare global {
-  // eslint-disable-next-line no-var
   var __glasschat_room_bus:
     | Map<string, Set<(event: RoomEvent) => void>>
     | undefined;

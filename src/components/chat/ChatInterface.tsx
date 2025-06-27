@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import {

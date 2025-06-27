@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
-
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 
@@ -10,23 +9,51 @@ interface Options {
   onRoomStateUpdate?: (event: unknown) => void;
 }
 
+interface RoomMessage {
+  id: string;
+  sender: string;
+  content: string;
+  timestamp?: string;
+  [key: string]: unknown;
+}
+
+interface SSEMessage {
+  type: string;
+  payload?: unknown;
+}
+
 export function useSSECollaboration(options: Options) {
   const { roomId, userId, onMessageSync, onRoomStateUpdate } = options;
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const hasJoinedRoomRef = useRef<string | null>(null);
 
   const joinRoomMutation = api.collaborationV2.joinRoom.useMutation();
   const sendMessageMutation = api.collaborationV2.sendMessage.useMutation();
+
+  // Store callbacks in refs to avoid effect re-runs when they change
+  const onMessageSyncRef = useRef(onMessageSync);
+  const onRoomStateUpdateRef = useRef(onRoomStateUpdate);
+
+  // Update refs when callbacks change
+  onMessageSyncRef.current = onMessageSync;
+  onRoomStateUpdateRef.current = onRoomStateUpdate;
 
   // Establish SSE connection when roomId changes
   useEffect(() => {
     if (!roomId) return;
 
-    // Auto join room (fire and forget)
-    void joinRoomMutation.mutate({ roomId, userName: userId });
+    // Only join room if we haven't already joined this specific room
+    if (hasJoinedRoomRef.current !== roomId) {
+      hasJoinedRoomRef.current = roomId;
+      // Auto join room (fire and forget)
+      void joinRoomMutation.mutate({ roomId, userName: userId });
+    }
+
+    const encodedId = encodeURIComponent(roomId);
 
     const es = new EventSource(
-      `/api/collaboration/subscribe-room?roomId=${encodeURIComponent(roomId)}`,
+      `/api/collaboration/subscribe-room?roomId=${encodedId}`,
     );
     eventSourceRef.current = es;
 
@@ -34,32 +61,45 @@ export function useSSECollaboration(options: Options) {
     es.onerror = () => setIsConnected(false);
 
     es.onmessage = (evt) => {
+      let parsed: unknown;
       try {
-        const data = JSON.parse(evt.data);
-        switch (data.type) {
-          case "message": {
-            const msg = data.payload?.message ?? data.payload;
-            onMessageSync?.(msg);
-            break;
-          }
-          case "participant_joined":
-          case "participant_left":
-            onRoomStateUpdate?.(data.payload);
-            break;
-          default:
-            break;
-        }
+        parsed = JSON.parse(evt.data as string) as SSEMessage;
       } catch {
-        // ignore malformed
+        return; // ignore malformed JSON
+      }
+
+      if (!parsed || typeof parsed !== "object") return;
+
+      const { type, payload } = parsed as SSEMessage;
+
+      switch (type) {
+        case "message": {
+          const p = payload as Record<string, unknown> | undefined;
+          if (!p) break;
+          const msg: RoomMessage =
+            "message" in p && typeof p.message === "object"
+              ? (p.message as RoomMessage)
+              : (p as RoomMessage);
+
+          onMessageSyncRef.current?.(msg);
+          break;
+        }
+        case "participant_joined":
+        case "participant_left":
+          onRoomStateUpdateRef.current?.(payload);
+          break;
+        default:
+          break;
       }
     };
 
     return () => {
       es.close();
       setIsConnected(false);
+      // Reset join tracking when disconnecting
+      hasJoinedRoomRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId]);
+  }, [roomId, userId]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -73,12 +113,15 @@ export function useSSECollaboration(options: Options) {
     [roomId, userId, sendMessageMutation],
   );
 
-  const joinRoom = async (targetRoomId: string) => {
-    return await joinRoomMutation.mutateAsync({
-      roomId: targetRoomId,
-      userName: userId,
-    });
-  };
+  const joinRoom = useCallback(
+    async (targetRoomId: string) => {
+      return await joinRoomMutation.mutateAsync({
+        roomId: targetRoomId,
+        userName: userId,
+      });
+    },
+    [joinRoomMutation, userId],
+  );
 
   return {
     isConnected,

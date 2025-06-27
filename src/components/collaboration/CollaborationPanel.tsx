@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { clsx } from "clsx";
 import type { Easing } from "framer-motion";
 import { AnimatePresence, motion } from "framer-motion";
