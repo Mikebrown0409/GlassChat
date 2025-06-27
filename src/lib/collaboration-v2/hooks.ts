@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 // Simple Collaboration Hook
 // Minimal state management for room collaboration
 

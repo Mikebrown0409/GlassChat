@@ -66,4 +66,4 @@ Messages remain in the existing `Message` table; `chatId` = `branch.id`.
 
 ---
 
-Copyright (c) T3-OSS et al.
+Copyright (c)

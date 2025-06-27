@@ -120,7 +120,8 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
 
   // COLLABORATION FIX: In collaboration mode, use collaboration messages instead of regular messages
   const messages = useMemo(() => {
-    return collaboration.room && collaboration.messages.length > 0
+    // Transform collab messages into Message-like objects
+    const collabMapped = collaboration.room
       ? collaboration.messages.map((msg) => ({
           id: msg.id,
           content: msg.content,
@@ -136,12 +137,24 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
             isCollaborationMessage: true,
           },
         }))
-      : (rawMessages ?? []);
+      : [];
+
+    const merged = [...(rawMessages ?? []), ...collabMapped];
+
+    // De-duplicate by id (collab may echo what Dexie later syncs)
+    const seen = new Set<string>();
+    const deduped = merged.filter((m) => {
+      if (seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+
+    return deduped.sort((a, b) => a.createdAt - b.createdAt);
   }, [
+    rawMessages,
     collaboration.room,
     collaboration.messages,
     effectiveChatId,
-    rawMessages,
   ]);
 
   const messagesRef = useRef(messages);
