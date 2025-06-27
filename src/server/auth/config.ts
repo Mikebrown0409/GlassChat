@@ -1,4 +1,5 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { type User } from "@prisma/client";
 import { type DefaultSession, type NextAuthConfig } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import DiscordProvider from "next-auth/providers/discord";
@@ -69,7 +70,7 @@ export const authConfig = {
                 }
 
                 // Create or find user in database
-                let user = await db.user.findUnique({
+                let user: User | null = await db.user.findUnique({
                   where: { email },
                 });
 
@@ -87,7 +88,7 @@ export const authConfig = {
                   email: user.email,
                   image: user.image,
                 };
-              } catch (error) {
+              } catch (error: unknown) {
                 console.error("Error in credentials authorize:", error);
                 return null;
               }
