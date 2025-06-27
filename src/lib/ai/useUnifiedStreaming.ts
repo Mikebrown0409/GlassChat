@@ -215,78 +215,78 @@ Always apply these rules while answering based on the provided message history.`
 
       const decoder = new TextDecoder();
       let accumulatedContent = "";
+      let buffer = "";
+
+      const processLine = async (line: string) => {
+        if (!line.startsWith("data: ")) return;
+
+        const data = line.slice(6);
+
+        // Handle special terminator sent by server
+        if (data === "[DONE]") {
+          const finalContent = accumulatedContent;
+
+          if (finalContent) {
+            await syncManager.updateMessage(messageId, finalContent);
+
+            if (currentChatId) {
+              await memoryManagerClient.addMemory(currentChatId, finalContent, {
+                role: "assistant",
+              });
+            }
+          }
+
+          setStreamingStateImmediate({
+            isStreaming: false,
+            streamingContent: finalContent,
+            streamingMessageId: messageId,
+          });
+
+          if (process.env.NODE_ENV === "development") {
+            console.log("[UnifiedStreaming] Stream completed naturally", {
+              finalContentLength: finalContent.length,
+              messageId,
+            });
+          }
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(data) as {
+            content?: string;
+            block?: {
+              type: string;
+              content: string;
+              metadata?: Record<string, unknown>;
+            };
+            blockId?: string;
+          };
+
+          if (parsed.content) {
+            accumulatedContent += parsed.content;
+
+            setStreamingStateImmediate({
+              isStreaming: true,
+              streamingContent: accumulatedContent,
+              streamingMessageId: messageId,
+            });
+          }
+        } catch {
+          console.warn("Invalid JSON in stream:", data);
+        }
+      };
 
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n");
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
 
           for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6);
-              if (data === "[DONE]") {
-                // Stream completed - update database with final content
-                const finalContent = accumulatedContent;
-
-                if (finalContent) {
-                  await syncManager.updateMessage(messageId, finalContent);
-
-                  // Add assistant response to memory directly to prevent infinite loops
-                  if (currentChatId) {
-                    await memoryManagerClient.addMemory(
-                      currentChatId,
-                      finalContent,
-                      { role: "assistant" },
-                    );
-                  }
-                }
-
-                // Mark streaming as finished - keep content and messageId for typewriter
-                setStreamingStateImmediate({
-                  isStreaming: false,
-                  streamingContent: finalContent,
-                  streamingMessageId: messageId,
-                });
-
-                if (process.env.NODE_ENV === "development") {
-                  console.log("[UnifiedStreaming] Stream completed naturally", {
-                    finalContentLength: finalContent.length,
-                    isStreaming: false,
-                    messageId,
-                    preview: finalContent.slice(0, 50) + "...",
-                  });
-                }
-                return;
-              }
-
-              try {
-                const parsed = JSON.parse(data) as {
-                  content?: string;
-                  block?: {
-                    type: string;
-                    content: string;
-                    metadata?: Record<string, unknown>;
-                  };
-                  blockId?: string;
-                };
-
-                if (parsed.content) {
-                  accumulatedContent += parsed.content;
-
-                  setStreamingStateImmediate({
-                    isStreaming: true,
-                    streamingContent: accumulatedContent,
-                    streamingMessageId: messageId,
-                  });
-                }
-              } catch {
-                // Skip invalid JSON
-                console.warn("Invalid JSON in stream:", data);
-              }
-            }
+            await processLine(line);
           }
         }
       } finally {
@@ -299,7 +299,6 @@ Always apply these rules while answering based on the provided message history.`
       if (finalContent) {
         await syncManager.updateMessage(messageId, finalContent);
 
-        // Add assistant response to memory directly to prevent infinite loops
         if (currentChatId) {
           await memoryManagerClient.addMemory(currentChatId, finalContent, {
             role: "assistant",
