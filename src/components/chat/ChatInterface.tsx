@@ -1,9 +1,18 @@
 "use client";
 
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
-import { useChatGeneration } from "~/lib/ai/useChatGeneration";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useUnifiedStreaming } from "~/lib/ai/useUnifiedStreaming";
 import { useCollaborationBridge } from "~/lib/collaboration-v2/bridge";
 import { db } from "~/lib/db";
 import { syncManager, useLiveChats, useLiveMessages } from "~/lib/sync";
@@ -90,7 +99,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         effectiveChatId,
       });
     }
-  }, [roomIdFromUrl, currentRoomIdFromStore]);
+  }, [roomIdFromUrl, currentRoomIdFromStore, effectiveChatId]);
 
   // Debug logging for collaboration state changes (reduced frequency)
   useEffect(() => {
@@ -101,14 +110,20 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         users: collaboration.room.users?.length,
       });
     }
-  }, [currentRoomIdFromStore, collaboration.room?.id]);
+  }, [
+    currentRoomIdFromStore,
+    collaboration.room?.id,
+    collaboration.room?.chatId,
+    collaboration.room?.users?.length,
+  ]);
 
   // Load messages from the effective chat ID (shared room chat or personal chat)
   const rawMessages = useLiveMessages(effectiveChatId ?? "");
 
   // COLLABORATION FIX: In collaboration mode, use collaboration messages instead of regular messages
-  const messages =
-    collaboration.room && collaboration.messages.length > 0
+  const messages = useMemo(() => {
+    // Transform collab messages into Message-like objects
+    const collabMapped = collaboration.room
       ? collaboration.messages.map((msg) => ({
           id: msg.id,
           content: msg.content,
@@ -124,7 +139,25 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
             isCollaborationMessage: true,
           },
         }))
-      : (rawMessages ?? []);
+      : [];
+
+    const merged = [...(rawMessages ?? []), ...collabMapped];
+
+    // De-duplicate by id (collab may echo what Dexie later syncs)
+    const seen = new Set<string>();
+    const deduped = merged.filter((m) => {
+      if (seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+
+    return deduped.sort((a, b) => a.createdAt - b.createdAt);
+  }, [
+    rawMessages,
+    collaboration.room,
+    collaboration.messages,
+    effectiveChatId,
+  ]);
 
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -305,10 +338,13 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   );
   const {
     isTyping,
-    generateResponseIsPending,
-    handleSubmit: handleSubmitFromHook,
+    isStreaming,
+    streamingContent,
+    streamingMessageId,
+    handleSubmit,
     handleStop,
-  } = useChatGeneration(effectiveChatId, messages, selectedModelId);
+    clearStreamingState,
+  } = useUnifiedStreaming(effectiveChatId, messages, selectedModelId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -403,81 +439,93 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
   // Text selection handlers
   // Remove the old selection menu handlers (copy handled by browser shortcuts)
 
-  const handleExplainSelection = async (text?: string) => {
-    const content = text ?? selectionMenu?.text;
-    if (content && currentChatId) {
-      const explanationPrompt = `Please explain this text: "${content}"`;
-      composerRef.current?.setInput(explanationPrompt);
-      composerRef.current?.focusInput();
-      setSelectionMenu(null);
-    }
-  };
+  const handleExplainSelection = useCallback(
+    async (text?: string) => {
+      const content = text ?? selectionMenu?.text;
+      if (content && currentChatId) {
+        const explanationPrompt = `Please explain this text: "${content}"`;
+        composerRef.current?.setInput(explanationPrompt);
+        composerRef.current?.focusInput();
+        setSelectionMenu(null);
+      }
+    },
+    [selectionMenu?.text, currentChatId],
+  );
 
-  const handleTranslateSelection = async (text?: string) => {
-    const content = text ?? selectionMenu?.text;
-    if (content && currentChatId) {
-      const translationPrompt = `Please translate this text to English: "${content}"`;
-      composerRef.current?.setInput(translationPrompt);
-      composerRef.current?.focusInput();
-      setSelectionMenu(null);
-    }
-  };
+  const handleTranslateSelection = useCallback(
+    async (text?: string) => {
+      const content = text ?? selectionMenu?.text;
+      if (content && currentChatId) {
+        const translationPrompt = `Please translate this text to English: "${content}"`;
+        composerRef.current?.setInput(translationPrompt);
+        composerRef.current?.focusInput();
+        setSelectionMenu(null);
+      }
+    },
+    [selectionMenu?.text, currentChatId],
+  );
 
-  const handleSuggestionClick = (suggestion: string) => {
+  const handleSuggestionClick = useCallback((suggestion: string) => {
     composerRef.current?.setInput(suggestion);
     composerRef.current?.focusInput();
-  };
+  }, []);
 
-  const handleNewChat = async () => {
+  const handleNewChat = useCallback(async () => {
     try {
       const newChat = await syncManager.createChat("New Conversation");
       setCurrentChatId(newChat.id);
     } catch (error) {
       console.error("Failed to create new chat:", error);
     }
-  };
+  }, []);
 
-  const handleChatSelect = (chatId: string) => {
+  const handleChatSelect = useCallback((chatId: string) => {
     startTransition(() => {
       setCurrentChatId(chatId);
     });
-  };
+  }, []);
 
-  const handleRenameChat = async (chatId: string, newTitle: string) => {
-    try {
-      await syncManager.updateChat(chatId, { title: newTitle });
-    } catch (error) {
-      console.error("Failed to rename chat:", error);
-    }
-  };
-
-  const handleDeleteChat = async (chatId: string) => {
-    try {
-      // Import db directly to delete chat and its messages
-      const { db } = await import("~/lib/db");
-
-      // Delete all messages in this chat first
-      await db.messages.where("chatId").equals(chatId).delete();
-
-      // Delete the chat itself
-      await db.chats.delete(chatId);
-
-      // If we deleted the current chat, select another one
-      if (currentChatId === chatId) {
-        const remainingChats = await db.chats
-          .orderBy("updatedAt")
-          .reverse()
-          .toArray();
-        if (remainingChats.length > 0) {
-          setCurrentChatId(remainingChats[0]?.id);
-        } else {
-          setCurrentChatId(undefined);
-        }
+  const handleRenameChat = useCallback(
+    async (chatId: string, newTitle: string) => {
+      try {
+        await syncManager.updateChat(chatId, { title: newTitle });
+      } catch (error) {
+        console.error("Failed to rename chat:", error);
       }
-    } catch (error) {
-      console.error("Failed to delete chat:", error);
-    }
-  };
+    },
+    [],
+  );
+
+  const handleDeleteChat = useCallback(
+    async (chatId: string) => {
+      try {
+        // Import db directly to delete chat and its messages
+        const { db } = await import("~/lib/db");
+
+        // Delete all messages in this chat first
+        await db.messages.where("chatId").equals(chatId).delete();
+
+        // Delete the chat itself
+        await db.chats.delete(chatId);
+
+        // If we deleted the current chat, select another one
+        if (currentChatId === chatId) {
+          const remainingChats = await db.chats
+            .orderBy("updatedAt")
+            .reverse()
+            .toArray();
+          if (remainingChats.length > 0) {
+            setCurrentChatId(remainingChats[0]?.id);
+          } else {
+            setCurrentChatId(undefined);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to delete chat:", error);
+      }
+    },
+    [currentChatId],
+  );
 
   const models = [
     {
@@ -544,32 +592,30 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     };
   }, []);
 
-  const handleComposerSubmit = async (text: string) => {
-    // **ALWAYS SEND TO LLM**: Main chat is always for LLM interaction
-    // When in collaboration room, this creates shared LLM conversation via effectiveChatId
-    // The collaboration panel has separate user-to-user chat
-    await handleSubmitFromHook(text, () => composerRef.current?.setInput(""));
-  };
+  const handleComposerSubmit = useCallback(
+    async (text: string) => {
+      // **ALWAYS SEND TO LLM**: Main chat is always for LLM interaction
+      // When in collaboration room, this creates shared LLM conversation via effectiveChatId
+      // The collaboration panel has separate user-to-user chat
+      await handleSubmit(text, () => composerRef.current?.setInput(""));
+    },
+    [handleSubmit],
+  );
 
   // NEW: Handle collaboration messages
-  const handleCollaborationMessage = async (content: string) => {
-    if (!collaboration.sendMessage) return;
-    try {
-      await collaboration.sendMessage(content);
-    } catch (error) {
-      console.error("Failed to send collaboration message:", error);
-    }
-  };
+  const handleCollaborationMessage = useCallback(
+    async (content: string) => {
+      if (!collaboration.sendMessage) return;
+      try {
+        await collaboration.sendMessage(content);
+      } catch (error) {
+        console.error("Failed to send collaboration message:", error);
+      }
+    },
+    [collaboration.sendMessage],
+  );
 
-  // NEW: Handle AI messages in collaboration
-  const handleCollaborationAIMessage = async (content: string) => {
-    if (!collaboration.sendMessageToAI) return;
-    try {
-      await collaboration.sendMessageToAI(content);
-    } catch (error) {
-      console.error("Failed to send AI message:", error);
-    }
-  };
+  // Removed handleCollaborationAIMessage - now using unified streaming for all AI messages
 
   // Removed handleToggleMemory - memory functionality still works in background
 
@@ -582,17 +628,20 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
     setSidebarOpen(isDesktop);
   }, [isDesktop]);
 
-  const handleUpdateMessage = async (id: string, newContent: string) => {
-    try {
-      await db.updateSyncableEntity(db.messages, id, {
-        content: newContent,
-      });
-      // Debounce sync
-      await syncManager.performSync();
-    } catch (err) {
-      console.error("Failed to update message", err);
-    }
-  };
+  const handleUpdateMessage = useCallback(
+    async (id: string, newContent: string) => {
+      try {
+        await db.updateSyncableEntity(db.messages, id, {
+          content: newContent,
+        });
+        // Debounce sync
+        await syncManager.performSync();
+      } catch (err) {
+        console.error("Failed to update message", err);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const listener = (event: Event) => {
@@ -636,12 +685,16 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
         <ChatMessages
           messages={messages}
           isTyping={isTyping}
-          isPending={generateResponseIsPending}
+          isPending={false}
+          streamingContent={streamingContent}
+          streamingMessageId={streamingMessageId}
           onTranslate={handleTranslateSelection}
           onExplain={handleExplainSelection}
           onSuggestionClick={handleSuggestionClick}
           onUpdateMessage={handleUpdateMessage}
           messagesEndRef={messagesEndRef}
+          onStreamingDone={clearStreamingState}
+          selectedModel={selectedModelId}
         />
 
         {/* Input Area (Composer) */}
@@ -649,11 +702,7 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           ref={composerRef}
           isTyping={isTyping}
           onSubmit={handleCollaborationMessage}
-          onSubmitToAI={
-            !!collaboration.room
-              ? handleCollaborationAIMessage
-              : handleComposerSubmit
-          }
+          onSubmitToAI={handleComposerSubmit} // **FIXED**: Always use unified streaming for AI messages
           onStop={handleStop}
           selectedModel={selectedModelId}
           setSelectedModel={setSelectedModelId}
@@ -662,11 +711,9 @@ export function ChatInterface({ className: _className }: ChatInterfaceProps) {
           models={models}
           dropdownRef={dropdownRef}
           isCollaborationMode={!!collaboration.room}
-          isSendingToAI={collaboration.isSendingToAI}
+          isSendingToAI={isStreaming} // **FIXED**: Use unified streaming state instead of collaboration state
           disabled={
-            isTyping ||
-            collaboration.isSendingMessage ||
-            collaboration.isSendingToAI
+            isTyping || collaboration.isSendingMessage || isStreaming // **FIXED**: Use unified streaming state for AI-related disabling
           }
         />
       </main>

@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { type Prisma } from "@prisma/client";
+import { type MemoryEntry, type Prisma } from "@prisma/client";
 import { env } from "~/env";
 import { db } from "~/server/db";
 import type { SmartSummary } from "~/types/memory";
@@ -37,7 +37,7 @@ class MemoryManagerServer {
 
       // Trigger cleanup after adding new memory to prevent bloat
       await this.cleanupOldMemories(chatId);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to create memory entry:", error);
       throw new Error("Failed to create memory entry in database.");
     }
@@ -52,7 +52,7 @@ class MemoryManagerServer {
   async cleanupOldMemories(chatId: string): Promise<void> {
     try {
       // Get memory count for this chat
-      const memoryCount = await db.memoryEntry.count({
+      const memoryCount: number = await db.memoryEntry.count({
         where: { chatId },
       });
 
@@ -69,7 +69,7 @@ class MemoryManagerServer {
       const cutoffDate = new Date(
         Date.now() - this.MEMORY_RETENTION_DAYS * 24 * 60 * 60 * 1000,
       );
-      const deletedOld = await db.memoryEntry.deleteMany({
+      const deletedOld: Prisma.BatchPayload = await db.memoryEntry.deleteMany({
         where: {
           chatId,
           timestamp: {
@@ -83,30 +83,32 @@ class MemoryManagerServer {
       );
 
       // Strategy 2: If still over limit, keep only the most recent memories
-      const remainingCount = await db.memoryEntry.count({
+      const remainingCount: number = await db.memoryEntry.count({
         where: { chatId },
       });
 
       if (remainingCount > this.MAX_MEMORIES_PER_CHAT) {
         // Get IDs of memories to keep (most recent ones)
-        const memoriesToKeep = await db.memoryEntry.findMany({
-          where: { chatId },
-          select: { id: true },
-          orderBy: { timestamp: "desc" },
-          take: this.MAX_MEMORIES_PER_CHAT,
-        });
+        const memoriesToKeep: Pick<MemoryEntry, "id">[] =
+          await db.memoryEntry.findMany({
+            where: { chatId },
+            select: { id: true },
+            orderBy: { timestamp: "desc" },
+            take: this.MAX_MEMORIES_PER_CHAT,
+          });
 
         const keepIds = memoriesToKeep.map((m) => m.id);
 
         // Delete memories not in the keep list
-        const deletedExcess = await db.memoryEntry.deleteMany({
-          where: {
-            chatId,
-            id: {
-              notIn: keepIds,
+        const deletedExcess: Prisma.BatchPayload =
+          await db.memoryEntry.deleteMany({
+            where: {
+              chatId,
+              id: {
+                notIn: keepIds,
+              },
             },
-          },
-        });
+          });
 
         console.log(
           `🗑️ Deleted ${deletedExcess.count} excess memories (keeping ${this.MAX_MEMORIES_PER_CHAT} most recent)`,
@@ -114,7 +116,7 @@ class MemoryManagerServer {
       }
 
       // Update summary after cleanup to ensure it reflects current state
-      const recentMemories = await db.memoryEntry.findMany({
+      const recentMemories: MemoryEntry[] = await db.memoryEntry.findMany({
         where: { chatId },
         orderBy: { timestamp: "desc" },
         take: 20, // Use last 20 memories for summary
@@ -132,7 +134,7 @@ class MemoryManagerServer {
         await this.summarizeAndStore(chatId, historyString);
         console.log(`📝 Updated summary after memory cleanup`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`Failed to cleanup memories for chat ${chatId}:`, error);
       // Don't throw - cleanup failure shouldn't break memory addition
     }
@@ -146,10 +148,11 @@ class MemoryManagerServer {
 
     try {
       // Get all unique chat IDs
-      const chatIds = await db.memoryEntry.findMany({
-        select: { chatId: true },
-        distinct: ["chatId"],
-      });
+      const chatIds: Pick<MemoryEntry, "chatId">[] =
+        await db.memoryEntry.findMany({
+          select: { chatId: true },
+          distinct: ["chatId"],
+        });
 
       console.log(`Found ${chatIds.length} chats with memories`);
 
@@ -170,7 +173,7 @@ class MemoryManagerServer {
       }
 
       console.log("✅ Global memory cleanup completed");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("❌ Global memory cleanup failed:", error);
     }
   }
@@ -216,7 +219,7 @@ Keywords: [keyword1, keyword2, keyword3]`;
         keywordsMatch?.[1]?.split(",").map((k) => k.trim()) ?? [];
 
       return { summary, keywords };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to generate summary:", error);
       return {
         summary: "Error generating summary - please try again later",
@@ -231,19 +234,49 @@ Keywords: [keyword1, keyword2, keyword3]`;
   ): Promise<SmartSummary> {
     const { summary, keywords } = await this.generateSummary(chatHistory);
 
-    const newSummary = await db.smartSummary.upsert({
-      where: { chatId },
-      update: { summary, keywords: keywords.join(","), createdAt: new Date() },
-      create: { chatId, summary, keywords: keywords.join(",") },
-    });
+    try {
+      const existingSummary = await db.smartSummary.findUnique({
+        where: { chatId },
+      });
 
-    // The 'keywords' field is a string in the DB, but we want to return a string[]
-    return {
-      ...newSummary,
-      keywords: newSummary.keywords.split(","),
-      createdAt: newSummary.createdAt.getTime(),
-    };
+      if (existingSummary) {
+        const updatedSummary = await db.smartSummary.update({
+          where: { chatId },
+          data: {
+            summary,
+            keywords: keywords.join(", "),
+          },
+        });
+
+        return {
+          id: updatedSummary.id,
+          chatId: updatedSummary.chatId,
+          summary: updatedSummary.summary,
+          keywords: updatedSummary.keywords.split(", "),
+          createdAt: updatedSummary.createdAt.getTime(),
+        };
+      } else {
+        const newSummary = await db.smartSummary.create({
+          data: {
+            chatId,
+            summary,
+            keywords: keywords.join(", "),
+          },
+        });
+
+        return {
+          id: newSummary.id,
+          chatId: newSummary.chatId,
+          summary: newSummary.summary,
+          keywords: newSummary.keywords.split(", "),
+          createdAt: newSummary.createdAt.getTime(),
+        };
+      }
+    } catch (error: unknown) {
+      console.error("Failed to store summary:", error);
+      throw new Error("Failed to store summary in database.");
+    }
   }
 }
 
-export const memoryManagerServer = new MemoryManagerServer();
+export const memoryManager = new MemoryManagerServer();

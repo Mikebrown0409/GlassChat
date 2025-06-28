@@ -1,6 +1,6 @@
 "use client";
 
-import BeamLoader from "@/components/ui/BeamLoader";
+import { NeonLoader } from "@/components/ui/NeonLoader";
 import { AIModel } from "@/lib/ai/types";
 import { syncManager } from "@/lib/sync";
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
@@ -169,7 +169,7 @@ Your goal is to provide responses that are immediately useful and easy to copy/u
             )}
           >
             {isLoading ? (
-              <BeamLoader size={16} />
+              <NeonLoader size={20} />
             ) : (
               <PaperAirplaneIcon className="h-4 w-4" />
             )}

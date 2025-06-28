@@ -5,7 +5,6 @@ import { triggerCollaborationEvent } from "~/lib/pusher/server";
 
 export async function POST(request: NextRequest) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { roomId, message, userId } = (await request.json()) as {
       roomId: string;
       message: CollaborationMessage;

@@ -1,9 +1,10 @@
 "use client";
 
-import BeamLoader from "@/components/ui/BeamLoader";
+import { NeonLoader } from "@/components/ui/NeonLoader";
 import { AnimatePresence, motion } from "framer-motion";
 import { Brain, FileText, X } from "lucide-react";
 import type { useMemory } from "~/lib/memory/hooks";
+import type { MemoryEntry, SmartSummary } from "~/types/memory";
 
 interface MemoryPanelProps {
   currentChatId: string | null;
@@ -19,10 +20,10 @@ export function MemoryPanel({
   memoryHook,
   embedded = false,
 }: MemoryPanelProps) {
-  const { summary, memories, generateSummary, isSummarizing } = memoryHook;
-
-  const handleGenerateSummary = () => {
-    generateSummary();
+  const { summary, memories, isSummarizing } = memoryHook as {
+    summary: SmartSummary | null;
+    memories: MemoryEntry[];
+    isSummarizing: boolean;
   };
 
   const panelBody = (
@@ -54,7 +55,7 @@ export function MemoryPanel({
             <div className="border-border-subtle bg-surface-1/60 rounded-lg border p-4">
               {isSummarizing ? (
                 <div className="flex items-center gap-2 text-slate-400">
-                  <BeamLoader size={16} />
+                  <NeonLoader size={20} />
                   <span>Generating...</span>
                 </div>
               ) : summary ? (
@@ -77,13 +78,6 @@ export function MemoryPanel({
                 </p>
               )}
             </div>
-            <button
-              onClick={handleGenerateSummary}
-              disabled={isSummarizing || memories.length === 0}
-              className="bg-brand-primary hover:bg-brand-primary/80 mt-3 flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSummarizing ? "Please wait..." : "Update Summary"}
-            </button>
           </div>
 
           {/* Memories Section */}

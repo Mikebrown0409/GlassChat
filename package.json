@@ -13,7 +13,8 @@
     "dev": "next dev --turbo",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
-    "postinstall": "prisma generate && prisma db push",
+    "postinstall": "prisma generate && npm run db:deploy",
+    "db:deploy": "node -e \"if (process.env.NODE_ENV === 'production' || process.env.VERCEL === '1') { require('child_process').execSync('npx prisma db push', {stdio: 'inherit'}); } else { console.log('Skipping db push in development'); }\"",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "preview": "next build && next start",
@@ -82,6 +83,7 @@
     "katex": "^0.16.9",
     "lucide-react": "^0.283.0",
     "markdown-wasm": "^1.1.0",
+    "micromark-core-commonmark": "^2.0.3",
     "nanoid": "^5.1.5",
     "next": "^15.2.3",
     "next-auth": "5.0.0-beta.25",
@@ -124,7 +126,8 @@
     "prisma": "^6.5.0",
     "tailwindcss": "^4.0.15",
     "typescript": "^5.8.2",
-    "typescript-eslint": "^8.27.0"
+    "typescript-eslint": "^8.27.0",
+    "picomatch": "^4.0.2"
   },
   "ct3aMetadata": {
     "initVersion": "7.39.3"

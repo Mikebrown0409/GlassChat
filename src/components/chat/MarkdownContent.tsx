@@ -1,32 +1,12 @@
 import clsx from "clsx";
 import "katex/dist/katex.min.css";
 import type { ReactNode } from "react";
-import React from "react";
+import React, { Component, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import rehypeKatex from "rehype-katex";
-import remarkBreaks from "remark-breaks";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import type { Pluggable } from "unified";
+import { getPlugins } from "~/lib/utils/mathSafety";
 import { cn } from "~/utils/cn";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidDiagram } from "./MermaidDiagram";
-
-const remarkBreaksTyped = remarkBreaks as unknown as Pluggable;
-const remarkMathTyped = remarkMath as unknown as Pluggable;
-const rehypeKatexTyped = rehypeKatex as unknown as Pluggable;
-
-interface Props {
-  content: string;
-  role: "user" | "assistant" | "system";
-  _messageId?: string;
-  _onUpdateMessage?: (newContent: string) => void;
-}
-
-// Previously attempted to auto-convert tabular-looking text into markdown tables.
-// This heuristic proved too aggressive (e.g. turning simple bullet lists into tables).
-// We now disable it and leave author content untouched.
-// const normalizeToMarkdownTable = (src: string): string => src;
 
 // Wrapper to render tables with copy-to-markdown capability
 function MarkdownTableWrapper({ children }: { children?: React.ReactNode }) {
@@ -104,12 +84,79 @@ function filterImageUrl(url: string): string {
   return url;
 }
 
+interface Props {
+  content: string;
+  role: "user" | "assistant" | "system";
+  _messageId?: string;
+  _onUpdateMessage?: (newContent: string) => void;
+  isStreaming?: boolean;
+}
+
+class MarkdownErrorBoundary extends Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; fallback: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(_error: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[MarkdownErrorBoundary] Render error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
 export default function MarkdownContent({
   content,
   role,
   _messageId,
   _onUpdateMessage,
+  isStreaming = false,
 }: Props) {
+  // Safety check: ensure content is a valid string
+  const safeContent = typeof content === "string" ? content : "";
+
+  const [hasError, setHasError] = useState(false);
+
+  // Reset error state when content changes
+  useEffect(() => {
+    setHasError(false);
+  }, [safeContent]);
+
+  // Determine plugin sets via helper
+  const {
+    remark: remarkPlugins,
+    rehype: rehypePlugins,
+    disableMath: shouldDisableMath,
+  } = getPlugins(isStreaming, safeContent);
+
+  // Optional debug logging - toggle with flag
+  const DEBUG_MATH_LOGS = false;
+  if (
+    DEBUG_MATH_LOGS &&
+    process.env.NODE_ENV === "development" &&
+    safeContent.includes("$")
+  ) {
+    console.log("[MarkdownContent] Math content detected:", {
+      content: safeContent.slice(0, 200) + "...",
+      isStreaming,
+      shouldDisableMath,
+      remarkPluginsCount: remarkPlugins.length,
+      rehypePluginsCount: rehypePlugins.length,
+    });
+  }
+
   const stringifyChildren = (node: ReactNode): string => {
     if (typeof node === "string") return node;
     if (Array.isArray(node)) {
@@ -118,192 +165,287 @@ export default function MarkdownContent({
     return "";
   };
 
-  return (
-    <div className={cn("prose prose-invert max-w-none", _messageId)}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaksTyped, remarkMathTyped]}
-        rehypePlugins={[rehypeKatexTyped]}
-        components={{
-          pre: ({ children }) => (
-            <div className="overflow-x-auto">{children}</div>
-          ),
-          table: MarkdownTableWrapper,
-          tr: ({ children, ...props }) => (
-            <tr
-              className="border-b border-zinc-100 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/50"
-              {...props}
-            >
-              {children}
-            </tr>
-          ),
-          thead: ({ children }) => (
-            <thead className="bg-zinc-50 dark:bg-zinc-800/60">{children}</thead>
-          ),
-          th: ({ children, ...props }) => (
-            <th
-              className="px-6 py-4 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100"
-              {...props}
-            >
-              {children}
-            </th>
-          ),
-          td: ({ children, ...props }) => (
-            <td
-              className="px-6 py-4 text-sm text-zinc-700 dark:text-zinc-300"
-              style={{
-                wordWrap: "break-word",
-                wordBreak: "break-word",
-                minWidth: "120px",
-                maxWidth: "300px",
-                whiteSpace: "normal",
-                lineHeight: "1.5",
-              }}
-              {...props}
-            >
-              {children}
-            </td>
-          ),
-          p: ({ children, ...props }) => {
-            const plainText = stringifyChildren(children);
-            const isShort = plainText.length < 50;
-            return (
-              <p
-                className={clsx(
-                  "mb-4 last:mb-0",
-                  isShort
-                    ? "whitespace-nowrap"
-                    : role === "user"
-                      ? "whitespace-normal"
-                      : "whitespace-pre-wrap",
-                )}
-                {...props}
-              >
-                {children}
-              </p>
-            );
-          },
-          // @ts-expect-error inline present
-          code({ inline, className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className ?? "");
-            if (!inline && match?.[1]) {
-              if (match[1] === "mermaid") {
-                const codeString = stringifyChildren(children).replace(
-                  /\n$/,
-                  "",
-                );
+  // If content is empty return nothing (parent should show its own placeholder)
+  if (!safeContent.trim()) {
+    return null;
+  }
+
+  // If there was a markdown parsing error, render as plain text
+  if (hasError) {
+    return (
+      <div className={cn("prose dark:prose-invert max-w-none", _messageId)}>
+        <pre className="text-sm whitespace-pre-wrap">{safeContent}</pre>
+      </div>
+    );
+  }
+
+  try {
+    return (
+      <div className={cn("prose dark:prose-invert max-w-none", _messageId)}>
+        <MarkdownErrorBoundary
+          fallback={
+            <pre className="text-sm whitespace-pre-wrap text-red-600">
+              Error rendering markdown. Content: {safeContent.slice(0, 100)}...
+            </pre>
+          }
+        >
+          <ReactMarkdown
+            remarkPlugins={remarkPlugins}
+            rehypePlugins={rehypePlugins}
+            components={{
+              pre: ({ children }) => (
+                <div className="overflow-x-auto">{children}</div>
+              ),
+              table: MarkdownTableWrapper,
+              tr: ({ children, ...props }) => (
+                <tr
+                  className="border-b border-zinc-100 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/50"
+                  {...props}
+                >
+                  {children}
+                </tr>
+              ),
+              thead: ({ children }) => (
+                <thead className="bg-zinc-50 dark:bg-zinc-800/60">
+                  {children}
+                </thead>
+              ),
+              th: ({ children, ...props }) => (
+                <th
+                  className="px-6 py-4 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100"
+                  {...props}
+                >
+                  {children}
+                </th>
+              ),
+              td: ({ children, ...props }) => (
+                <td
+                  className="px-6 py-4 text-sm text-zinc-700 dark:text-zinc-300"
+                  style={{
+                    wordWrap: "break-word",
+                    wordBreak: "break-word",
+                    minWidth: "120px",
+                    maxWidth: "300px",
+                    whiteSpace: "normal",
+                    lineHeight: "1.5",
+                  }}
+                  {...props}
+                >
+                  {children}
+                </td>
+              ),
+              p: ({ children, ...props }) => {
+                const plainText = stringifyChildren(children);
+                const isShort = plainText.length < 50;
                 return (
-                  <div className="my-4">
-                    <MermaidDiagram chart={codeString} />
-                  </div>
+                  <p
+                    className={clsx(
+                      "mb-4 last:mb-0",
+                      // During streaming, always allow wrapping to prevent single long line
+                      isStreaming
+                        ? "whitespace-pre-wrap"
+                        : shouldDisableMath
+                          ? "whitespace-pre-wrap"
+                          : isShort
+                            ? "whitespace-nowrap"
+                            : role === "user"
+                              ? "whitespace-normal"
+                              : "whitespace-pre-wrap",
+                    )}
+                    {...props}
+                  >
+                    {children}
+                  </p>
                 );
-              }
-              const codeString = stringifyChildren(children).replace(/\n$/, "");
-              return (
-                <div className="my-4">
-                  <CodeBlock language={match[1]} {...props}>
-                    {codeString}
-                  </CodeBlock>
+              },
+              // @ts-expect-error inline present
+              code({ inline, className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className ?? "");
+                if (!inline && match?.[1]) {
+                  if (match[1] === "mermaid") {
+                    const codeString = stringifyChildren(children).replace(
+                      /\n$/,
+                      "",
+                    );
+                    return (
+                      <div className="my-4">
+                        <MermaidDiagram chart={codeString} />
+                      </div>
+                    );
+                  }
+                  const codeString = stringifyChildren(children).replace(
+                    /\n$/,
+                    "",
+                  );
+                  return (
+                    <div className="my-4">
+                      <CodeBlock language={match[1]} {...props}>
+                        {codeString}
+                      </CodeBlock>
+                    </div>
+                  );
+                }
+                if (match?.[1]) {
+                  const codeString = stringifyChildren(children);
+                  return (
+                    <CodeBlock language={match[1]} isInline {...props}>
+                      {codeString}
+                    </CodeBlock>
+                  );
+                }
+                return (
+                  <code
+                    className={clsx(
+                      "bg-surface-2 rounded px-1 py-0.5 font-mono text-sm",
+                      className,
+                    )}
+                    {...props}
+                  >
+                    {children}
+                  </code>
+                );
+              },
+              img: ({ src, alt, ...props }) => {
+                const filteredSrc = filterImageUrl(
+                  typeof src === "string" ? src : "",
+                );
+
+                // If the URL was filtered out, don't render the image
+                if (!filteredSrc) {
+                  return alt ? (
+                    <span className="text-gray-500 italic">[Image: {alt}]</span>
+                  ) : null;
+                }
+
+                return (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={filteredSrc}
+                    alt={alt}
+                    className="h-auto max-w-full rounded-lg"
+                    onError={(e) => {
+                      // Hide broken images gracefully
+                      e.currentTarget.style.display = "none";
+                      console.warn("Failed to load image:", filteredSrc);
+                    }}
+                    {...props}
+                  />
+                );
+              },
+              // Enhanced blockquotes for callouts and notes
+              blockquote: ({ children }) => (
+                <div className="my-4 border-l-4 border-blue-500 bg-blue-50 p-4 dark:bg-blue-950/20">
+                  <div className="text-blue-700 dark:text-blue-300">
+                    {children}
+                  </div>
                 </div>
-              );
-            }
-            if (match?.[1]) {
-              const codeString = stringifyChildren(children);
-              return (
-                <CodeBlock language={match[1]} isInline {...props}>
-                  {codeString}
-                </CodeBlock>
-              );
-            }
-            return (
-              <code
-                className={clsx(
-                  "bg-surface-2 rounded px-1 py-0.5 font-mono text-sm",
-                  className,
-                )}
-                {...props}
-              >
-                {children}
-              </code>
-            );
-          },
-          img: ({ src, alt, ...props }) => {
-            const filteredSrc = filterImageUrl(
-              typeof src === "string" ? src : "",
-            );
+              ),
+              // Enhanced list styling for professional documents
+              ul: ({ children, ...props }) => (
+                <ul className="my-4 space-y-2 pl-6" {...props}>
+                  {children}
+                </ul>
+              ),
+              ol: ({ children, ...props }) => (
+                <ol className="my-4 space-y-2 pl-6" {...props}>
+                  {children}
+                </ol>
+              ),
+              li: ({ children, ...props }) => (
+                <li className="text-sm leading-relaxed" {...props}>
+                  {children}
+                </li>
+              ),
+              // Enhanced heading styles for better hierarchy
+              h1: ({ children, ...props }) => (
+                <h1
+                  className="mt-6 mb-4 text-2xl font-bold text-zinc-900 dark:text-zinc-100"
+                  {...props}
+                >
+                  {children}
+                </h1>
+              ),
+              h2: ({ children, ...props }) => (
+                <h2
+                  className="mt-5 mb-3 text-xl font-semibold text-zinc-800 dark:text-zinc-200"
+                  {...props}
+                >
+                  {children}
+                </h2>
+              ),
+              h3: ({ children, ...props }) => (
+                <h3
+                  className="mt-4 mb-2 text-lg font-medium text-zinc-700 dark:text-zinc-300"
+                  {...props}
+                >
+                  {children}
+                </h3>
+              ),
+            }}
+          >
+            {safeContent}
+          </ReactMarkdown>
+        </MarkdownErrorBoundary>
+      </div>
+    );
+  } catch (error) {
+    console.error("[MarkdownContent] Markdown parsing failed:", error);
+    console.error("[MarkdownContent] Content causing error:", {
+      content: safeContent,
+      isStreaming,
+      shouldDisableMath,
+      remarkPluginsCount: remarkPlugins.length,
+      rehypePluginsCount: rehypePlugins.length,
+    });
 
-            // If the URL was filtered out, don't render the image
-            if (!filteredSrc) {
-              return alt ? (
-                <span className="text-gray-500 italic">[Image: {alt}]</span>
-              ) : null;
-            }
+    // If math parsing failed, try again without math plugins
+    if (
+      !shouldDisableMath &&
+      error instanceof Error &&
+      (error.message.includes("math") ||
+        error.message.includes("katex") ||
+        error.message.includes("Cannot set properties of undefined"))
+    ) {
+      try {
+        const safePlugins = getPlugins(true, safeContent); // Force safe mode
+        return (
+          <div className={cn("prose dark:prose-invert max-w-none", _messageId)}>
+            <ReactMarkdown
+              remarkPlugins={safePlugins.remark}
+              rehypePlugins={safePlugins.rehype}
+              components={{
+                pre: ({ children }) => (
+                  <div className="overflow-x-auto">{children}</div>
+                ),
+                p: ({ children, ...props }) => (
+                  <p
+                    className={clsx(
+                      "mb-4 last:mb-0",
+                      "whitespace-pre-wrap", // Safe spacing without math
+                    )}
+                    {...props}
+                  >
+                    {children}
+                  </p>
+                ),
+              }}
+            >
+              {safeContent}
+            </ReactMarkdown>
+          </div>
+        );
+      } catch (fallbackError) {
+        console.warn("Fallback markdown parsing also failed:", fallbackError);
+        setHasError(true);
+      }
+    } else {
+      setHasError(true);
+    }
 
-            return (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={filteredSrc}
-                alt={alt}
-                className="h-auto max-w-full rounded-lg"
-                onError={(e) => {
-                  // Hide broken images gracefully
-                  e.currentTarget.style.display = "none";
-                  console.warn("Failed to load image:", filteredSrc);
-                }}
-                {...props}
-              />
-            );
-          },
-          // Enhanced blockquotes for callouts and notes
-          blockquote: ({ children }) => (
-            <div className="my-4 border-l-4 border-blue-500 bg-blue-50 p-4 dark:bg-blue-950/20">
-              <div className="text-blue-700 dark:text-blue-300">{children}</div>
-            </div>
-          ),
-          // Enhanced list styling for professional documents
-          ul: ({ children, ...props }) => (
-            <ul className="my-4 space-y-2 pl-6" {...props}>
-              {children}
-            </ul>
-          ),
-          ol: ({ children, ...props }) => (
-            <ol className="my-4 space-y-2 pl-6" {...props}>
-              {children}
-            </ol>
-          ),
-          li: ({ children, ...props }) => (
-            <li className="text-sm leading-relaxed" {...props}>
-              {children}
-            </li>
-          ),
-          // Enhanced heading styles for better hierarchy
-          h1: ({ children, ...props }) => (
-            <h1
-              className="mt-6 mb-4 text-2xl font-bold text-zinc-900 dark:text-zinc-100"
-              {...props}
-            >
-              {children}
-            </h1>
-          ),
-          h2: ({ children, ...props }) => (
-            <h2
-              className="mt-5 mb-3 text-xl font-semibold text-zinc-800 dark:text-zinc-200"
-              {...props}
-            >
-              {children}
-            </h2>
-          ),
-          h3: ({ children, ...props }) => (
-            <h3
-              className="mt-4 mb-2 text-lg font-medium text-zinc-700 dark:text-zinc-300"
-              {...props}
-            >
-              {children}
-            </h3>
-          ),
-        }}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
+    return (
+      <div className={cn("prose dark:prose-invert max-w-none", _messageId)}>
+        <pre className="text-sm whitespace-pre-wrap">{safeContent}</pre>
+      </div>
+    );
+  }
 }

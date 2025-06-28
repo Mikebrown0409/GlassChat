@@ -27,12 +27,16 @@ interface ChatHeaderProps {
   sidebarOpen: boolean;
   onOpenSidebar: () => void;
   className?: string;
+  enableBlockMode?: boolean;
+  onToggleBlockMode?: (enabled: boolean) => void;
 }
 
 export function ChatHeader({
   sidebarOpen,
   onOpenSidebar,
   className,
+  enableBlockMode = false,
+  onToggleBlockMode,
 }: ChatHeaderProps) {
   // Global collaboration state
   const { currentRoomId, onlineUsers } = useCollaborationStore((s) => ({
@@ -108,6 +112,22 @@ export function ChatHeader({
             </div>
           )}
           <CollabToggle />
+
+          {process.env.NODE_ENV === "development" && onToggleBlockMode && (
+            <button
+              onClick={() => onToggleBlockMode(!enableBlockMode)}
+              className={clsx(
+                "rounded px-2 py-1 text-xs font-medium transition-colors",
+                enableBlockMode
+                  ? "border border-blue-500/30 bg-blue-500/20 text-blue-300"
+                  : "border border-gray-500/30 bg-gray-500/20 text-gray-400",
+              )}
+              title="Toggle Block-Aware Streaming (Dev Mode)"
+            >
+              {enableBlockMode ? "Block Mode" : "Legacy Mode"}
+            </button>
+          )}
+
           <ThemeSwitcher />
 
           {/* User dropdown */}

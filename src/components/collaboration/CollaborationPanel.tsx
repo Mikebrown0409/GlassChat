@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { clsx } from "clsx";
 import type { Easing } from "framer-motion";
 import { AnimatePresence, motion } from "framer-motion";
@@ -191,7 +193,7 @@ export function CollaborationPanel({
 
     // No cleanup needed since we're not using event listeners anymore
     return undefined;
-  }, [currentRoomId, collaboration.events]);
+  }, [currentRoomId, collaboration]);
 
   // const _handleCreateUser = async () => {
   //   if (!userName.trim()) return;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import type { MemoryEntry, SmartSummary } from "~/types/memory";
 import { memoryManagerClient } from "./memoryManager-client";
@@ -14,47 +14,62 @@ export function useMemory(chatId: string | null, messages: HookMessage[]) {
   const [summary, setSummary] = useState<SmartSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const lastSummarizedCount = useRef(0);
+  const lastSummaryTimeRef = useRef<number>(0);
 
   const addMemoryMutation = api.memory.addMemory.useMutation();
   const summarizeHistoryMutation = api.memory.summarizeHistory.useMutation();
 
-  const historyString = useMemo(() => {
-    if (!messages || !Array.isArray(messages)) return "";
-    return messages.map((m) => `${m.role}: ${m.content}`).join("\\n");
-  }, [messages]);
-
-  const generateSummary = useCallback(() => {
-    if (!chatId || !historyString || summarizeHistoryMutation.isPending) return;
-
-    summarizeHistoryMutation.mutate(
-      { chatId, history: historyString },
-      {
-        onSuccess: (data) => {
-          if (data.summary) {
-            setSummary(data.summary);
-            void memoryManagerClient.updateSummary(
-              chatId,
-              data.summary.summary,
-              data.summary.keywords,
-            );
-          }
-        },
-      },
-    );
-  }, [chatId, historyString, summarizeHistoryMutation]);
-
   useEffect(() => {
-    if (!messages || !Array.isArray(messages)) return;
+    if (!messages || !Array.isArray(messages) || !chatId) return;
+
     const messageCount = messages.length;
+    const now = Date.now();
+    const timeSinceLast = now - lastSummaryTimeRef.current;
+
     if (
       messageCount > 0 &&
-      messageCount % 2 === 0 &&
-      messageCount > lastSummarizedCount.current
+      messageCount % 10 === 0 && // every 10 messages
+      messageCount > lastSummarizedCount.current &&
+      timeSinceLast > 5 * 60 * 1000 // or 5 minutes
     ) {
       lastSummarizedCount.current = messageCount;
-      void generateSummary();
+      lastSummaryTimeRef.current = now;
+
+      // Generate history string directly here to avoid dependency issues
+      const currentHistoryString = messages
+        .map((m) => `${m.role}: ${m.content}`)
+        .join("\n");
+
+      console.log("[Memory] Triggering summary generation:", {
+        chatId,
+        messageCount,
+        historyLength: currentHistoryString.length,
+        isPending: summarizeHistoryMutation.isPending,
+      });
+
+      if (currentHistoryString && !summarizeHistoryMutation.isPending) {
+        const params = { chatId, history: currentHistoryString };
+        console.log("[Memory] Calling summarizeHistory with:", params);
+
+        summarizeHistoryMutation.mutate(params, {
+          onSuccess: (data) => {
+            console.log("[Memory] Summary generation successful:", data);
+            if (data.summary) {
+              setSummary(data.summary);
+              void memoryManagerClient.updateSummary(
+                chatId,
+                data.summary.summary,
+                data.summary.keywords,
+              );
+            }
+          },
+          onError: (error) => {
+            console.error("[Memory] Summary generation failed:", error);
+          },
+        });
+      }
     }
-  }, [messages, generateSummary]);
+  }, [messages, chatId, summarizeHistoryMutation]);
 
   const loadInitialData = useCallback(async () => {
     if (!chatId) return;
@@ -91,7 +106,6 @@ export function useMemory(chatId: string | null, messages: HookMessage[]) {
     summary,
     isLoading,
     addMemory,
-    generateSummary,
     isSummarizing: summarizeHistoryMutation.isPending,
   };
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import BeamLoader from "@/components/ui/BeamLoader";
+import { NeonLoader } from "@/components/ui/NeonLoader";
 import { clsx } from "clsx";
 import type { Easing } from "framer-motion";
 import { AnimatePresence, motion } from "framer-motion";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { MessageDisplay } from "./MessageDisplay";
 
 // Define ChatMessage type directly to avoid heavy imports if above fails
@@ -19,11 +19,15 @@ interface ChatMessagesProps {
   messages: ChatMessage[];
   isTyping: boolean;
   isPending: boolean;
+  streamingContent?: string;
+  streamingMessageId?: string | null;
   onTranslate: (text?: string) => void;
   onExplain: (text?: string) => void;
   onSuggestionClick: (text: string) => void;
   onUpdateMessage: (id: string, newContent: string) => void;
   messagesEndRef: RefObject<HTMLDivElement | null>;
+  onStreamingDone?: () => void;
+  selectedModel?: string;
 }
 
 // Explicitly type as cubic-bezier tuple to satisfy Framer Motion's Easing type
@@ -33,11 +37,15 @@ export function ChatMessages({
   messages,
   isTyping,
   isPending,
+  streamingContent,
+  streamingMessageId,
   onTranslate,
   onExplain,
   onSuggestionClick,
   onUpdateMessage,
   messagesEndRef,
+  onStreamingDone,
+  selectedModel,
 }: ChatMessagesProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [showJump, setShowJump] = useState(false);
@@ -59,7 +67,8 @@ export function ChatMessages({
   return (
     <div
       ref={viewportRef}
-      className="chat-viewport glass-scrollbar relative pb-28"
+      className="chat-viewport glass-scrollbar relative scroll-smooth pb-28"
+      style={{ scrollBehavior: "smooth" }}
     >
       {messages.length === 0 ? (
         <motion.div
@@ -132,81 +141,77 @@ export function ChatMessages({
       ) : (
         <div className="mx-auto flex max-w-4xl flex-col gap-[var(--chat-gap)] p-6">
           <AnimatePresence mode="popLayout">
-            {messages.map((message, idx) => (
-              <motion.div
-                key={message.id}
-                layout
-                initial={{ opacity: 0, y: 15, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -15, scale: 0.98 }}
-                transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
-                className={clsx(
-                  "group flex gap-4",
-                  message.role === "user" ? "flex-row-reverse" : "",
-                )}
-              >
-                <div
+            {messages
+              .filter((message) => message?.id && message.content !== undefined)
+              .map((message, idx) => (
+                <motion.div
+                  key={message.id}
+                  layout
+                  initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -15, scale: 0.98 }}
+                  transition={{ duration: 0.3, ease: DYNAMIC_EASE }}
                   className={clsx(
-                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-200",
-                    message.role === "user"
-                      ? "bg-surface-2 text-secondary"
-                      : message.role === "system"
-                        ? "bg-accent-100 text-accent-500"
-                        : "bg-surface-1 text-secondary",
+                    "group flex gap-4",
+                    message.role === "user" ? "flex-row-reverse" : "",
                   )}
                 >
-                  {message.role === "system" ? "!" : null}
-                </div>
-                <div
-                  className={clsx(
-                    "flex max-w-[85%] flex-col gap-1",
-                    message.role === "user" ? "items-end" : "items-start",
-                  )}
-                >
-                  <MessageDisplay
-                    key={message.id}
-                    message={message}
-                    _isTyping={idx === messages.length - 1 && isTyping}
-                    onTranslate={onTranslate}
-                    onExplain={onExplain}
-                    onSuggestionClick={onSuggestionClick}
-                    onUpdateMessage={onUpdateMessage}
-                    _isNewMessage={idx === messages.length - 1}
-                  />
-                </div>
-              </motion.div>
-            ))}
+                  <div
+                    className={clsx(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-200",
+                      message.role === "user"
+                        ? "bg-surface-2 text-secondary"
+                        : message.role === "system"
+                          ? "bg-accent-100 text-accent-500"
+                          : "bg-surface-1 text-secondary",
+                    )}
+                  >
+                    {message.role === "system" ? "!" : null}
+                  </div>
+                  <div
+                    className={clsx(
+                      "flex max-w-[85%] flex-col gap-1",
+                      message.role === "user" ? "items-end" : "items-start",
+                    )}
+                  >
+                    <MessageDisplay
+                      key={message.id}
+                      message={message}
+                      _isTyping={idx === messages.length - 1 && isTyping}
+                      streamingContent={
+                        message.id === streamingMessageId && streamingContent
+                          ? streamingContent
+                          : undefined
+                      }
+                      onTranslate={onTranslate}
+                      onExplain={onExplain}
+                      onSuggestionClick={onSuggestionClick}
+                      onUpdateMessage={onUpdateMessage}
+                      _isNewMessage={idx === messages.length - 1}
+                      onStreamingDone={
+                        message.id === streamingMessageId
+                          ? onStreamingDone
+                          : undefined
+                      }
+                      selectedModel={selectedModel}
+                    />
+                  </div>
+                </motion.div>
+              ))}
           </AnimatePresence>
 
           {/* Typing Indicator */}
           <div style={{ minHeight: 40 }}>
-            {(isTyping || isPending) && (
+            {(isTyping || isPending) && !streamingContent && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ ease: DYNAMIC_EASE }}
-                className="flex items-center gap-4"
+                className="flex items-start gap-4"
               >
                 <div className="bg-surface-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-                  <BeamLoader size={18} />
-                </div>
-                <div className="border-border-subtle bg-surface-0 rounded-lg border p-4">
-                  <div className="flex items-center gap-1.5">
-                    {[0, 1, 2].map((i) => (
-                      <motion.div
-                        key={i}
-                        className="bg-accent-500 h-1.5 w-1.5 rounded-full"
-                        animate={{ y: [0, -2, 0] }}
-                        transition={{
-                          duration: 0.8,
-                          repeat: Infinity,
-                          delay: i * 0.15,
-                          ease: "easeInOut",
-                        }}
-                      />
-                    ))}
-                  </div>
+                  <NeonLoader size={24} />
                 </div>
               </motion.div>
             )}

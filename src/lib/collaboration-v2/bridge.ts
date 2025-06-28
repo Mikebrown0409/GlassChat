@@ -4,7 +4,9 @@ import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCollaborationStore } from "~/lib/collaboration/store";
 import { USER_COLORS, type UserPresence } from "~/lib/collaboration/types";
-import { usePusherCollaboration } from "./pusherHooks";
+import { useSSECollaboration } from "./sseHooks";
+
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 
 // Bridge types that match the legacy interface
 interface BridgedUser {
@@ -62,34 +64,29 @@ export function useCollaborationBridge(roomId: string | null) {
   // Use Pusher collaboration system with the current user's name
   const participantName =
     session?.user?.name ?? session?.user?.email ?? "Anonymous";
-  const pusherCollab = usePusherCollaboration({
+  const sseCollab = useSSECollaboration({
     roomId: roomId ?? undefined,
     userId: participantName,
-    onMessageSync: (event) => {
-      console.log("📨 [Bridge] Message sync:", event);
+    onMessageSync: (msg: any) => {
+      console.log("📨 [Bridge] Message sync:", msg);
 
-      // Convert Pusher message to bridge format and add to messages
-      // For now, just assume all events are chat messages since that's what we're sending
-      if (roomId) {
-        const bridgedMessage: BridgedMessage = {
-          id: `${event.timestamp}-${event.sender}`,
-          content: event.content,
-          sender: event.sender,
-          timestamp: new Date(event.timestamp).toISOString(),
-          roomId: roomId,
-        };
+      if (!roomId) return;
 
-        setCollaborationMessages((prev) => {
-          // Avoid duplicates
-          if (prev.some((msg) => msg.id === bridgedMessage.id)) {
-            return prev;
-          }
-          return [...prev, bridgedMessage].sort(
-            (a, b) =>
-              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-          );
-        });
-      }
+      const bridgedMessage: BridgedMessage = {
+        id: msg.id ?? `${Date.now()}-${Math.random()}`,
+        content: msg.content,
+        sender: msg.sender,
+        timestamp: msg.timestamp ?? new Date().toISOString(),
+        roomId,
+      };
+
+      setCollaborationMessages((prev) => {
+        if (prev.some((m) => m.id === bridgedMessage.id)) return prev;
+        return [...prev, bridgedMessage].sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        );
+      });
     },
     onRoomStateUpdate: (event) => {
       console.log("🏠 [Bridge] Room state update:", event);
@@ -105,7 +102,7 @@ export function useCollaborationBridge(roomId: string | null) {
 
   // Convert Pusher participants to legacy UserPresence format and update store
   useEffect(() => {
-    if (roomId && pusherCollab.isConnected) {
+    if (roomId && sseCollab.isConnected) {
       // For now, create a simple presence list with just the current user
       // Pusher system doesn't provide participant list in the simple setup
       const userPresences: UserPresence[] = [
@@ -124,7 +121,7 @@ export function useCollaborationBridge(roomId: string | null) {
     } else {
       setOnlineUsers([]);
     }
-  }, [roomId, pusherCollab.isConnected, participantName, setOnlineUsers]);
+  }, [roomId, sseCollab.isConnected, participantName, setOnlineUsers]);
 
   // Create bridged user object
   const bridgedUser: BridgedUser | null = useMemo(() => {
@@ -140,7 +137,7 @@ export function useCollaborationBridge(roomId: string | null) {
 
   // Transform Pusher room to legacy format
   const bridgedRoom: BridgedRoom | undefined = useMemo(() => {
-    if (!roomId || !pusherCollab.isConnected) return undefined;
+    if (!roomId || !sseCollab.isConnected) return undefined;
 
     return {
       id: roomId,
@@ -156,7 +153,7 @@ export function useCollaborationBridge(roomId: string | null) {
       ],
       createdAt: new Date().toISOString(),
     };
-  }, [roomId, pusherCollab.isConnected, participantName, session?.user?.email]);
+  }, [roomId, sseCollab.isConnected, participantName, session?.user?.email]);
 
   // Return the collaboration messages received via Pusher
   const bridgedMessages: BridgedMessage[] = collaborationMessages;
@@ -199,7 +196,7 @@ export function useCollaborationBridge(roomId: string | null) {
       setIsJoiningRoom(true);
       try {
         // Join the room via Pusher
-        await pusherCollab.joinRoom(targetRoomId);
+        await sseCollab.joinRoom(targetRoomId);
 
         return {
           success: true,
@@ -227,7 +224,7 @@ export function useCollaborationBridge(roomId: string | null) {
         setIsJoiningRoom(false);
       }
     },
-    [pusherCollab, participantName, session?.user?.email],
+    [sseCollab, participantName, session?.user?.email],
   );
 
   // Leave room function (bridges to V2)
@@ -253,14 +250,9 @@ export function useCollaborationBridge(roomId: string | null) {
   const sendMessage = useCallback(
     async (content: string) => {
       if (!roomId) return;
-      await pusherCollab.sendMessage({
-        type: "chat_message",
-        content: content,
-        sender: participantName,
-        timestamp: Date.now(),
-      });
+      await sseCollab.sendMessage(content);
     },
-    [pusherCollab, roomId, participantName],
+    [sseCollab, roomId],
   );
 
   // Edit message function (placeholder for legacy compatibility)
@@ -324,7 +316,7 @@ export function useCollaborationBridge(roomId: string | null) {
     isTogglingLiveCoding: false,
 
     // Pusher specific features
-    isWsConnected: pusherCollab.isConnected,
+    isWsConnected: sseCollab.isConnected,
     refreshData: () => {
       // Manual refresh - reload the page for now
       window.location.reload();
@@ -389,12 +381,7 @@ export function useCollaborationBridge(roomId: string | null) {
         await syncManager.createMessage(chatId, "user", content);
 
         // Send user message to collaboration room so other users can see it
-        await pusherCollab.sendMessage({
-          type: "chat_message",
-          content: content,
-          sender: participantName,
-          timestamp: Date.now(),
-        });
+        await sseCollab.sendMessage(content);
 
         // Add user message to memory immediately
         await memoryManagerClient.addMemory(chatId, content, {
@@ -861,12 +848,7 @@ Always apply these rules while answering based on the provided message history.`
                 chunks.length > 1 ? `[${i + 1}/${chunks.length}] ` : "";
 
               try {
-                await pusherCollab.sendMessage({
-                  type: "chat_message",
-                  content: chunkPrefix + chunk,
-                  sender: "AI Assistant",
-                  timestamp: Date.now(),
-                });
+                await sseCollab.sendMessage(chunkPrefix + chunk);
 
                 console.log(
                   `✅ Sent chunk ${i + 1}/${chunks.length} (${chunk?.length ?? 0} chars)`,
@@ -903,12 +885,7 @@ Always apply these rules while answering based on the provided message history.`
           } else {
             // Send single message if under size limit
             try {
-              await pusherCollab.sendMessage({
-                type: "chat_message",
-                content: assistantContent,
-                sender: "AI Assistant",
-                timestamp: Date.now(),
-              });
+              await sseCollab.sendMessage(assistantContent);
             } catch (sendError) {
               console.error("❌ Failed to send single AI message:", sendError);
 
@@ -941,13 +918,9 @@ Always apply these rules while answering based on the provided message history.`
 
         // Send error message to collaboration (but keep it short to avoid same issue)
         try {
-          await pusherCollab.sendMessage({
-            type: "chat_message",
-            content:
-              "Sorry, I encountered an error while processing your message. Please try again.",
-            sender: "AI Assistant",
-            timestamp: Date.now(),
-          });
+          await sseCollab.sendMessage(
+            "Sorry, I encountered an error while processing your message. Please try again.",
+          );
         } catch (errorSendingError) {
           console.error("Failed to send error message:", errorSendingError);
         }

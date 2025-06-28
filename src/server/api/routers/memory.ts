@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { memoryManagerServer } from "~/lib/memory/memoryManager-server";
+import { memoryManager } from "~/lib/memory/memoryManager-server";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 
 export const memoryRouter = createTRPCRouter({
@@ -12,7 +12,7 @@ export const memoryRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      await memoryManagerServer.addMemory(
+      await memoryManager.addMemory(
         input.chatId,
         input.content,
         input.metadata,
@@ -23,7 +23,7 @@ export const memoryRouter = createTRPCRouter({
   summarizeHistory: publicProcedure
     .input(z.object({ chatId: z.string(), history: z.string() }))
     .mutation(async ({ input }) => {
-      const summary = await memoryManagerServer.summarizeAndStore(
+      const summary = await memoryManager.summarizeAndStore(
         input.chatId,
         input.history,
       );
