@@ -6,18 +6,17 @@ import {
   SyncOperation,
   SyncStatus,
   type RedisMessage,
-  type SyncableEntity,
   type SyncConflict,
   type SyncManagerConfig,
   type SyncOperationRecord,
   type SyncStats,
+  type SyncableEntity,
 } from "./types";
 
 class SyncManager {
   private redis: Redis | null = null;
   private isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
   private syncInterval: NodeJS.Timeout | null = null;
-  private pollInterval: NodeJS.Timeout | null = null;
   private pendingSyncTimeout: NodeJS.Timeout | null = null;
   private config: SyncManagerConfig;
   private deviceId: string;
@@ -58,8 +57,22 @@ class SyncManager {
     }
 
     try {
-      // For Upstash Redis, we need both URL and token
-      if (this.config.redisUrl.startsWith("https://")) {
+      const isBrowser = typeof window !== "undefined";
+
+      if (isBrowser) {
+        // Dynamically import Web SDK to avoid bundling it server-side
+        const { Redis: WebRedis } = await import("@upstash/redis/web");
+        this.redis = new WebRedis({
+          url: this.config.redisUrl,
+          // Token not required for read-only Pub/Sub
+          token: undefined as unknown as string,
+        }) as unknown as Redis;
+
+        if (this.config.enableRealTimeSync) {
+          void this.subscribeToRealTimeUpdates();
+        }
+      } else {
+        // Node/Edge runtime – token is required for writes
         const token = process.env.UPSTASH_REDIS_REST_TOKEN;
         if (!token) {
           console.warn("Upstash Redis token not found, using local-only mode");
@@ -70,13 +83,10 @@ class SyncManager {
           url: this.config.redisUrl,
           token,
         });
-      } else {
-        console.info("Local Redis URL detected, skipping in production build");
-        return;
-      }
 
-      if (this.config.enableRealTimeSync) {
-        void this.subscribeToRealTimeUpdates();
+        if (this.config.enableRealTimeSync) {
+          void this.subscribeToRealTimeUpdates();
+        }
       }
     } catch (error) {
       console.warn("Redis connection failed, using local-only mode:", error);
@@ -137,47 +147,33 @@ class SyncManager {
   }
 
   private async subscribeToRealTimeUpdates() {
-    if (!this.redis) return;
-
-    // Clear existing poll interval
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+    if (!this.redis || typeof (this.redis as any).subscribe !== "function") {
+      console.warn("Redis Pub/Sub not available, skipping real-time updates");
+      return;
     }
 
     try {
-      // In a real implementation, this would use Redis pubsub
-      // For now, we'll implement polling for demo purposes
-      const pollForUpdates = async () => {
-        try {
-          // Don't poll if user has text selected
-          if (this.hasActiveTextSelection()) {
-            return;
-          }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+      await (this.redis as any).subscribe(
+        "glasschat:messages",
+        async (message: string) => {
+          // Ignore while user is selecting text to avoid UI jump
+          if (this.hasActiveTextSelection()) return;
 
-          const messages = await this.redis?.lrange(
-            "glasschat:messages",
-            0,
-            -1,
-          );
-          if (messages && messages.length > 0) {
-            for (const messageStr of messages) {
-              const message: RedisMessage = JSON.parse(
-                messageStr,
-              ) as RedisMessage;
-              if (message.deviceId !== this.deviceId) {
-                await this.handleRemoteMessage(message);
-              }
+          try {
+            const parsed: RedisMessage = JSON.parse(message) as RedisMessage;
+            if (parsed.deviceId !== this.deviceId) {
+              await this.handleRemoteMessage(parsed);
             }
+          } catch (err) {
+            console.warn("Failed to parse pubsub message", err);
           }
-        } catch (error) {
-          console.warn("Error polling for updates:", error);
-        }
-      };
-
-      // Poll every 10 seconds for real-time updates (reduced frequency)
-      this.pollInterval = setInterval(() => void pollForUpdates(), 10000);
+        },
+      );
+      console.info("✅ Subscribed to Upstash Pub/Sub for real-time sync");
     } catch (error) {
-      console.warn("Failed to set up real-time sync:", error);
+      console.warn("Failed to subscribe to Redis Pub/Sub:", error);
     }
   }
 
@@ -316,8 +312,18 @@ class SyncManager {
       data: operation as unknown as Record<string, unknown>,
     };
 
-    // Store in Redis list for other clients to poll
+    // Store in Redis list (for historical replay)
     await this.redis.lpush("glasschat:messages", JSON.stringify(message));
+
+    // Publish for real-time listeners
+    /* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
+    if (typeof (this.redis as any).publish === "function") {
+      await (this.redis as any).publish(
+        "glasschat:messages",
+        JSON.stringify(message),
+      );
+    }
+    /* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 
     // Store the entity data directly
     const key = `glasschat:${entity.entityType}:${entity.id}`;
@@ -684,9 +690,6 @@ class SyncManager {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
     }
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-    }
     if (this.pendingSyncTimeout) {
       clearTimeout(this.pendingSyncTimeout);
     }
@@ -695,7 +698,9 @@ class SyncManager {
 
 // Create singleton instance
 export const syncManager = new SyncManager({
-  redisUrl: process.env.UPSTASH_REDIS_REST_URL,
+  redisUrl:
+    process.env.NEXT_PUBLIC_UPSTASH_REDIS_REST_URL ??
+    process.env.UPSTASH_REDIS_REST_URL,
   syncIntervalMs: 5000,
   enableRealTimeSync: true,
   conflictResolutionStrategy: ConflictResolution.LOCAL_WINS,
