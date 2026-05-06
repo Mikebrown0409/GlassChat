@@ -83,7 +83,7 @@
     "lucide-react": "^0.283.0",
     "markdown-wasm": "^1.1.0",
     "nanoid": "^5.1.5",
-    "next": "^15.2.3",
+    "next": "15.2.8",
     "next-auth": "5.0.0-beta.25",
     "pusher": "^5.2.0",
     "pusher-js": "^8.4.0",
